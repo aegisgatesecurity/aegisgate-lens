@@ -1,0 +1,42 @@
+# Build outputs
+dist/
+build/
+out/
+*.zip
+*.crx
+*.xpi
+
+# npm artifacts (this repo must NEVER contain any of these; see CONTRIBUTING.md)
+package.json
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+node_modules/
+.npm
+.yarn
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.bak
+
+# Logs / temp
+*.log
+*.tmp
+.env
+.env.local
+.env.*.local
+
+# Coverage / test artifacts
+coverage/
+*.lcov
+.nyc_output/
+
+# Local-only notes (not part of the published repo)
+NOTES.md
+TODO-local.md
