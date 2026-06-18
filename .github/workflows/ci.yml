@@ -1,0 +1,278 @@
+# =========================================================================
+# AegisGate Lens - CI Workflow
+# =========================================================================
+#
+# Builds the extension via the Platform's build tool
+# (github.com/aegisgatesecurity/aegisgate-platform), runs the
+# test harness against headless Chromium, and uploads the
+# built ZIP as a build artifact.
+#
+# On tagged releases (v*), the same jobs run and the ZIP is
+# uploaded as a GitHub Release asset.
+#
+# The Lens repo is a "consumer" of the Platform's build
+# tools. The source of truth for the build tool and the test
+# harness is the Platform repo:
+#   - tools/build-lens-extension/ (the build tool)
+#   - tools/test-extension/ (the test harness)
+#
+# We check out the Platform repo as a sibling so the Lens
+# repo's CI can use the same code that the Platform's own CI
+# uses. This avoids drift between the two repos' build
+# pipelines.
+#
+# Why a separate workflow in this repo (rather than relying on
+# the Platform's CI to build the Lens)?
+#   - The Lens repo is the source of truth for the Lens's
+#     TypeScript/HTML source. Building it on push to the
+#     Lens repo catches errors close to where the code
+#     changed.
+#   - The Lens repo is where contributors make PRs. The CI
+#     here provides immediate feedback.
+#   - The Platform's CI (build-lens.yml) provides a
+#     belt-and-suspenders check that the build tool itself
+#     still builds the canonical Lens correctly.
+#
+# Job structure:
+#   1. build:   Builds the extension via tools/build-lens-extension/.
+#              Uploads the ZIP as an artifact.
+#   2. test:    Runs the test harness against headless Chromium.
+#              Uploads the test report as an artifact.
+#   3. release: On tagged releases, downloads the build
+#              artifact and uploads it to a GitHub Release.
+#
+# v0.1 pre-release.
+# =========================================================================
+
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  GO_VERSION: "1.26.4"
+  PLATFORM_REPO: aegisgatesecurity/aegisgate-platform
+  PLATFORM_BRANCH: main
+  LENS_VERSION: "0.1.0"
+  # The full commit SHA (40 hex chars). Used for the
+  # build tool's --commit flag (so the INVENTORY.txt has
+  # the canonical identity) and for the artifact name.
+  LENS_SHA: ${{ github.sha }}
+
+permissions:
+  contents: read
+
+# Concurrency: never cancel in-progress runs. The build is
+# fast (~30s) and we want full history. Tags get their
+# own concurrency group so a release is never interrupted
+# by another push to the same tag.
+concurrency:
+  group: ${{ github.workflow }}-${{ startsWith(github.ref, 'refs/tags/') && format('tag-{0}', github.ref) || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # -----------------------------------------------------------------
+  # Job 1: build the extension
+  # -----------------------------------------------------------------
+  build:
+    name: Build extension
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Lens repo
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          path: lens
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Checkout Platform repo (sibling)
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ env.PLATFORM_REPO }}
+          ref: ${{ env.PLATFORM_BRANCH }}
+          fetch-depth: 1
+          path: platform
+
+      - name: Verify build tool builds
+        working-directory: platform
+        run: |
+          go build -o /dev/null ./tools/build-lens-extension/
+
+      - name: Run build tool
+        working-directory: platform
+        run: |
+          ./tools/build-lens-extension/ --help
+          mkdir -p /tmp/lens-dist
+          go run ./tools/build-lens-extension/ \
+            --src "$GITHUB_WORKSPACE/lens/src" \
+            --dist /tmp/lens-dist \
+            --version "$LENS_VERSION" \
+            --commit "$LENS_SHA"
+
+      - name: List build artifacts
+        run: |
+          echo "## Build artifacts" >> $GITHUB_STEP_SUMMARY
+          ls -la /tmp/lens-dist
+          cat /tmp/lens-dist/INVENTORY.txt >> $GITHUB_STEP_SUMMARY
+
+      - name: Verify JS files are syntactically valid
+        run: |
+          for f in /tmp/lens-dist/*.js /tmp/lens-dist/popup/*.js; do
+            node --check "$f"
+          done
+
+      - name: Upload extension ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: lens-extension-${{ env.LENS_SHA }}
+          path: /tmp/lens-dist
+          retention-days: 30
+          if-no-files-found: error
+
+  # -----------------------------------------------------------------
+  # Job 2: run the test harness
+  # -----------------------------------------------------------------
+  test:
+    name: Test harness
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout Lens repo
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          path: lens
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Install Chromium
+        # We install Chromium from the official Debian repo
+        # because the Ubuntu 24.04 snap version of chromium
+        # doesn't work in headless containers. The
+        # chrome-stable deb is widely used in CI environments
+        # (including Puppeteer and Playwright CI workflows).
+        run: |
+          wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add - 2>/dev/null || true
+          echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
+          sudo apt-get update
+          sudo apt-get install -y \
+            libnss3 \
+            libatk-bridge2.0-0 \
+            libgtk-3-0 \
+            libgbm1 \
+            libasound2 \
+            google-chrome-stable
+          google-chrome-stable --version
+          # Create a symlink so the test harness's findChromium
+          # can locate it as "google-chrome" or "google-chrome-stable".
+          sudo ln -sf /usr/bin/google-chrome-stable /usr/local/bin/google-chrome || true
+          sudo ln -sf /usr/bin/google-chrome-stable /usr/local/bin/chrome || true
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: lens-extension-${{ env.LENS_SHA }}
+          path: /tmp/lens-dist
+
+      - name: Checkout Platform repo (sibling)
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ env.PLATFORM_REPO }}
+          ref: ${{ env.PLATFORM_BRANCH }}
+          fetch-depth: 1
+          path: platform
+
+      - name: Run test harness
+        working-directory: platform
+        run: |
+          # Ensure the test-extension module is set up.
+          (cd tools/test-extension && go mod download)
+          go test -race -count=1 -v ./tools/test-extension/...
+          go run ./tools/test-extension/ \
+            --dist /tmp/lens-dist \
+            --tests "$GITHUB_WORKSPACE/lens/test" \
+            --provider chatgpt \
+            --testdata "$GITHUB_WORKSPACE/platform/tools/test-extension/testdata" \
+            --output /tmp/test-report.json \
+            --verbose
+          # Print the test report.
+          cat /tmp/test-report.json
+
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report-${{ env.LENS_SHA }}
+          path: /tmp/test-report.json
+          retention-days: 30
+          if-no-files-found: warn
+
+  # -----------------------------------------------------------------
+  # Job 3: release on tagged versions
+  # -----------------------------------------------------------------
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    needs: [build, test]
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: lens-extension-${{ env.LENS_SHA }}
+          path: /tmp/lens-dist
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG_NAME="${GITHUB_REF#refs/tags/}"
+          gh release create "$TAG_NAME" \
+            --title "AegisGate Lens v${{ env.LENS_VERSION }}" \
+            --notes "AegisGate Lens v${{ env.LENS_VERSION }} (${{ env.LENS_SHA }})
+
+          **Build:** ${{ github.run_id }}
+          **Commit:** ${{ env.LENS_SHA }}
+
+          ## Installation
+
+          1. Download the artifacts below.
+          2. Unzip them into a directory.
+          3. Open Chrome and navigate to 'chrome://extensions'.
+          4. Enable 'Developer mode' (top right).
+          5. Click 'Load unpacked' and select the unzipped directory.
+
+          ## Privacy
+
+          The Lens collects no prompt content. See the [Privacy Policy](https://aegisgatesecurity.io/lens/privacy) for details." \
+            /tmp/lens-dist/content.js \
+            /tmp/lens-dist/service-worker.js \
+            /tmp/lens-dist/manifest.json \
+            /tmp/lens-dist/INVENTORY.txt \
+            /tmp/lens-dist/schema.json \
+            /tmp/lens-dist/popup/popup.html \
+            /tmp/lens-dist/popup/popup.js \
+            /tmp/lens-dist/welcome.html \
+            /tmp/lens-dist/welcome.js
+          # Tag the release as prerelease if the tag contains
+          # alpha/beta/rc.
+          if echo "$TAG_NAME" | grep -qE 'alpha|beta|rc'; then
+            gh release edit "$TAG_NAME" --prerelease
+          fi
