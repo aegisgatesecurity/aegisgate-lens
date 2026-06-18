@@ -82,10 +82,16 @@
   </div>
 
   <div class="principle">
-    <strong>4. Open source. Audited. Reproducible.</strong>
-    The Lens is Apache 2.0. The build tool, the backend, and
-    every dep are open and reproducible. Zero third-party
-    JavaScript dependencies.
+    <strong>4. Each device is independent.</strong>
+    We do <em>not</em> sync your bearer token across the
+    devices you sign into Chrome with. If you sign into Chrome
+    on a new device, you'll need to opt in there too. This is
+    deliberate: a synced token would be a quasi-identifier
+    that lets us correlate your device fleet, and a token
+    leaked from one device could impersonate your other
+    devices. Per-device tokens eliminate both risks. Your
+    opt-in preference (on/off) <em>is</em> synced — it's just
+    a boolean, no secret, no identifier.
   </div>
 
   <div class="principle">
