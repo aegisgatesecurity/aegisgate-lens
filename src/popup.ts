@@ -42,6 +42,15 @@ const CATEGORIES: ReadonlyArray<Category> = [
 const storage = new Storage();
 
 /**
+ * The current set of disabled categories. Held in module
+ * scope so the toggle handler always sees the latest value
+ * (the previous implementation captured the initial set in
+ * a closure, so toggling category A then category B would
+ * silently re-enable A).
+ */
+let currentDisabled: ReadonlySet<Category> = new Set();
+
+/**
  * Run on DOMContentLoaded. Loads the opt-in state and
  * audit log, wires the toggle, renders the UI.
  */
@@ -52,14 +61,14 @@ document.addEventListener("DOMContentLoaded", () => {
 async function init(): Promise<void> {
   const state = await storage.getOptInState();
   const audit = await storage.getLocalAudit();
-  const disabled = await storage.getDisabledCategories();
+  currentDisabled = await storage.getDisabledCategories();
   renderOptIn(state);
   renderStats(state);
   renderAudit(audit);
-  renderCategoryToggles(disabled);
+  renderCategoryToggles(currentDisabled);
   wireClearButton();
-  wireOptInToggle(state);
-  wireCategoryToggles(disabled);
+  wireOptInToggle();
+  wireCategoryToggles();
 }
 
 /** Render the opt-in toggle and the version line. */
@@ -144,7 +153,7 @@ function renderCategoryToggles(disabled: ReadonlySet<Category>): void {
 }
 
 /** Wire the opt-in toggle. */
-function wireOptInToggle(state: OptInState): void {
+function wireOptInToggle(): void {
   const toggle = document.getElementById("opt-in-toggle") as HTMLInputElement | null;
   if (!toggle) return;
   toggle.addEventListener("change", () => {
@@ -155,11 +164,10 @@ function wireOptInToggle(state: OptInState): void {
     });
     void enabled; // unused beyond send
   });
-  void state; // unused beyond initial render
 }
 
 /** Wire the per-category toggles. */
-function wireCategoryToggles(disabled: ReadonlySet<Category>): void {
+function wireCategoryToggles(): void {
   const container = document.getElementById("category-toggles");
   if (!container) return;
   container.addEventListener("change", (ev) => {
@@ -167,12 +175,17 @@ function wireCategoryToggles(disabled: ReadonlySet<Category>): void {
     if (!target || target.tagName !== "INPUT") return;
     const cat = target.dataset.category as Category | undefined;
     if (!cat) return;
-    const next = new Set(disabled);
+    // Read the LATEST disabled set from module scope, not
+    // a stale closure capture. This is the fix for the bug
+    // where toggling category A then category B would
+    // silently re-enable A.
+    const next = new Set(currentDisabled);
     if (target.checked) {
       next.delete(cat);
     } else {
       next.add(cat);
     }
+    currentDisabled = next;
     void storage.setDisabledCategories(next);
   });
 }

@@ -26,11 +26,11 @@
   "content_scripts": [
     {
       "matches": [
-        "*://chat.openai.com/*",
-        "*://chatgpt.com/*",
-        "*://claude.ai/*",
-        "*://gemini.google.com/*",
-        "*://copilot.microsoft.com/*"
+        "https://chat.openai.com/*",
+        "https://chatgpt.com/*",
+        "https://claude.ai/*",
+        "https://gemini.google.com/*",
+        "https://copilot.microsoft.com/*"
       ],
       "js": ["content.js"],
       "run_at": "document_idle",
@@ -38,17 +38,10 @@
     }
   ],
   "permissions": [
-    "storage",
-    "alarms"
+    "storage"
   ],
   "host_permissions": [
     "https://lens.aegisgatesecurity.io/*"
-  ],
-  "web_accessible_resources": [
-    {
-      "resources": ["welcome.html"],
-      "matches": ["<all_urls>"]
-    }
   ],
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'"

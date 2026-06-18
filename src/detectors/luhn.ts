@@ -51,8 +51,17 @@ export function isLuhnValid(s: string): boolean {
   if (digits.length < 2) {
     return false; // Luhn requires at least 2 digits.
   }
+  // The Luhn algorithm: starting from the RIGHTMOST digit,
+  // double every second digit. "Every second" means positions
+  // 1, 3, 5, ... from the right (the rightmost itself is
+  // position 0 and is NOT doubled).
+  //
+  // This is the well-known "Mod 10" algorithm. The Wikipedia
+  // example "4242 4242 4242 4242" is Luhn-valid; the previous
+  // (buggy) implementation had the wrong index parity and
+  // rejected every real credit card number.
   let sum = 0;
-  let shouldDouble = true; // Start doubling from the rightmost digit.
+  let shouldDouble = false; // Rightmost (position 0) is NOT doubled.
   for (let i = digits.length - 1; i >= 0; i--) {
     let d = digits.charCodeAt(i) - 0x30;
     if (shouldDouble) {
