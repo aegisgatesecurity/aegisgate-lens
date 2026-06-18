@@ -26,7 +26,13 @@ import { APIClient } from "./api/client.js";
 import { Storage } from "./storage.js";
 import type { LensEvent, OptInState } from "./types.js";
 
-/** The current Lens version. */
+/**
+ * The current Lens version.
+ *
+ * KEPT IN SYNC by tools/build-lens-extension in the
+ * Platform monorepo. DO NOT EDIT THIS LINE; the build tool
+ * templates it from version.txt at the Platform monorepo root.
+ */
 const LENS_VERSION = "0.1.0";
 
 /** The default backend URL. Production deployments override. */
@@ -35,8 +41,15 @@ const DEFAULT_BACKEND_URL = "https://lens.aegisgatesecurity.io";
 /** The storage layer. */
 const storage = new Storage();
 
-/** The API client; lazily created when the bearer token is available. */
-let apiClient: APIClient | null = null;
+/**
+ * Run on service worker startup. Note: we do NOT cache the
+ * APIClient across calls. The service worker can be
+ * terminated and restarted at any time by the browser
+ * (MV3 reality), so a cached client with a stale token is
+ * a footgun. Every call to getClient() reads the current
+ * token from chrome.storage.local. The APIClient itself
+ * is cheap to construct.
+ */
 
 /** Run on service worker startup. */
 chrome.runtime.onInstalled.addListener((details) => {
@@ -170,19 +183,16 @@ async function handleTelemetry(event: LensEvent): Promise<void> {
             // have sent this in the first place, but if it
             // did (race condition), we honor the opt-in.
   }
-  // Append to local audit log (snippet only; never the
-  // full prompt text).
+  // Append to local audit log. The entry contains ONLY
+  // metadata (category, severity, user_action). NEVER any
+  // prompt text, URL, or page content. The privacy policy
+  // §10.2 requires this; the CI grep check enforces it.
   await storage.appendLocalAudit({
     timestamp: event.timestamp * 1000,
     domain_hash: event.domain_hash,
     category: event.category,
     severity: event.severity,
     user_action: event.user_action,
-    snippet: "", // content scripts do not send the prompt
-                 // text; the snippet is empty here. The
-                 // content script can include a snippet if
-                 // it wants to, but it's optional and never
-                 // sent to the backend.
   });
   // Forward to the backend.
   const client = await getClient();
@@ -244,13 +254,13 @@ async function handleStats(): Promise<unknown> {
 }
 
 /**
- * Get or create the APIClient. Lazily created on first use.
+ * Get the APIClient for the current token. Re-reads the
+ * token from chrome.storage.local on every call (the
+ * service worker is not guaranteed to live between calls).
  */
 async function getClient(): Promise<APIClient> {
-  if (apiClient) return apiClient;
   const baseUrl =
     (await storage.getBaseUrlOverride()) || DEFAULT_BACKEND_URL;
   const token = await storage.getBearerToken();
-  apiClient = new APIClient({ baseUrl, bearerToken: token });
-  return apiClient;
+  return new APIClient({ baseUrl, bearerToken: token });
 }

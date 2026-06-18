@@ -26,9 +26,6 @@ import { detect } from "./detectors/index.js";
 import { computeDomainHash } from "./privacy/domain_hash.js";
 import type { Category, Detection, LensEvent, Severity } from "./types.js";
 
-/** Sentinel for "this is a content script" attached to window. */
-const LENS_CONTENT_SENTINEL = "__aegisgate_lens_content__";
-
 /** The supported AI providers, mapped by hostname. */
 interface ProviderInfo {
   /** The provider's canonical name. */
@@ -112,14 +109,6 @@ class ContentScript {
     }
     this.provider = info;
     this.domainHash = await computeDomainHash(this.hostname);
-    // Set the sentinel so the service worker can verify
-    // (defense against malicious pages pretending to be
-    // an AI provider).
-    (window as unknown as Record<string, unknown>)[LENS_CONTENT_SENTINEL] = {
-      hostname: this.hostname,
-      provider: info.name,
-      loadedAt: Date.now(),
-    };
     // Wait for the prompt area to appear, then attach.
     await this.waitForPrompt();
     this.attach();
@@ -197,6 +186,12 @@ class ContentScript {
     banner.setAttribute("role", "alert");
     banner.setAttribute("aria-live", "polite");
     Object.assign(banner.style, {
+      // v0.1: banner is at the top of the page (max z-index
+      // for visibility). v0.2 (L-4 backlog): consider
+      // placing the banner inline near the prompt area, not
+      // the page top, since chat apps put the prompt at the
+      // bottom. v0.1 placement is "always visible" and is
+      // the conservative choice.
       position: "fixed",
       top: "0",
       left: "0",
@@ -205,6 +200,10 @@ class ContentScript {
       background: "#fef3c7",
       borderBottom: "2px solid #f59e0b",
       padding: "12px 16px",
+      // paddingRight leaves room for the absolute-positioned
+      // dismiss button (×) so the action buttons don't
+      // collide with it.
+      paddingRight: "40px",
       fontFamily:
         '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       fontSize: "14px",
@@ -248,6 +247,30 @@ class ContentScript {
       list.appendChild(li);
     }
     this.banner.appendChild(list);
+    // Actions row: Cancel (left), Edit, Send anyway (right).
+    // The Dismiss button is a small × in the corner of the
+    // banner; it emits a 'dismiss' user_action and hides
+    // the banner without changing the prompt.
+    const dismissBtn = document.createElement("button");
+    dismissBtn.textContent = "×";
+    dismissBtn.setAttribute("aria-label", "Dismiss this warning");
+    Object.assign(dismissBtn.style, {
+      position: "absolute",
+      top: "8px",
+      right: "12px",
+      background: "transparent",
+      border: "none",
+      fontSize: "20px",
+      lineHeight: "1",
+      cursor: "pointer",
+      color: "#1f2937",
+      padding: "0 4px",
+    });
+    dismissBtn.addEventListener("click", () => {
+      this.recordAction("dismiss");
+      this.hideBanner();
+    });
+    this.banner.appendChild(dismissBtn);
     // Actions.
     const actions = document.createElement("div");
     Object.assign(actions.style, {
@@ -360,7 +383,13 @@ class ContentScript {
 // Module-level helpers
 // =====================================================================
 
-/** The current Lens version. */
+/**
+ * The current Lens version.
+ *
+ * KEPT IN SYNC by tools/build-lens-extension in the
+ * Platform monorepo. DO NOT EDIT THIS LINE; the build tool
+ * templates it from version.txt at the Platform monorepo root.
+ */
 const LENS_VERSION = "0.1.0";
 
 /** Read the prompt text from a textarea or contenteditable. */
@@ -419,10 +448,14 @@ function sleep(ms: number): Promise<void> {
 
 if (typeof window !== "undefined" && typeof document !== "undefined") {
   const script = new ContentScript();
-  script.init().catch((err) => {
-    // Fail silently; the extension should never break the
-    // page. The error is logged to the console for the
-    // developer but not shown to the user.
-    console.warn("[AegisGate Lens] init failed:", err);
+  script.init().catch((err: unknown) => {
+    // Log only the error message, NOT the full error object.
+    // The full object could in principle contain the prompt
+    // text (if a future bug throws an error that includes
+    // it). The message is what a developer needs; the
+    // extension should never break the page. The error is
+    // NOT shown to the user.
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn("[AegisGate Lens] init failed:", msg);
   });
 }

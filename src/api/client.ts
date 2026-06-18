@@ -121,7 +121,11 @@ export class APIClient {
       baseUrl: config.baseUrl,
       bearerToken: config.bearerToken,
       eventsPerMinute: config.eventsPerMinute ?? DEFAULT_EVENTS_PER_MINUTE,
-      fetchImpl: config.fetchImpl ?? globalThis.fetch.bind(globalThis),
+      // globalThis.fetch does not use `this`, so no .bind
+      // is needed. The previous code used
+      // `globalThis.fetch.bind(globalThis)` which created a
+      // new function on every constructor call.
+      fetchImpl: config.fetchImpl ?? globalThis.fetch,
     };
     this.rateLimitState = new RateLimitState(this.cfg.eventsPerMinute);
   }
@@ -222,11 +226,16 @@ export class APIClient {
 }
 
 /**
- * RateLimitState implements a simple sliding-window rate
- * limit. It tracks the timestamps of the last N events in
- * a ring buffer of length eventsPerMinute. An event is
+ * RateLimitState implements a coarse-grained sliding-window
+ * rate limit. It tracks the timestamps of the last N events
+ * in a ring buffer of length eventsPerMinute. An event is
  * allowed if there are fewer than N events in the last 60
  * seconds.
+ *
+ * The window advances by one slot per event, not
+ * continuously. For 100 events/min, this is a 1-second
+ * resolution approximation of a true sliding window, which
+ * is sufficient for the privacy policy's 100/min cap.
  *
  * The implementation is intentionally minimal: a 100-element
  * array, a write index, a count. O(1) per check.

@@ -83,6 +83,12 @@ export function detect(
       continue;
     }
     for (const match of text.matchAll(regex)) {
+      // Top-of-loop cap check: bail out as soon as we have
+      // 4x the detection limit, before doing any work on
+      // the current match. The previous implementation had
+      // the check at the bottom, which could slightly
+      // exceed the cap by (remaining_patterns) matches.
+      if (raw.length >= max * 4) break;
       if (match.index === undefined) continue;
       const matchText = match[0];
       // Credit card patterns get the Luhn filter.
@@ -99,11 +105,6 @@ export function detect(
         end: match.index + matchText.length,
         pattern: pattern.name,
       });
-      if (raw.length >= max * 4) {
-        // Hard cap: stop collecting once we have 4x the
-        // detection limit, to bound the work in O(n) cases.
-        break;
-      }
     }
     if (raw.length >= max * 4) break;
   }

@@ -166,6 +166,15 @@ export interface Detection {
 /**
  * Local audit log entry. Stored in chrome.storage.local, NEVER
  * sent to the backend. Visible to the user in the popup.
+ *
+ * Note: there is NO `snippet` or `match` field here. The
+ * local audit log is metadata-only (category, severity,
+ * user_action) — the privacy policy is explicit that
+ * prompt content NEVER leaves the browser, and the local
+ * audit log is no exception. The match substring is
+ * rendered in the warning banner (in DOM, not in storage)
+ * so the user can see what was detected, but it is not
+ * persisted.
  */
 export interface LocalAuditEntry {
   timestamp: number;
@@ -173,8 +182,6 @@ export interface LocalAuditEntry {
   category: Category;
   severity: Severity;
   user_action: UserAction;
-  /** Truncated prompt snippet for local display (e.g., first 40 chars). */
-  snippet: string;
 }
 
 /**

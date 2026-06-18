@@ -40,7 +40,22 @@ const MAX_LOCAL_AUDIT_ENTRIES = 1000;
 /** The chrome.storage.sync key for the opt-in state. */
 const KEY_OPT_IN = "lens.opt_in";
 
-/** The chrome.storage.sync key for the bearer token. */
+/**
+ * The bearer token's storage area. The token is per-device
+ * (stored in chrome.storage.local) and is NOT synced across
+ * the user's signed-in Chrome devices. This is a deliberate
+ * privacy choice: a synced token would be a quasi-identifier
+ * that lets the backend correlate the user's device fleet,
+ * and a token leaked from one device could impersonate the
+ * user's other devices. Per-device tokens eliminate both
+ * risks. The opt-in state IS synced (it's just a boolean
+ * plus timestamps; no secret, no identifier).
+ *
+ * See plans/AEGISGATE-LENS-PRIVACY-POLICY-DRAFT.md §8.1 for
+ * the full disclosure.
+ */
+
+/** The chrome.storage.local key for the bearer token. */
 const KEY_BEARER_TOKEN = "lens.bearer_token";
 
 /** The chrome.storage.local key for the audit log. */
@@ -94,18 +109,24 @@ export class Storage {
    * Get the bearer token. If no token has been generated,
    * returns an empty string. The token is generated on
    * first opt-in by the service worker.
+   *
+   * The token is stored in chrome.storage.LOCAL (not sync).
+   * See the comment above KEY_BEARER_TOKEN for the privacy
+   * rationale.
    */
   async getBearerToken(): Promise<string> {
-    const result = await chrome.storage.sync.get(KEY_BEARER_TOKEN);
+    const result = await chrome.storage.local.get(KEY_BEARER_TOKEN);
     return (result[KEY_BEARER_TOKEN] as string) ?? "";
   }
 
   /**
    * Save the bearer token. Called by the service worker
-   * after generating the token on first opt-in.
+   * after generating the token on first opt-in. Stored in
+   * chrome.storage.LOCAL (not sync) for the privacy
+   * reasons documented above KEY_BEARER_TOKEN.
    */
   async setBearerToken(token: string): Promise<void> {
-    await chrome.storage.sync.set({ [KEY_BEARER_TOKEN]: token });
+    await chrome.storage.local.set({ [KEY_BEARER_TOKEN]: token });
   }
 
   /**

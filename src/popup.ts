@@ -25,7 +25,13 @@ import type {
   OptInState,
 } from "./types.js";
 
-/** The current Lens version. */
+/**
+ * The current Lens version.
+ *
+ * KEPT IN SYNC by tools/build-lens-extension in the
+ * Platform monorepo. DO NOT EDIT THIS LINE; the build tool
+ * templates it from version.txt at the Platform monorepo root.
+ */
 const LENS_VERSION = "0.1.0";
 
 /** All categories, in display order. */
