@@ -1,0 +1,57 @@
+{
+  "manifest_version": 3,
+  "name": "AegisGate Lens",
+  "version": "0.1.0",
+  "description": "Privacy-first sensitive-data detection for AI prompts. No prompt content ever leaves your browser. Apache 2.0. https://aegisgatesecurity.io/lens",
+  "author": "AegisGate Security, LLC",
+  "homepage_url": "https://aegisgatesecurity.io/lens",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "AegisGate Lens",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png"
+    }
+  },
+  "background": {
+    "service_worker": "service-worker.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://chat.openai.com/*",
+        "*://chatgpt.com/*",
+        "*://claude.ai/*",
+        "*://gemini.google.com/*",
+        "*://copilot.microsoft.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+  "permissions": [
+    "storage",
+    "alarms"
+  ],
+  "host_permissions": [
+    "https://lens.aegisgatesecurity.io/*"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["welcome.html"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  },
+  "minimum_chrome_version": "116"
+}

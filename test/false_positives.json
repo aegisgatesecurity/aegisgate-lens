@@ -1,0 +1,37 @@
+[
+  {
+    "input": "The weather in Paris is lovely today.",
+    "expected_match": null,
+    "expected_category": null,
+    "expected_severity": null,
+    "notes": "Plain text. No detection."
+  },
+  {
+    "input": "Write me a Python function to compute the factorial of n.",
+    "expected_match": null,
+    "expected_category": null,
+    "expected_severity": null,
+    "notes": "Code, but no secret/private-key patterns. No detection."
+  },
+  {
+    "input": "Translate 'hello world' to French.",
+    "expected_match": null,
+    "expected_category": null,
+    "expected_severity": null,
+    "notes": "Simple prompt. No detection."
+  },
+  {
+    "input": "Order #1234567890",
+    "expected_match": null,
+    "expected_category": null,
+    "expected_severity": null,
+    "notes": "10-digit order number. Not Luhn-valid; not a phone (no separators); not an SSN; not a credit card. No detection."
+  },
+  {
+    "input": "Reference: ABC-123-DEF-456",
+    "expected_match": null,
+    "expected_category": null,
+    "expected_severity": null,
+    "notes": "Reference code with hyphens. Not a phone or SSN. No detection."
+  }
+]

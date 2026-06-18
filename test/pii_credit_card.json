@@ -1,0 +1,51 @@
+[
+  {
+    "input": "Here's a test card: 4111-1111-1111-1111",
+    "expected_match": "4111-1111-1111-1111",
+    "expected_category": "pii_credit_card",
+    "expected_severity": "critical",
+    "notes": "Visa test card (canonical Stripe test number). Luhn-valid."
+  },
+  {
+    "input": "Mastercard: 5555 5555 5555 4444",
+    "expected_match": "5555 5555 5555 4444",
+    "expected_category": "pii_credit_card",
+    "expected_severity": "critical",
+    "notes": "Mastercard test card. Luhn-valid."
+  },
+  {
+    "input": "Amex 3782 822463 10005",
+    "expected_match": "3782 822463 10005",
+    "expected_category": "pii_credit_card",
+    "expected_severity": "critical",
+    "notes": "Amex test card (15 digits). Luhn-valid."
+  },
+  {
+    "input": "Order ID: 1234-5678-9012-3456",
+    "expected_match": null,
+    "expected_category": null,
+    "expected_severity": null,
+    "notes": "NOT a credit card: 1234-5678-9012-3456 is NOT Luhn-valid. Should produce no detection (Luhn filter rejects)."
+  },
+  {
+    "input": "AWS key: AKIAIOSFODNN7EXAMPLE",
+    "expected_match": "AKIAIOSFODNN7EXAMPLE",
+    "expected_category": "secret_api_key",
+    "expected_severity": "critical",
+    "notes": "AWS documentation example key. NOT a real key."
+  },
+  {
+    "input": "GitHub PAT: ghp_aBcDeFgHiJkLmNoPqRsTuVwXyZ0123456789",
+    "expected_match": "ghp_aBcDeFgHiJkLmNoPqRsTuVwXyZ0123456789",
+    "expected_category": "secret_api_key",
+    "expected_severity": "critical",
+    "notes": "GitHub PAT format. Synthetic, not a real token."
+  },
+  {
+    "input": "BEGIN RSA PRIVATE KEY-----\nMIIEowIBAA...",
+    "expected_match": "-----BEGIN RSA PRIVATE KEY-----",
+    "expected_category": "source_code",
+    "expected_severity": "critical",
+    "notes": "PEM private key marker"
+  }
+]

@@ -1,0 +1,44 @@
+[
+  {
+    "input": "Please email me at john.doe@example.com",
+    "expected_match": "john.doe@example.com",
+    "expected_category": "pii_email",
+    "expected_severity": "high",
+    "notes": "Standard email format"
+  },
+  {
+    "input": "Contact: jane_doe+filter@subdomain.example.co.uk",
+    "expected_match": "jane_doe+filter@subdomain.example.co.uk",
+    "expected_category": "pii_email",
+    "expected_severity": "high",
+    "notes": "Email with +alias and multi-segment TLD"
+  },
+  {
+    "input": "Call me at (555) 123-4567",
+    "expected_match": "(555) 123-4567",
+    "expected_category": "pii_phone",
+    "expected_severity": "high",
+    "notes": "US phone with parentheses"
+  },
+  {
+    "input": "+1 555.987.6543",
+    "expected_match": "+1 555.987.6543",
+    "expected_category": "pii_phone",
+    "expected_severity": "high",
+    "notes": "US phone with +1 and dots"
+  },
+  {
+    "input": "My SSN is 123-45-6789",
+    "expected_match": "123-45-6789",
+    "expected_category": "pii_ssn",
+    "expected_severity": "critical",
+    "notes": "Standard SSN format. Synthetic, not a real SSN."
+  },
+  {
+    "input": "SSN 987 65 4321",
+    "expected_match": "987 65 4321",
+    "expected_category": "pii_ssn",
+    "expected_severity": "critical",
+    "notes": "SSN with spaces. Synthetic."
+  }
+]
