@@ -30,7 +30,9 @@
         "https://chatgpt.com/*",
         "https://claude.ai/*",
         "https://gemini.google.com/*",
-        "https://copilot.microsoft.com/*"
+        "https://copilot.microsoft.com/*",
+        "https://duck.ai/*",
+        "https://duckduckgo.com/*"
       ],
       "js": ["content.js"],
       "run_at": "document_idle",

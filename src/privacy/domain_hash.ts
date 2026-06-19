@@ -7,7 +7,7 @@
 // prefix of the AI provider's hostname. This file computes that
 // hash in the browser using the Web Crypto API
 // (crypto.subtle.digest). The Web Crypto API is browser-native,
-// audited by the browser vendor, and counts as a stdlib of the
+// audited by the browser vendor, and counts stdlib of the
 // platform — it is not a third-party dependency.
 //
 // The server-side mirror is in
@@ -34,7 +34,7 @@ const ALGORITHM = "SHA-256";
  * async. The caller must `await` the result.
  *
  * @param hostname The AI provider's hostname. Lowercased
- *                 before hashing; pass it as the user typed
+ *                 before hashing; pass it user typed
  *                 it (e.g., "Chat.OpenAI.com") and we'll
  *                 lowercase for you.
  * @returns A 16-character lowercase hex string.
@@ -52,7 +52,7 @@ export async function computeDomainHash(hostname: string): Promise<string> {
 /**
  * Synchronous variant for tests. NOT for production use —
  * synchronous SHA-256 in the browser is not possible via
- * Web Crypto; this uses a hand-rolled implementation as a
+ * Web Crypto; this uses a hand-rolled implementation
  * fallback. The build tool's tests use this variant; the
  * runtime uses computeDomainHash().
  *
@@ -190,7 +190,7 @@ function sha256Sync(bytes: Uint8Array): Uint8Array {
     H[7] = (H[7] + h) >>> 0;
   }
 
-  // Serialize the hash as big-endian bytes.
+  // Serialize the hash-endian bytes.
   const out = new Uint8Array(32);
   const outView = new DataView(out.buffer);
   for (let i = 0; i < 8; i++) {

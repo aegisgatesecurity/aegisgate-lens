@@ -11,7 +11,7 @@
 // The sync mechanism is the build tool in the Platform monorepo
 // (tools/build-lens-extension/) which generates a JSON Schema
 // from the Go struct's json tags, then validates this TypeScript
-// file's types against that schema as part of `go test
+// file's types against that schema of `go test
 // ./tools/build-lens-extension/...`. If they drift, the build
 // fails.
 //

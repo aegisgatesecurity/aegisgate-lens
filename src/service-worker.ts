@@ -135,13 +135,13 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (!msg || typeof msg !== "object") return false;
   switch (msg.type) {
     case "lens.telemetry":
-      handleTelemetry(msg.event as LensEvent).catch((err) =>
+      handleTelemetry(msg.event).catch((err) =>
         console.warn("[AegisGate Lens] telemetry failed:", err),
       );
       sendResponse({ accepted: true });
       return false; // synchronous response
     case "lens.optIn":
-      handleOptIn(msg.enabled as boolean).catch((err) =>
+      handleOptIn(msg.enabled).catch((err) =>
         console.warn("[AegisGate Lens] optIn failed:", err),
       );
       sendResponse({ accepted: true });
@@ -224,11 +224,9 @@ async function handleOptIn(enabled: boolean): Promise<void> {
  * Handle a get-state request from the popup. Returns the
  * current opt-in state and the local audit log.
  */
-async function handleGetState(): Promise<{
-  optIn: OptInState;
-  localAudit: ReadonlyArray<unknown>;
-  disabledCategories: ReadonlyArray<string>;
-}> {
+async function handleGetState() {
+  // Simplified from Promise<{...}> to remove the return type
+  // so the stripper can handle it.
   const optIn = await storage.getOptInState();
   const localAudit = await storage.getLocalAudit();
   const disabledCategories = await storage.getDisabledCategories();

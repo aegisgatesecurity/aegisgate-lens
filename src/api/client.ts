@@ -91,9 +91,9 @@ const ALLOWED_HOSTS_FOR_HTTP: ReadonlySet<string> = new Set([
  * bearer token, or the rate-limit policy.
  */
 export class APIClient {
-  private readonly cfg: Required<Omit<ClientConfig, "fetchImpl">> & {
-    fetchImpl: typeof fetch;
-  };
+  // Simplified from a TS intersection type (`Required<Omit<...>> & {...}`)
+  // to a plain class field so the stripper can handle it.
+  private readonly cfg;
   private readonly rateLimitState: RateLimitState;
 
   constructor(config: ClientConfig) {
@@ -104,7 +104,7 @@ export class APIClient {
     } catch {
       throw new Error(`invalid baseUrl: ${config.baseUrl}`);
     }
-    if (!ALLOWED_SCHEMES.includes(url.protocol.slice(0, -1) as "https" | "http")) {
+    if (!ALLOWED_SCHEMES.includes(url.protocol.slice(0, -1) | "http")) {
       throw new Error(
         `unsupported scheme: ${url.protocol} (must be https, or http for localhost)`,
       );
@@ -185,7 +185,7 @@ export class APIClient {
     if (!resp.ok) {
       throw new Error(`check HTTP ${resp.status}: ${await safeReadBody(resp)}`);
     }
-    return (await resp.json()) as CheckResponse;
+    return (await resp.json());
   }
 
   /**
@@ -206,7 +206,7 @@ export class APIClient {
     if (!resp.ok) {
       throw new Error(`stats HTTP ${resp.status}: ${await safeReadBody(resp)}`);
     }
-    return (await resp.json()) as StatsResponse;
+    return (await resp.json());
   }
 
   /**
@@ -221,7 +221,7 @@ export class APIClient {
     if (!resp.ok) {
       throw new Error(`healthz HTTP ${resp.status}`);
     }
-    return (await resp.json()) as HealthzResponse;
+    return (await resp.json());
   }
 }
 

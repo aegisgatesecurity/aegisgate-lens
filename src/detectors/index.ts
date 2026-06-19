@@ -15,7 +15,7 @@
 //      matches both credit_card_visa_v1 and credit_card_amex_v1;
 //      keep only the highest-severity match).
 //   2. Displayed in the warning UI.
-//   3. Sent to the API (api/client.ts) as a LensEvent, with
+//   3. Sent to the API (api/client.ts) LensEvent, with
 //      the prompt content STRIPPED — only the metadata
 //      (category, severity, span) crosses the wire.
 //
@@ -83,7 +83,7 @@ export function detect(
       continue;
     }
     for (const match of text.matchAll(regex)) {
-      // Top-of-loop cap check: bail out as soon as we have
+      // Top-of-loop cap check: bail out have
       // 4x the detection limit, before doing any work on
       // the current match. The previous implementation had
       // the check at the bottom, which could slightly
@@ -170,7 +170,7 @@ export function describeDetection(d: Detection): string {
   return `${prefix} (severity: ${d.severity})`;
 }
 
-function describeCategory(c: Category): string {
+export function describeCategory(c: Category): string {
   switch (c) {
     case "pii_email":
       return "Email address";

@@ -22,7 +22,7 @@
 // v0.1 pre-release.
 // =========================================================================
 
-import { detect } from "./detectors/index.js";
+import { detect, describeCategory } from "./detectors/index.js";
 import { computeDomainHash } from "./privacy/domain_hash.js";
 import type { Category, Detection, LensEvent, Severity } from "./types.js";
 
@@ -77,6 +77,14 @@ const PROVIDERS: ReadonlyMap<string, ProviderInfo> = new Map([
       sendSelector: 'button[type="submit"]',
     },
   ],
+  [
+    "duck.ai",
+    {
+      name: "duck",
+      promptSelector: 'textarea[id*="user-input"], div[contenteditable="true"]',
+      sendSelector: 'button[aria-label*="Send"]',
+    },
+  ],
 ]);
 
 /** Throttle interval for re-running detect() on input. */
@@ -89,12 +97,12 @@ const DETECT_THROTTLE_MS = 250;
  */
 class ContentScript {
   private hostname: string = "";
-  private provider: ProviderInfo | null = null;
+  private provider = null;
   private domainHash: string = "";
-  private banner: HTMLDivElement | null = null;
-  private currentDetections: ReadonlyArray<Detection> = [];
+  private banner = null;
+  private currentDetections: Array = [];
   private lastDetectAt = 0;
-  private pendingDetect: number | null = null;
+  private pendingDetect = null;
 
   /**
    * Initialize the content script for the current page.
@@ -120,7 +128,7 @@ class ContentScript {
    * after the initial JS loads.
    */
   private async waitForPrompt(): Promise<void> {
-    const sel = this.provider!.promptSelector;
+    const sel = this.provider.promptSelector;
     for (let i = 0; i < 60; i++) {
       if (document.querySelector(sel)) return;
       await sleep(500);
@@ -133,7 +141,7 @@ class ContentScript {
    * the current prompt text.
    */
   private attach(): void {
-    const el = document.querySelector(this.provider!.promptSelector);
+    const el = document.querySelector(this.provider.promptSelector);
     if (!el) return;
     el.addEventListener("input", () => this.scheduleDetect());
     el.addEventListener("keyup", () => this.scheduleDetect());
@@ -159,7 +167,7 @@ class ContentScript {
    * the banner UI accordingly.
    */
   private runDetect(): void {
-    const el = document.querySelector(this.provider!.promptSelector);
+    const el = document.querySelector(this.provider.promptSelector);
     if (!el) return;
     const text = readPromptText(el);
     const detections = detect(text);
@@ -175,7 +183,7 @@ class ContentScript {
    * Show the warning banner. The banner lists each detection
    * with a "Send anyway", "Edit", or "Cancel" button.
    */
-  private showBanner(detections: ReadonlyArray<Detection>): void {
+  private showBanner(detections: Array): void {
     if (this.banner && document.body.contains(this.banner)) {
       // Update the existing banner's content.
       this.updateBannerContent(detections);
@@ -219,7 +227,7 @@ class ContentScript {
    * Update the banner's content. Replaces children; does
    * not recreate the banner element.
    */
-  private updateBannerContent(detections: ReadonlyArray<Detection>): void {
+  private updateBannerContent(detections: Array): void {
     if (!this.banner) return;
     // Clear.
     while (this.banner.firstChild) {
@@ -306,7 +314,7 @@ class ContentScript {
   private makeActionButton(
     label: string,
     severity: Severity,
-    onClick: () => void,
+    onClick,
   ): HTMLButtonElement {
     const btn = document.createElement("button");
     btn.textContent = label;
@@ -340,7 +348,7 @@ class ContentScript {
    * Clear the prompt input. Used by the "Cancel" action.
    */
   private clearPrompt(): void {
-    const el = document.querySelector(this.provider!.promptSelector);
+    const el = document.querySelector(this.provider.promptSelector);
     if (!el) return;
     if (el instanceof HTMLTextAreaElement) {
       el.value = "";
@@ -367,7 +375,7 @@ class ContentScript {
         severity: d.severity,
         user_action: userAction,
         timestamp: Math.floor(Date.now() / 1000),
-        model_version: `${LENS_VERSION}+regex-v1`,
+        model_version: LENS_VERSION + "+regex-v1",
         lens_version: LENS_VERSION,
         confidence: 1.0,
       };
@@ -403,26 +411,8 @@ function readPromptText(el: Element): string {
   return "";
 }
 
-/** Human-readable description for a category. */
-function describeCategory(c: Category): string {
-  switch (c) {
-    case "pii_email":
-      return "Email address";
-    case "pii_phone":
-      return "Phone number";
-    case "pii_ssn":
-      return "Social Security number";
-    case "pii_credit_card":
-      return "Credit card number";
-    case "secret_api_key":
-      return "API key or token";
-    case "source_code":
-      return "Source code (private key)";
-  }
-}
-
 /** Tint for a button by severity. */
-function severityTint(s: Severity): { bg: string; fg: string } {
+function severityTint(s) {
   switch (s) {
     case "critical":
       return { bg: "#dc2626", fg: "#ffffff" };

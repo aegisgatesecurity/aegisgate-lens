@@ -79,7 +79,7 @@ async function init(): Promise<void> {
 
 /** Render the opt-in toggle and the version line. */
 function renderOptIn(state: OptInState): void {
-  const toggle = document.getElementById("opt-in-toggle") as HTMLInputElement | null;
+  const toggle = document.getElementById("opt-in-toggle");
   if (toggle) toggle.checked = state.enabled;
   const version = document.getElementById("version");
   if (version) version.textContent = `Lens v${LENS_VERSION}`;
@@ -160,7 +160,7 @@ function renderCategoryToggles(disabled: ReadonlySet<Category>): void {
 
 /** Wire the opt-in toggle. */
 function wireOptInToggle(): void {
-  const toggle = document.getElementById("opt-in-toggle") as HTMLInputElement | null;
+  const toggle = document.getElementById("opt-in-toggle");
   if (!toggle) return;
   toggle.addEventListener("change", () => {
     const enabled = toggle.checked;
@@ -177,9 +177,9 @@ function wireCategoryToggles(): void {
   const container = document.getElementById("category-toggles");
   if (!container) return;
   container.addEventListener("change", (ev) => {
-    const target = ev.target as HTMLInputElement | null;
+    const target = ev.target;
     if (!target || target.tagName !== "INPUT") return;
-    const cat = target.dataset.category as Category | undefined;
+    const cat = target.dataset.category | undefined;
     if (!cat) return;
     // Read the LATEST disabled set from module scope, not
     // a stale closure capture. This is the fix for the bug
@@ -198,7 +198,7 @@ function wireCategoryToggles(): void {
 
 /** Wire the "Clear local history" button. */
 function wireClearButton(): void {
-  const btn = document.getElementById("clear-local") as HTMLButtonElement | null;
+  const btn = document.getElementById("clear-local");
   if (!btn) return;
   btn.addEventListener("click", () => {
     chrome.runtime.sendMessage({ type: "lens.clearLocalAudit" }, () => {

@@ -191,10 +191,7 @@ export const PATTERNS: ReadonlyArray<RegexPattern> = [
  * loop iterates over categories and applies all patterns
  * for each category in turn.
  */
-export const PATTERNS_BY_CATEGORY: ReadonlyMap<
-  string,
-  ReadonlyArray<RegexPattern>
-> = (() => {
+export const PATTERNS_BY_CATEGORY = (() => {
   const m = new Map<string, RegexPattern[]>();
   for (const p of PATTERNS) {
     const list = m.get(p.category) ?? [];
@@ -214,17 +211,16 @@ export const PATTERNS_BY_CATEGORY: ReadonlyMap<
  * conservative for non-ASCII text; we keep it off for v0.1
  * to match the Go side's regex behavior).
  */
-const COMPILED: ReadonlyArray<{ pattern: RegexPattern; regex: RegExp }> =
-  PATTERNS.map((p) => ({
-    pattern: p,
-    regex: new RegExp(p.pattern, "g"),
-  }));
+// COMPILED is the pre-compiled RegExp objects, built from
+// PATTERNS at module load. We compute this once, then the
+// detector just iterates over the array.
+const COMPILED = [];
+for (const p of PATTERNS) {
+  COMPILED.push({ pattern: p, regex: new RegExp(p.pattern, "g") });
+}
 
 /**
  * The pre-compiled patterns, ready for detection. The
  * detector imports this and iterates.
  */
-export const COMPILED_PATTERNS: ReadonlyArray<{
-  pattern: RegexPattern;
-  regex: RegExp;
-}> = COMPILED;
+export const COMPILED_PATTERNS = COMPILED;

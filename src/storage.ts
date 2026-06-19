@@ -84,7 +84,7 @@ export class Storage {
    */
   async getOptInState(): Promise<OptInState> {
     const result = await chrome.storage.sync.get(KEY_OPT_IN);
-    const stored = result[KEY_OPT_IN] as OptInState | undefined;
+    const stored = result[KEY_OPT_IN];
     if (stored && typeof stored === "object") {
       return stored;
     }
@@ -116,7 +116,7 @@ export class Storage {
    */
   async getBearerToken(): Promise<string> {
     const result = await chrome.storage.local.get(KEY_BEARER_TOKEN);
-    return (result[KEY_BEARER_TOKEN] as string) ?? "";
+    return (result[KEY_BEARER_TOKEN]) ?? "";
   }
 
   /**
@@ -137,7 +137,7 @@ export class Storage {
    */
   async appendLocalAudit(entry: LocalAuditEntry): Promise<void> {
     const result = await chrome.storage.local.get(KEY_LOCAL_AUDIT);
-    const log = (result[KEY_LOCAL_AUDIT] as LocalAuditEntry[] | undefined) ?? [];
+    const log = (result[KEY_LOCAL_AUDIT] | undefined) ?? [];
     log.push(entry);
     if (log.length > MAX_LOCAL_AUDIT_ENTRIES) {
       log.splice(0, log.length - MAX_LOCAL_AUDIT_ENTRIES);
@@ -151,7 +151,7 @@ export class Storage {
    */
   async getLocalAudit(): Promise<ReadonlyArray<LocalAuditEntry>> {
     const result = await chrome.storage.local.get(KEY_LOCAL_AUDIT);
-    const log = (result[KEY_LOCAL_AUDIT] as LocalAuditEntry[] | undefined) ?? [];
+    const log = (result[KEY_LOCAL_AUDIT] | undefined) ?? [];
     return [...log].reverse();
   }
 
@@ -169,7 +169,7 @@ export class Storage {
    */
   async getDisabledCategories(): Promise<ReadonlySet<Category>> {
     const result = await chrome.storage.local.get(KEY_DISABLED_CATEGORIES);
-    const arr = (result[KEY_DISABLED_CATEGORIES] as Category[] | undefined) ?? [];
+    const arr = (result[KEY_DISABLED_CATEGORIES] | undefined) ?? [];
     return new Set(arr);
   }
 
@@ -188,7 +188,7 @@ export class Storage {
    */
   async getBaseUrlOverride(): Promise<string> {
     const result = await chrome.storage.local.get(KEY_BASE_URL_OVERRIDE);
-    return (result[KEY_BASE_URL_OVERRIDE] as string) ?? "";
+    return (result[KEY_BASE_URL_OVERRIDE]) ?? "";
   }
 
   /**

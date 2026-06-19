@@ -13,7 +13,7 @@
 // The validation here is the first line of defense: the
 // extension validates every event BEFORE serializing it,
 // before encrypting, before putting it on the wire. The
-// backend then validates again as a defense in depth.
+// backend then validates again defense in depth.
 //
 // The 9 fields are the §1.1 schema. Adding, removing, or
 // renaming a field is a breaking change to the Lens protocol.
@@ -90,7 +90,7 @@ export type ValidationResult =
  * Validate an event against the §1.1 schema. This is the
  * browser-side pre-flight check; the backend re-validates.
  *
- * @param raw The event as captured. May have extra fields
+ * @param raw The event. May have extra fields
  *            (the check rejects them).
  * @param nowMillis The client's wall-clock time, in
  *            milliseconds since the unix epoch. Defaults
@@ -106,7 +106,7 @@ export function validate(
   if (typeof raw !== "object" || raw === null) {
     return fail("event must be an object");
   }
-  const obj = raw as Record<string, unknown>;
+  const obj = raw;
 
   // Reject unknown fields. This is the schema-is-an-allowlist
   // guarantee from the privacy policy. The backend does the
@@ -145,7 +145,7 @@ export function validate(
   if (typeof obj.category !== "string") {
     return fail("category must be a string");
   }
-  if (!VALID_CATEGORIES.includes(obj.category as Category)) {
+  if (!VALID_CATEGORIES.includes(obj.category)) {
     return fail(`category ${JSON.stringify(obj.category)} is not valid`);
   }
 
@@ -153,7 +153,7 @@ export function validate(
   if (typeof obj.severity !== "string") {
     return fail("severity must be a string");
   }
-  if (!VALID_SEVERITIES.includes(obj.severity as Severity)) {
+  if (!VALID_SEVERITIES.includes(obj.severity)) {
     return fail(`severity ${JSON.stringify(obj.severity)} is not valid`);
   }
 
@@ -161,7 +161,7 @@ export function validate(
   if (typeof obj.user_action !== "string") {
     return fail("user_action must be a string");
   }
-  if (!VALID_USER_ACTIONS.includes(obj.user_action as UserAction)) {
+  if (!VALID_USER_ACTIONS.includes(obj.user_action)) {
     return fail(`user_action ${JSON.stringify(obj.user_action)} is not valid`);
   }
 
@@ -218,9 +218,9 @@ export function validate(
   // were not in the input, even if they have zero values.
   const event: LensEvent = {
     domain_hash: obj.domain_hash,
-    category: obj.category as Category,
-    severity: obj.severity as Severity,
-    user_action: obj.user_action as UserAction,
+    category: obj.category,
+    severity: obj.severity,
+    user_action: obj.user_action,
     timestamp: obj.timestamp,
     model_version: obj.model_version,
     lens_version: obj.lens_version,
