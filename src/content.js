@@ -37,6 +37,9 @@
   const { detect, describeCategory } = (NS.detectors) || {};
   const { computeDomainHash } = (NS.privacy && NS.privacy.domainHash) || {};
   const mlEngine = NS.mlEngine || null;
+  const transformerEngine = NS.transformerEngine || null;
+  const TRANSFORMER_UNCERTAIN_LOW = 0.3;
+  const TRANSFORMER_UNCERTAIN_HIGH = 0.7;
 
   /**
    * The current Lens version.
@@ -229,34 +232,27 @@
     } else if (text.length >= 20 && mlEngine) {
       // Async: ML detection
       mlEngine.scoreText(text).then(function (mlResult) {
-        if (mlResult && mlResult.isAttack) {
-          // ML fired - add detection. Re-check regex in case
-          // the prompt changed between calls.
-          const currentEl = document.querySelector(self.provider.promptSelector);
-          if (!currentEl) return;
-          const currentText = readPromptText(currentEl);
-          if (currentText !== text) return;  // prompt changed, skip stale result
-          const mlDetection = {
-            category: 'prompt_injection_ml',
-            severity: 'high',
-            match: currentText.substring(0, Math.min(80, currentText.length)),
-            start: 0,
-            end: currentText.length,
-            pattern: 'ml_5way_ensemble',
-            mlScore: mlResult.score,
-            mlThreshold: mlResult.threshold,
-            mlScores: mlResult.scores,
-          };
-          // Check if dismissed
-          if (self.isDismissed(mlDetection)) {
-            self.currentDetections = [];
-            self.hideBanner();
-            return;
-          }
-          self.currentDetections = [mlDetection];
-          self.showBanner([mlDetection]);
+        if (!mlResult) return;
+        // Tier 2 (TF-IDF 5-way) fired - show banner
+        if (mlResult.isAttack) {
+          self.handleMLDetection(text, mlResult, 'ml_5way_ensemble', mlResult.scores);
+          return;
         }
-        // If ML says no, do nothing (don't hide banner - it was already hidden)
+        // Tier 2 said no. If score is UNCERTAIN (0.3-0.7), invoke Tier 3 (transformer)
+        if (mlResult.loaded && transformerEngine &&
+            mlResult.score >= TRANSFORMER_UNCERTAIN_LOW &&
+            mlResult.score <= TRANSFORMER_UNCERTAIN_HIGH) {
+          transformerEngine.scoreTransformer(text).then(function (transResult) {
+            if (transResult && transResult.isAttack) {
+              self.handleMLDetection(text, {
+                score: transResult.score,
+                threshold: transResult.threshold,
+              }, 'transformer_minilm', null);
+            }
+          }).catch(function (err) {
+            log.warn('[AegisGate Lens] Tier 3 (transformer) failed:', err);
+          });
+        }
       }).catch(function (err) {
         log.warn('[AegisGate Lens] ML score failed:', err);
       });
@@ -271,6 +267,45 @@
    * Show the warning banner.
    * @param {Array<{category: string, severity: string, match: string, name: string}>} detections
    */
+  /**
+   * Handle an ML detection (either from Tier 2 or Tier 3).
+   * @param {string} text - the original text that was scored
+   * @param {Object} mlResult - { score, threshold, scores }
+   * @param {string} pattern - which model fired ('ml_5way_ensemble' or 'transformer_minilm')
+   * @param {Array<number>|null} allScores - per-model scores (null for transformer)
+   */
+  ContentScript.prototype.handleMLDetection = function (text, mlResult, pattern, allScores) {
+    // Re-check the prompt in case it changed between calls.
+    const currentEl = document.querySelector(this.provider.promptSelector);
+    if (!currentEl) return;
+    const currentText = readPromptText(currentEl);
+    if (currentText !== text) return;  // prompt changed, skip stale result
+
+    const category = pattern === 'transformer_minilm' ?
+      'prompt_injection_transformer' : 'prompt_injection_ml';
+
+    const mlDetection = {
+      category: category,
+      severity: 'high',
+      match: currentText.substring(0, Math.min(80, currentText.length)),
+      start: 0,
+      end: currentText.length,
+      pattern: pattern,
+      mlScore: mlResult.score,
+      mlThreshold: mlResult.threshold,
+      mlScores: allScores,
+    };
+
+    // Check if dismissed
+    if (this.isDismissed(mlDetection)) {
+      this.currentDetections = [];
+      this.hideBanner();
+      return;
+    }
+    this.currentDetections = [mlDetection];
+    this.showBanner([mlDetection]);
+  };
+
   ContentScript.prototype.showBanner = function (detections) {
     if (this.banner && document.body.contains(this.banner)) {
       this.updateBannerContent(detections);

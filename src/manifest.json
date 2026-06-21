@@ -45,6 +45,7 @@
         "api/client.js",
         "util/bundle-loader.js",
         "util/lens-ml.js",
+        "util/transformer-engine.js",
         "content.js"
       ],
       "run_at": "document_idle",
@@ -59,7 +60,7 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["aegisgate-lens-v0.1.0.bundle", "ml_model/*.json"],
+      "resources": ["aegisgate-lens-v0.1.0.bundle", "aegisgate-lens-transformer-v0.2.0.bundle", "ml_model/*.json"],
       "matches": [
         "https://chat.openai.com/*",
         "https://chatgpt.com/*",
