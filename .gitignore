@@ -40,3 +40,10 @@ coverage/
 # Local-only notes (not part of the published repo)
 NOTES.md
 TODO-local.md
+
+# ML model files (build artifacts, regenerated from ml-artifacts/dist_5way/)
+src/ml_model/
+lens_ml_build/
+
+# Local testing servers and outputs
+/tmp/lens_*
