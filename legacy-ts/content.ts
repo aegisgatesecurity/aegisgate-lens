@@ -375,8 +375,8 @@ class ContentScript {
         severity: d.severity,
         user_action: userAction,
         timestamp: Math.floor(Date.now() / 1000),
-        model_version: LENS_VERSION + "+regex-v1",
-        lens_version: LENS_VERSION,
+        "model_version": LENS_VERSION + "+regex-v1",
+        "lens_version": LENS_VERSION,
         confidence: 1.0,
       };
       chrome.runtime.sendMessage({

@@ -68,7 +68,6 @@ const KEY_DISABLED_CATEGORIES = "lens.disabled_categories";
 const KEY_BASE_URL_OVERRIDE = "lens.__base_url_override";
 
 /** The current Lens version. Bumped per release. */
-const LENS_VERSION = "0.1.0";
 
 /**
  * Storage is the Lens's typed wrapper over chrome.storage.
@@ -93,7 +92,7 @@ export class Storage {
       enabled: false,
       opted_in_at: 0,
       last_changed_at: 0,
-      lens_version: LENS_VERSION,
+      lens_version: "0.1.0",
     };
   }
 

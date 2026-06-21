@@ -20,7 +20,8 @@
     }
   },
   "background": {
-    "service_worker": "service-worker.js"
+    "service_worker": "service-worker.js",
+    "type": "module"
   },
   "content_scripts": [
     {
@@ -30,21 +31,10 @@
         "https://claude.ai/*",
         "https://gemini.google.com/*",
         "https://copilot.microsoft.com/*",
-        "https://duck.ai/*",
-        "https://duckduckgo.com/*"
+        "https://duckduckgo.com/*",
+        "https://duck.ai/*"
       ],
-      "js": [
-        "util/logger.js",
-        "detectors/regex.js",
-        "detectors/luhn.js",
-        "detectors/from_platform.js",
-        "detectors/index.js",
-        "privacy/domain_hash.js",
-        "privacy/schema.js",
-        "storage.js",
-        "api/client.js",
-        "content.js"
-      ],
+      "js": ["content.js"],
       "run_at": "document_idle",
       "all_frames": false
     }

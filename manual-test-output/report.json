@@ -1,0 +1,18 @@
+{
+  "timestamp": "2026-06-19T16:50:59Z",
+  "provider": "duck",
+  "extension_loaded": false,
+  "banner_appeared": false,
+  "detection_count": 0,
+  "detections": null,
+  "prompt_leaked": false,
+  "network_requests_count": 0,
+  "network_to_backend_count": 0,
+  "prompt_text": "Please email me at john.doe@example.com or call (555) 123-4567. My SSN is 123-45-6789.",
+  "screenshots": null,
+  "console_errors": null,
+  "privacy_check_pass": true,
+  "functional_pass": false,
+  "overall_pass": false,
+  "notes": "Navigated to https://duckduckgo.com/?q=DuckDuckGo+AI+Chat\u0026ia=chat; screenshot failed: unexpected end of JSON input"
+}

@@ -82,7 +82,7 @@ async function onFirstInstall(): Promise<void> {
     enabled: false,
     opted_in_at: 0,
     last_changed_at: now,
-    lens_version: LENS_VERSION,
+    "lens_version": LENS_VERSION,
   };
   await storage.setOptInState(state);
   // Open the welcome page in a new tab.

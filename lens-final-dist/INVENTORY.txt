@@ -1,0 +1,17 @@
+# AegisGate Lens Build Inventory
+# Build: 0.1.0 (final3)
+# Time:  2026-06-19T16:45:03Z
+# Each file's SHA-256 is the source of truth for the release artifact identity.
+
+351ae2bfb8555dd69e03c21b976ff87224104e24d812067e36ad7ab8a141b89b  content.js
+178e265d0e0ca33c400e4c9a36853aa6b2dfd8d5daab99649dbd67c196a119fa  icons/icon-128.png
+4b6e470d8a1ebccf3ffc70b4c316ea8fdbf52fac1de8074b8cc82f2dfac0021a  icons/icon-16.png
+9f00e7ca3893119a9485571dbbf6079275d10cf2ac8677cc687d91d51223a9bb  icons/icon-32.png
+fc9fa03144b8ca53f6db3b93f703203cde8175865fc55a44a4690f5258e0b36f  icons/icon-48.png
+43cbb80bf301610e1f749eed41d317d4a527a55a04bdb2762f113e9d28743306  manifest.json
+7371e24078c25d181e3783db6e42128c16f6eee2f046091a191823a5e5d2cfad  popup.html
+c5a32d5f50a7c4a3f937f1af44a10a877a234e0e3cdcc7750762fb0837e64af6  popup/popup.js
+8ca785abb7e3d063e8eca03addab50c6fa746e9d284dffd838c9abf3ad457e1b  schema.json
+1442a41fb1c9ffd37b11eed2b87075184adbe944cef5a66d78a1a6c9c179ede1  service-worker.js
+7b7c4437fc2be07aa1950633cd6af943ed98fef8bf46a1c60cc8e166fdf6f3cc  welcome.html
+d57d4016b0967a7c0382a305ed760941814d49d46e8e9b2f38e7ff20fb9c80f1  welcome.js

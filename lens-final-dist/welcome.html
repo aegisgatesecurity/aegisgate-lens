@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Welcome to AegisGate Lens</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 16px;
+      color: #1f2937;
+      max-width: 640px;
+      margin: 40px auto;
+      padding: 0 24px;
+      line-height: 1.5;
+    }
+    h1 {
+      color: #1e40af;
+    }
+    .lead {
+      font-size: 18px;
+      color: #4b5563;
+    }
+    .principle {
+      border-left: 4px solid #f59e0b;
+      padding: 8px 16px;
+      margin: 16px 0;
+      background: #fef3c7;
+    }
+    .toggle {
+      display: inline-block;
+      padding: 12px 24px;
+      background: #1e40af;
+      color: white;
+      text-decoration: none;
+      border-radius: 4px;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      font-size: 16px;
+    }
+    .toggle:hover {
+      background: #1d4ed8;
+    }
+    .small {
+      font-size: 13px;
+      color: #6b7280;
+    }
+  </style>
+</head>
+<body>
+  <h1>🛡️ Welcome to AegisGate Lens</h1>
+  <p class="lead">
+    The privacy-first browser extension that protects your prompts
+    from leaking sensitive data to AI providers.
+  </p>
+
+  <h2>The 5 promises</h2>
+
+  <div class="principle">
+    <strong>1. No prompt content ever leaves your browser.</strong>
+    The Lens's privacy boundary is structural: the content script
+    is the only module that sees your prompt text, and it never
+    sends it anywhere.
+  </div>
+
+  <div class="principle">
+    <strong>2. Telemetry is opt-in. Default is OFF.</strong>
+    By default, the Lens detects locally only and shows you a
+    warning. It sends nothing to any server. To contribute
+    anonymized detection metadata (which improves detection for
+    everyone), toggle the opt-in.
+  </div>
+
+  <div class="principle">
+    <strong>3. The 9 fields, and only the 9 fields.</strong>
+    When you opt in, the only data sent is:
+    domain_hash, category, severity, user_action, timestamp,
+    model_version, lens_version, confidence, and an optional
+    client-side ID for dedup. No URL, no prompt, no page
+    content, no user ID.
+  </div>
+
+  <div class="principle">
+    <strong>4. Each device is independent.</strong>
+    We do <em>not</em> sync your bearer token across the
+    devices you sign into Chrome with. If you sign into Chrome
+    on a new device, you'll need to opt in there too. This is
+    deliberate: a synced token would be a quasi-identifier
+    that lets us correlate your device fleet, and a token
+    leaked from one device could impersonate your other
+    devices. Per-device tokens eliminate both risks. Your
+    opt-in preference (on/off) <em>is</em> synced — it's just
+    a boolean, no secret, no identifier.
+  </div>
+
+  <div class="principle">
+    <strong>5. You can delete everything, anytime.</strong>
+    The local audit log is in your browser. The backend
+    purges raw events after 90 days, and "send anyway"
+    events after 24 hours. Email privacy@aegisgatesecurity.io
+    to request deletion.
+  </div>
+
+  <h2>Get started</h2>
+  <p>
+    The Lens is now active on supported AI providers
+    (chat.openai.com, chatgpt.com, claude.ai, gemini.google.com,
+    copilot.microsoft.com). Try typing an email address into a
+    prompt and see the warning.
+  </p>
+  <p>
+    <button class="toggle" id="opt-in-btn">Opt in to anonymized telemetry</button>
+  </p>
+  <p class="small">
+    Read the full
+    <a href="https://aegisgatesecurity.io/lens/privacy" target="_blank" rel="noopener noreferrer">privacy policy</a>
+    before opting in. You can change your mind at any time
+    from the popup.
+  </p>
+
+  <script type="module" src="welcome.js"></script>
+</body>
+</html>
