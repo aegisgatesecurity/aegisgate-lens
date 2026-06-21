@@ -211,9 +211,21 @@
     // already caught this). If regex found nothing but text is long
     // enough to potentially be an attack, run ML.
     const self = this;
+
+    // Helper: filter out dismissed detections
+    function filterDismissed(detections) {
+      return detections.filter(function (d) { return !self.isDismissed(d); });
+    }
+
     if (regexDetections.length > 0) {
-      self.currentDetections = regexDetections;
-      self.showBanner(regexDetections);
+      const visible = filterDismissed(regexDetections);
+      if (visible.length > 0) {
+        self.currentDetections = visible;
+        self.showBanner(visible);
+      } else {
+        self.currentDetections = [];
+        self.hideBanner();
+      }
     } else if (text.length >= 20 && mlEngine) {
       // Async: ML detection
       mlEngine.scoreText(text).then(function (mlResult) {
@@ -235,6 +247,12 @@
             mlThreshold: mlResult.threshold,
             mlScores: mlResult.scores,
           };
+          // Check if dismissed
+          if (self.isDismissed(mlDetection)) {
+            self.currentDetections = [];
+            self.hideBanner();
+            return;
+          }
           self.currentDetections = [mlDetection];
           self.showBanner([mlDetection]);
         }
@@ -316,6 +334,95 @@
     }
     this.banner.appendChild(list);
 
+    // False positive link (expandable)
+    const fpRow = document.createElement('div');
+    Object.assign(fpRow.style, { marginBottom: '8px' });
+    const fpLink = document.createElement('button');
+    fpLink.textContent = 'This is a false positive';
+    Object.assign(fpLink.style, {
+      background: 'transparent',
+      border: 'none',
+      color: '#1d4ed8',
+      textDecoration: 'underline',
+      cursor: 'pointer',
+      fontSize: '13px',
+      padding: '0',
+    });
+    fpLink.setAttribute('aria-expanded', 'false');
+    fpRow.appendChild(fpLink);
+    this.banner.appendChild(fpRow);
+
+    // FP form (hidden by default)
+    const fpForm = document.createElement('div');
+    Object.assign(fpForm.style, {
+      display: 'none',
+      background: '#fffbeb',
+      border: '1px solid #fbbf24',
+      borderRadius: '4px',
+      padding: '8px 12px',
+      marginBottom: '8px',
+    });
+    const fpLabel = document.createElement('div');
+    Object.assign(fpLabel.style, { fontWeight: '500', marginBottom: '4px', fontSize: '13px' });
+    fpLabel.textContent = 'Why is this a false positive? (optional)';
+    fpForm.appendChild(fpLabel);
+
+    const reasons = [
+      { value: 'test_data', label: 'This is test/fake data' },
+      { value: 'own_data', label: 'This is my own data (I know what I\'m doing)' },
+      { value: 'legitimate', label: 'This is for a legitimate use case I trust' },
+      { value: 'other', label: 'Other' },
+    ];
+    const fpCheckboxes = [];
+    for (let r = 0; r < reasons.length; r++) {
+      const row = document.createElement('label');
+      Object.assign(row.style, { display: 'block', fontSize: '13px', marginBottom: '2px', cursor: 'pointer' });
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.value = reasons[r].value;
+      cb.style.marginRight = '4px';
+      fpCheckboxes.push(cb);
+      row.appendChild(cb);
+      const span = document.createElement('span');
+      span.textContent = reasons[r].label;
+      row.appendChild(span);
+      fpForm.appendChild(row);
+    }
+    const fpActions = document.createElement('div');
+    Object.assign(fpActions.style, { marginTop: '6px', display: 'flex', gap: '6px' });
+
+    const fpSubmitBtn = document.createElement('button');
+    fpSubmitBtn.textContent = 'Submit & dismiss (24h)';
+    Object.assign(fpSubmitBtn.style, buttonStyle('#0891b2'));
+    fpSubmitBtn.addEventListener('click', () => {
+      // Collect selected reasons
+      const selected = [];
+      for (let i = 0; i < fpCheckboxes.length; i++) {
+        if (fpCheckboxes[i].checked) selected.push(fpCheckboxes[i].value);
+      }
+      this.dismissAsFalsePositive(selected.join(','));
+    });
+    fpActions.appendChild(fpSubmitBtn);
+
+    const fpJustDismissBtn = document.createElement('button');
+    fpJustDismissBtn.textContent = 'Just dismiss (24h)';
+    Object.assign(fpJustDismissBtn.style, buttonStyle('#6b7280'));
+    fpJustDismissBtn.addEventListener('click', () => {
+      this.dismissAsFalsePositive(null);
+    });
+    fpActions.appendChild(fpJustDismissBtn);
+
+    fpForm.appendChild(fpActions);
+    this.banner.appendChild(fpForm);
+
+    // Toggle FP form
+    const self = this;
+    fpLink.addEventListener('click', function () {
+      const visible = fpForm.style.display === 'block';
+      fpForm.style.display = visible ? 'none' : 'block';
+      fpLink.setAttribute('aria-expanded', String(!visible));
+    });
+
     // Actions row.
     const actions = document.createElement('div');
     Object.assign(actions.style, { display: 'flex', gap: '8px' });
@@ -372,6 +479,132 @@
       this.banner.parentNode.removeChild(this.banner);
     }
     this.banner = null;
+  };
+
+  /**
+   * Record a user action by sending one LensEvent per detection
+   * to the service worker (NOT to the backend directly).
+   * @param {string} userAction One of: send_anyway, edit, cancel, dismiss.
+   */
+  /**
+   * Dismiss a detection as a false positive. Stores the dismissal
+   * locally (24h expiration) and sends opt-in telemetry.
+   * @param {string|null} reason Comma-separated reasons, or null.
+   */
+  ContentScript.prototype.dismissAsFalsePositive = function (reason) {
+    // Record action
+    this.recordAction('dismiss_false_positive');
+
+    // For each detection, store a local dismissal
+    for (let i = 0; i < this.currentDetections.length; i++) {
+      const d = this.currentDetections[i];
+      const key = this.makeDismissKey(d);
+      this.storeDismissal(key, reason);
+    }
+    this.hideBanner();
+  };
+
+  /**
+   * Create a stable key for dismissal storage. Includes category
+   * and the first 50 chars of the match (for pattern similarity).
+   */
+  ContentScript.prototype.makeDismissKey = function (detection) {
+    const match = (detection.match || '').substring(0, 50);
+    return detection.category + '|' + match;
+  };
+
+  /**
+   * Store a dismissal in chrome.storage.local with 24h expiration.
+   */
+  ContentScript.prototype.storeDismissal = function (key, reason) {
+    if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) {
+      log.warn('[AegisGate Lens] chrome.storage.local unavailable');
+      return;
+    }
+    const now = Math.floor(Date.now() / 1000);
+    const expires = now + 24 * 60 * 60;  // 24 hours
+    const dismissKey = this.domainHash + '::' + key;
+    const entry = {
+      dismissed_at: now,
+      expires_at: expires,
+      reason: reason || null,
+    };
+    try {
+      chrome.storage.local.get('dismissals', function (result) {
+        const dismissals = result.dismissals || {};
+        dismissals[dismissKey] = entry;
+        chrome.storage.local.set({ dismissals: dismissals });
+      });
+    } catch (err) {
+      log.warn('[AegisGate Lens] storage failed:', err);
+    }
+
+    // Send opt-in telemetry (if user enabled it)
+    this.sendFPTelemetry(key, reason);
+  };
+
+  /**
+   * Check if a detection has been dismissed for this domain.
+   * @returns {boolean} true if a recent dismissal exists.
+   */
+  ContentScript.prototype.isDismissed = function (detection) {
+    if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) {
+      return false;
+    }
+    const key = this.domainHash + '::' + this.makeDismissKey(detection);
+    let isDismissed = false;
+    try {
+      chrome.storage.local.get('dismissals', function (result) {
+        const dismissals = result.dismissals || {};
+        const entry = dismissals[key];
+        if (entry && entry.expires_at > Math.floor(Date.now() / 1000)) {
+          isDismissed = true;
+        }
+      });
+    } catch (err) {
+      // ignore
+    }
+    return isDismissed;
+  };
+
+  /**
+   * Send an anonymous FP telemetry event (if enabled in storage).
+   * NO prompt content is sent - only category, score, domain hash.
+   */
+  ContentScript.prototype.sendFPTelemetry = function (key, reason) {
+    if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) {
+      return;
+    }
+    const self = this;
+    try {
+      chrome.storage.local.get('fpTelemetryEnabled', function (result) {
+        if (!result.fpTelemetryEnabled) return;
+        // User opted in - send via service worker
+        if (chrome.runtime && chrome.runtime.sendMessage) {
+          for (let i = 0; i < self.currentDetections.length; i++) {
+            const d = self.currentDetections[i];
+            const event = {
+              domain_hash: self.domainHash,
+              category: d.category,
+              severity: d.severity,
+              user_action: 'dismiss_false_positive',
+              timestamp: Math.floor(Date.now() / 1000),
+              model_version: LENS_VERSION + '+regex-v1+ml-5way-v1',
+              lens_version: LENS_VERSION,
+              confidence: d.mlScore || 1.0,
+              fp_reason: reason || null,
+            };
+            try {
+              chrome.runtime.sendMessage({ type: 'lens.telemetry', event: event });
+            } catch (err) {
+              // ignore
+            }
+          }
+        }
+      });
+    } catch (err) {
+      // ignore
+    }
   };
 
   /**
