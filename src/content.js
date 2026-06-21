@@ -36,6 +36,7 @@
   const log = NS.logger || console;
   const { detect, describeCategory } = (NS.detectors) || {};
   const { computeDomainHash } = (NS.privacy && NS.privacy.domainHash) || {};
+  const mlEngine = NS.mlEngine || null;
 
   /**
    * The current Lens version.
@@ -193,17 +194,58 @@
     }, delay);
   };
 
-  /** Run the detector on the current prompt text. */
+  /**
+   * Run the detector on the current prompt text.
+   * Uses regex (fast, deterministic) + ML ensemble (deeper).
+   * If ML fires, adds a prompt_injection_ml detection.
+   */
   ContentScript.prototype.runDetect = function () {
     const el = document.querySelector(this.provider.promptSelector);
     if (!el) return;
     const text = readPromptText(el);
-    const detections = detect(text);
-    this.currentDetections = detections;
-    if (detections.length > 0) {
-      this.showBanner(detections);
+
+    // Sync: regex detection (fast)
+    const regexDetections = detect(text);
+
+    // If regex already found something, skip ML (regex is faster and
+    // already caught this). If regex found nothing but text is long
+    // enough to potentially be an attack, run ML.
+    const self = this;
+    if (regexDetections.length > 0) {
+      self.currentDetections = regexDetections;
+      self.showBanner(regexDetections);
+    } else if (text.length >= 20 && mlEngine) {
+      // Async: ML detection
+      mlEngine.scoreText(text).then(function (mlResult) {
+        if (mlResult && mlResult.isAttack) {
+          // ML fired - add detection. Re-check regex in case
+          // the prompt changed between calls.
+          const currentEl = document.querySelector(self.provider.promptSelector);
+          if (!currentEl) return;
+          const currentText = readPromptText(currentEl);
+          if (currentText !== text) return;  // prompt changed, skip stale result
+          const mlDetection = {
+            category: 'prompt_injection_ml',
+            severity: 'high',
+            match: currentText.substring(0, Math.min(80, currentText.length)),
+            start: 0,
+            end: currentText.length,
+            pattern: 'ml_5way_ensemble',
+            mlScore: mlResult.score,
+            mlThreshold: mlResult.threshold,
+            mlScores: mlResult.scores,
+          };
+          self.currentDetections = [mlDetection];
+          self.showBanner([mlDetection]);
+        }
+        // If ML says no, do nothing (don't hide banner - it was already hidden)
+      }).catch(function (err) {
+        log.warn('[AegisGate Lens] ML score failed:', err);
+      });
     } else {
-      this.hideBanner();
+      // No detections from regex, text too short for ML, or ML not loaded
+      self.currentDetections = [];
+      self.hideBanner();
     }
   };
 
@@ -263,8 +305,13 @@
       const masked = (d.match || '').length > 8
         ? (d.match || '').slice(0, 4) + '\u2026' + (d.match || '').slice(-4)
         : (d.match || '');
-      li.textContent = describeCategory(d.category) + ' (' + d.severity +
-        ') \u2014 match: "' + masked + '"';
+      let label = describeCategory(d.category) + ' (' + d.severity + ') \u2014 match: "' + masked + '"';
+      // For ML detections, show the score and per-model breakdown
+      if (d.category === 'prompt_injection_ml' && d.mlScore !== undefined) {
+        label += ' [ML score: ' + d.mlScore.toFixed(3) +
+                 ', threshold: ' + d.mlThreshold.toFixed(2) + ']';
+      }
+      li.textContent = label;
       list.appendChild(li);
     }
     this.banner.appendChild(list);
@@ -345,7 +392,7 @@
         severity: d.severity,
         user_action: userAction,
         timestamp: Math.floor(Date.now() / 1000),
-        model_version: LENS_VERSION + '+regex-v1',
+        model_version: LENS_VERSION + '+regex-v1+ml-5way-v1',
         lens_version: LENS_VERSION,
         confidence: 1.0,
       };

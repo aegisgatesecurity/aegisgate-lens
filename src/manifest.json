@@ -43,6 +43,7 @@
         "privacy/schema.js",
         "storage.js",
         "api/client.js",
+        "util/lens-ml.js",
         "content.js"
       ],
       "run_at": "document_idle",
@@ -54,6 +55,20 @@
   ],
   "host_permissions": [
     "https://lens.aegisgatesecurity.io/*"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["ml_model/*.json"],
+      "matches": [
+        "https://chat.openai.com/*",
+        "https://chatgpt.com/*",
+        "https://claude.ai/*",
+        "https://gemini.google.com/*",
+        "https://copilot.microsoft.com/*",
+        "https://duck.ai/*",
+        "https://duckduckgo.com/*"
+      ]
+    }
   ],
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'"

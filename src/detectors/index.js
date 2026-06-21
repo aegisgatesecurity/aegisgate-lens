@@ -262,6 +262,7 @@
   function describeCategory(c) {
     // Hand-written categories (Lens-specific).
     switch (c) {
+      case 'prompt_injection_ml': return 'Prompt injection (ML detected)';
       case 'pii_email':         return 'Email address';
       case 'pii_phone':         return 'Phone number';
       case 'pii_ssn':           return 'Social Security number';

@@ -1,0 +1,1 @@
+{"type": "mlp", "n_layers": 3, "layer_sizes": [5000, 64, 32, 1], "activation": "relu", "output_activation": "sigmoid", "quant_scales": [0.0028406877536326647, 0.007266738452017307, 0.005327310413122177], "quant_zeros": [5, -8, 24], "threshold": 0.85}
