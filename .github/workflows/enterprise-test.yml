@@ -1,0 +1,86 @@
+name: AegisGate Lens Enterprise Test
+
+# Run the 187-prompt enterprise test suite on every push and PR.
+# Generates per-category metrics and fails if quality regresses.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Enterprise Test Suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('ml-artifacts/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install scikit-learn numpy joblib
+
+      - name: Build enterprise corpus
+        run: |
+          cd lens-repo-bootstrap
+          python3 harness/build_enterprise_corpus.py \
+            --output harness/test_prompts_enterprise.json
+
+      - name: Train baseline (TF-IDF + LR)
+        run: |
+          cd lens-repo-bootstrap/ml-artifacts
+          python3 scripts/build_training_set_v2.py \
+            --corpus-dir corpus \
+            --output training_data_baseline \
+            --use-5x-obf --use-ollama --use-dolphin --use-dan --use-benign --use-targeted --use-fp-fixes
+          python3 scripts/train_clean.py \
+            --train training_data_baseline/train.jsonl \
+            --val training_data_baseline/val.jsonl \
+            --output models/lr_baseline.joblib \
+            --metrics metrics/lr_baseline_metrics.json
+
+      - name: Run enterprise test
+        run: |
+          cd lens-repo-bootstrap
+          # Rebuild bundle from latest model
+          python3 ml-artifacts/scripts/build_bundle.py \
+            --model-dir ml-artifacts/dist_5way_v8 \
+            --output /tmp/lens-test.bundle \
+            --key ml-artifacts/keys/lens-signing-private.pem 2>/dev/null || true
+          # Run test harness
+          python3 harness/enterprise_test_harness.py \
+            --model-dir ml-artifacts/dist_5way_v8 \
+            --corpus harness/test_prompts_enterprise.json \
+            --output harness/enterprise_results.json
+
+      - name: Validate metrics
+        run: |
+          cd lens-repo-bootstrap
+          python3 harness/validate_metrics.py \
+            --results harness/enterprise_results.json \
+            --min-tpr 0.65 \
+            --max-fpr 0.15
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: enterprise-test-results
+          path: lens-repo-bootstrap/harness/enterprise_results.json
