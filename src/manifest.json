@@ -43,6 +43,7 @@
         "privacy/schema.js",
         "storage.js",
         "api/client.js",
+        "util/bundle-loader.js",
         "util/lens-ml.js",
         "content.js"
       ],
@@ -58,7 +59,7 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["ml_model/*.json"],
+      "resources": ["aegisgate-lens-v0.1.0.bundle", "ml_model/*.json"],
       "matches": [
         "https://chat.openai.com/*",
         "https://chatgpt.com/*",

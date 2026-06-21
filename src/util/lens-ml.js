@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0
    =========================================================================
-   AegisGate Lens - ML Inference Module (5-Way Ensemble)
+   AegisGate Lens - ML Inference Module (5-Way Ensemble, Bundle Loader)
 
    Detects prompt injection attacks using a 5-way ensemble:
      1. Logistic Regression (LR) - 30K features, 2.5MB
@@ -9,11 +9,17 @@
      4. MLP small_ollama - ollama adversarial training, INT8
      5. MLP small_augmented - heavy obfuscation training, INT8
 
-   Total bundle: 8.35MB. Loaded LAZILY on first detection (only fetched
-   if regex finds nothing but the prompt is long enough to warrant ML).
+   Total bundle: 8.35MB. Single signed file (aegisgate-lens-v0.1.0.bundle).
+   Loaded LAZILY on first detection.
 
-   Privacy: Zero network calls at inference. All model files are
-   bundled with the extension. No telemetry on model output.
+   The bundle is:
+     - Single self-contained file (8.57MB)
+     - Ed25519 signed (signature verified on load)
+     - SHA-256 manifest (each file's hash verified)
+     - Zero external dependencies at load time
+
+   Privacy: Zero network calls at inference (after bundle is loaded).
+   The bundle is fetched ONCE and cached. No telemetry on model output.
 
    Plain JavaScript, no transpilation, no dependencies.
    The bytes in this file are the bytes that run in the browser.
@@ -27,6 +33,7 @@
   const NS = (typeof window !== 'undefined' ? window : self).AegisGateLens =
     (typeof window !== 'undefined' ? window : self).AegisGateLens || {};
   const log = NS.logger || console;
+  const bundleLoader = NS.bundleLoader || null;
 
   // ===================================================================
   // Tokenization (must match Python training exactly)
@@ -132,7 +139,6 @@
 
       if (Array.isArray(W)) {
         if (Array.isArray(W[0])) {
-          // Dense: list of lists
           for (let r = 0; r < inSize; r++) {
             const a = activations[r];
             if (a === 0) continue;
@@ -143,7 +149,6 @@
             }
           }
         } else {
-          // Flat array
           for (let r = 0; r < inSize; r++) {
             const a = activations[r];
             if (a === 0) continue;
@@ -155,7 +160,6 @@
           }
         }
       } else {
-        // Sparse: {flat_index: int8_value}
         const wEntries = Object.entries(W);
         for (let i = 0; i < wEntries.length; i++) {
           const flatIdx = parseInt(wEntries[i][0], 10);
@@ -170,10 +174,8 @@
       for (let c = 0; c < outSize; c++) {
         output[c] += b[c];
         if (layer < nLayers - 1) {
-          // ReLU
           if (output[c] < 0) output[c] = 0;
         } else {
-          // Sigmoid (output layer)
           output[c] = 1.0 / (1.0 + Math.exp(-output[c]));
         }
       }
@@ -211,120 +213,6 @@
   }
 
   // ===================================================================
-  // Model loading (lazy, async)
-  // ===================================================================
-
-  let cachedEngine = null;
-  let loadingPromise = null;
-
-  async function loadModel(modelName) {
-    const baseUrl = getBaseUrl();
-    const url = baseUrl + modelName + '_vocabulary.json';
-    const r = await fetch(url);
-    if (!r.ok) throw new Error('Failed to load ' + url);
-    return r.json();
-  }
-
-  async function loadConfig(modelName) {
-    const baseUrl = getBaseUrl();
-    const url = baseUrl + modelName + '_config.json';
-    const r = await fetch(url);
-    if (!r.ok) throw new Error('Failed to load ' + url);
-    return r.json();
-  }
-
-  function getBaseUrl() {
-    // Allow override for testing (lens-ml-base-url set on window)
-    if (typeof window !== 'undefined' && window.__lensMlBaseUrl) {
-      return window.__lensMlBaseUrl;
-    }
-    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL) {
-      return chrome.runtime.getURL('ml_model/');
-    }
-    // Fallback for testing
-    return './ml_model/';
-  }
-
-  async function loadAll() {
-    const baseUrl = getBaseUrl();
-
-    // Load ensemble config
-    const configRes = await fetch(baseUrl + 'ensemble_config.json');
-    if (!configRes.ok) throw new Error('Failed to load ensemble_config.json');
-    const config = await configRes.json();
-
-    const models = [];
-    for (let i = 0; i < config.model_names.length; i++) {
-      const name = config.model_names[i];
-
-      // Load config first to determine type
-      const cfg = await loadConfig(name);
-
-      // Load vocabulary
-      const vocabulary = await loadModel(name);
-      // Load IDF
-      const idfRes = await fetch(baseUrl + name + '_idf.json');
-      const idf = await idfRes.json();
-
-      if (cfg.type === 'lr') {
-        const coefRes = await fetch(baseUrl + name + '_coefficients.json');
-        const coefficients = await coefRes.json();
-        models.push({
-          type: 'lr',
-          vocabulary: vocabulary,
-          idf: idf,
-          coefficients: coefficients,
-          config: cfg,
-        });
-      } else if (cfg.type === 'mlp') {
-        const weights = [];
-        const biases = [];
-        for (let j = 0; j < cfg.n_layers; j++) {
-          const wRes = await fetch(baseUrl + name + '_weights_' + j + '.json');
-          const w = await wRes.json();
-          weights.push(w);
-          const bRes = await fetch(baseUrl + name + '_biases_' + j + '.json');
-          const b = await bRes.json();
-          biases.push(b);
-        }
-        models.push({
-          type: 'mlp',
-          vocabulary: vocabulary,
-          idf: idf,
-          config: cfg,
-          weights: weights,
-          biases: biases,
-        });
-      } else {
-        throw new Error('Unknown model type: ' + cfg.type);
-      }
-    }
-
-    return { models: models, config: config };
-  }
-
-  async function ensureEngine() {
-    if (cachedEngine) return cachedEngine;
-    if (loadingPromise) return loadingPromise;
-    loadingPromise = (async function () {
-      try {
-        const { models, config } = await loadAll();
-        cachedEngine = createEngine(models, {
-          threshold: config.threshold,
-          strategy: config.strategy,
-        });
-        log.info('[AegisGate Lens] ML engine loaded (' + models.length + ' models, threshold=' + config.threshold + ')');
-        return cachedEngine;
-      } catch (err) {
-        log.warn('[AegisGate Lens] ML engine load failed:', err);
-        loadingPromise = null;
-        throw err;
-      }
-    })();
-    return loadingPromise;
-  }
-
-  // ===================================================================
   // N-Model engine
   // ===================================================================
 
@@ -332,7 +220,6 @@
     const threshold = (options && options.threshold) || 0.85;
     const strategy = (options && options.strategy) || 'average';
 
-    // Pre-process each model
     const processed = modelSpecs.map(function (spec) {
       const vocabMap = new Map(Object.entries(spec.vocabulary));
       const idfMap = new Map(Object.entries(spec.idf));
@@ -388,6 +275,59 @@
   }
 
   // ===================================================================
+  // Bundle loading
+  // ===================================================================
+
+  let cachedEngine = null;
+  let loadingPromise = null;
+
+  function getBundleUrl() {
+    if (typeof window !== 'undefined' && window.__lensBundleUrl) {
+      return window.__lensBundleUrl;
+    }
+    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL) {
+      return chrome.runtime.getURL('aegisgate-lens-v0.1.0.bundle');
+    }
+    return './aegisgate-lens-v0.1.0.bundle';
+  }
+
+  async function loadAndVerifyBundle() {
+    if (!bundleLoader) {
+      throw new Error('bundleLoader not loaded - make sure bundle-loader.js is included before lens-ml.js');
+    }
+    const url = getBundleUrl();
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error('Failed to fetch bundle: ' + response.status + ' ' + response.statusText);
+    }
+    const buffer = await response.arrayBuffer();
+    return await bundleLoader.parseBundle(buffer);
+  }
+
+  async function ensureEngine() {
+    if (cachedEngine) return cachedEngine;
+    if (loadingPromise) return loadingPromise;
+    loadingPromise = (async function () {
+      try {
+        const parsed = await loadAndVerifyBundle();
+        const { models, config } = bundleLoader.reconstructModels(parsed);
+        cachedEngine = createEngine(models, {
+          threshold: config.threshold,
+          strategy: config.strategy,
+        });
+        log.info('[AegisGate Lens] ML engine loaded from signed bundle v' +
+                 parsed.header.bundle_version + ' (' + models.length + ' models, threshold=' + config.threshold + ')');
+        return cachedEngine;
+      } catch (err) {
+        log.warn('[AegisGate Lens] ML engine load failed:', err);
+        loadingPromise = null;
+        throw err;
+      }
+    })();
+    return loadingPromise;
+  }
+
+  // ===================================================================
   // Public API
   // ===================================================================
 
@@ -413,30 +353,16 @@
     }
   }
 
-  /**
-   * Check if the ML engine is loaded and ready.
-   * @returns {boolean}
-   */
   function isLoaded() {
     return cachedEngine !== null;
   }
 
-  /**
-   * Pre-warm the ML engine by loading the model in the background.
-   * Call this when the page is first interactive, before the
-   * user types anything.
-   */
   function prewarm() {
     if (cachedEngine || loadingPromise) return;
-    // Fire and forget - don't block the page
     ensureEngine().catch(function (err) {
       log.warn('[AegisGate Lens] ML prewarm failed:', err);
     });
   }
-
-  // ===================================================================
-  // Export
-  // ===================================================================
 
   NS.mlEngine = {
     scoreText: scoreText,
