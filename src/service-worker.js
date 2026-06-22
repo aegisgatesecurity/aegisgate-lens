@@ -48,7 +48,13 @@ importScripts(
     (typeof self !== 'undefined' ? self : this).AegisGateLens || {};
 
   const log = NS.logger || console;
-  const Storage = NS.storage;
+  // NS.storage is a NAMESPACE object set by storage.js's IIFE:
+  //   NS.storage = NS.storage || {};
+  //   NS.storage.Storage = Storage;  // <-- the class is here
+  // Pull the class out of the namespace; the previous `const Storage = NS.storage`
+  // tried to construct the namespace itself as a class, which would crash
+  // the service worker at boot. Caught by integration.test.mjs on Day 4.
+  const Storage = NS.storage && NS.storage.Storage;
   const APIClient = NS.APIClient;
 
   if (!Storage || !APIClient) {
@@ -133,13 +139,33 @@ importScripts(
   }
 
   /**
-   * Get the APIClient for the current token.
+   * Cached APIClient. Reusing one instance across getClient() calls is
+   * critical: the RateLimitState lives on the APIClient instance, and
+   * the privacy policy commits to a 100 events/minute client-side
+   * rate limit. If getClient() returns a fresh instance every call,
+   * every event gets its own ring buffer, and the rate limit never
+   * fires. Caught by test/integration.test.mjs on Day 4.
+   *
+   * The cache is invalidated when the bearer token or base URL changes.
+   */
+  let cachedClient = null;
+  let cachedClientKey = '';
+
+  /**
+   * Get the APIClient for the current token. Reuses the cached instance
+   * if the token and base URL haven't changed.
    */
   async function getClient() {
     const baseUrl =
       (await storage.getBaseUrlOverride().catch(() => null)) || DEFAULT_BACKEND_URL;
     const token = await storage.getBearerToken().catch(() => '');
-    return new APIClient({ baseUrl: baseUrl, bearerToken: token });
+    const key = baseUrl + '|' + token;
+    if (cachedClient && cachedClientKey === key) {
+      return cachedClient;
+    }
+    cachedClient = new APIClient({ baseUrl: baseUrl, bearerToken: token });
+    cachedClientKey = key;
+    return cachedClient;
   }
 
   /**

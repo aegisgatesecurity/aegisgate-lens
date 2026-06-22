@@ -30,10 +30,11 @@ Each file is a JSON array of `{input, expected_match, expected_category, expecte
 ```
 test/
 ├── README.md                      <- this file
-├── schema.test.mjs                <- schema validator unit tests
-├── telemetry.smoke.mjs            <- end-to-end smoke test (mock backend + APIClient)
-├── event-construction.test.mjs    <- regression: every event-construction site
-│                                      in src/ produces a v1 event (Day 3)
+├── schema.test.mjs                <- schema validator unit tests (Day 2)
+├── telemetry.smoke.mjs            <- APIClient + mock backend smoke test (Day 2)
+├── event-construction.test.mjs    <- content.js event sites produce v1 (Day 3)
+├── integration.test.mjs           <- full chain: content.js -> SW -> APIClient
+│                                      -> JSONL (Day 4)
 ├── mock-backend.mjs               <- local HTTP server that captures telemetry
 ├── fixtures/
 │   └── valid-event.json           <- canonical LensEvent for tests
@@ -53,15 +54,17 @@ test/
 From the repo root (`lens-repo-bootstrap/`):
 
 ```bash
-# Run all Node tests (schema + smoke + event-construction), sequentially.
+# Run all Node tests (schema + smoke + event-construction + integration).
 node test/schema.test.mjs && \
 node test/telemetry.smoke.mjs && \
-node test/event-construction.test.mjs
+node test/event-construction.test.mjs && \
+node test/integration.test.mjs
 
 # Or run them individually:
 node test/schema.test.mjs
 node test/telemetry.smoke.mjs
 node test/event-construction.test.mjs
+node test/integration.test.mjs
 
 # Start the mock backend in one terminal and watch events in another.
 node test/mock-backend.mjs
@@ -104,6 +107,22 @@ node tools/lens-cli/telemetry-tail.mjs --follow
 Schema tests live in `schema.test.mjs`. Each test is a top-level `await test(name, fn)` call. The runner prints `PASS`/`FAIL` per assertion and exits non-zero if any fail.
 
 Smoke tests live in `telemetry.smoke.mjs`. The smoke test boots its own mock backend on a random free port; you do not need to start `mock-backend.mjs` manually to run the smoke test.
+
+**`event-construction.test.mjs`** — 8 regression assertions on the production event-construction sites in `src/content.js` and `src/service-worker.js`:
+- `ContentScript.prototype.recordAction` stamps `lens_event_version: 1` and the event passes `validate()`.
+- All 4 user-action enum values (`send_anyway`, `edit`, `cancel`, `dismiss`) produce a valid event.
+- Zero detections sends zero events.
+- `ContentScript.prototype.sendFPTelemetry` stamps `lens_event_version: 1`, omits `fp_reason` when empty, and respects the `fpTelemetryEnabled` opt-in flag.
+- `service-worker.js handleTestEvent` produces a valid v1 event.
+
+**`integration.test.mjs`** — 7 end-to-end assertions wiring `src/content.js` + `src/service-worker.js` + `src/api/client.js` + `src/privacy/schema.js` together through a stubbed `chrome.runtime.sendMessage` bridge and the mock backend:
+- A v1 detection round-trips: content.js → service-worker → JSONL, with all 9 required fields intact.
+- A versionless event is silently dropped (Day 2 cut-over holds across the full chain, not just at validate()).
+- An event with `prompt_text` is silently dropped (privacy guardrail holds across the full chain).
+- The 100/min rate limit accepts exactly 100 events and drops the rest through the full chain (verifies the service-worker APIClient cache stays valid).
+- An opted-out user triggers zero backend traffic AND zero local audit entries.
+- Multiple detections from one user action produce multiple events.
+- A fresh detection chain produces a v1 event in the JSONL.
 
 ### `tools/lens-cli/telemetry-tail.mjs`
 

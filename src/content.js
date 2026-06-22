@@ -43,18 +43,28 @@
   // will reject the event — fail loud, never silently send unversioned
   // events. See plans/AEGISGATE-LENS-DAY-2-SCHEMA-V1.md.
   const SCHEMA_VERSION = (NS.privacy && NS.privacy.schema && NS.privacy.schema.SCHEMA_VERSION) || undefined;
+  // LENS_VERSION: read from the manifest at IIFE time. Day 4 caught a
+  // bug where this was hardcoded to '0.1.0' as a string literal; the
+  // service worker reads from chrome.runtime.getManifest().version, so
+  // this file should too. Fall back to '0.0.0' (not '0.1.0') so a
+  // missed-update is detectable in the backend as a clear signal.
+  const LENS_VERSION =
+    (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getManifest &&
+      chrome.runtime.getManifest().version) || '0.0.0';
   const mlEngine = NS.mlEngine || null;
   const transformerEngine = NS.transformerEngine || null;
   const TRANSFORMER_UNCERTAIN_LOW = 0.3;
   const TRANSFORMER_UNCERTAIN_HIGH = 0.7;
 
   /**
-   * The current Lens version.
-   * Kept in sync by tools/build-lens-extension in the Platform
-   * monorepo. DO NOT EDIT THIS LINE; the build tool templates
-   * it from version.txt at the Platform monorepo root.
+   * The current Lens version is read at IIFE time from
+   * chrome.runtime.getManifest().version (see top of this IIFE).
+   * Day 4: previously hardcoded as '0.1.0' here as a build-tool
+   * placeholder, but content.js never ran through the build tool
+   * in this repo, so the value was stale. The runtime read above
+   * is the single source of truth for both this file and
+   * service-worker.js. See commit history for the Day-4 fix.
    */
-  const LENS_VERSION = '0.1.0';
 
   /** Throttle interval for re-running detect() on input. */
   const DETECT_THROTTLE_MS = 250;
