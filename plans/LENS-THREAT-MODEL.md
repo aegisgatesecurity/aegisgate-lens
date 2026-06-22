@@ -526,7 +526,7 @@ including the version and timestamp.
 | F-07 | I | N/A (accepted) | — | — |
 | F-08 | S | Same as F-01 | **RESOLVED** (via F-01) | Done (Day 8) |
 | F-09 | R | Low (1.5) | — | — |
-| F-10 | T | Medium (5.3) | **OPEN** | Day 14-15 (retrain on creative-writing frames) |
+| F-10 | T | Medium (5.3) | **PARTIALLY CLOSED** | Day 15 (close remaining 1 bypass with targeted training) |
 
 ## Action plan (Day 8-10)
 
@@ -558,7 +558,9 @@ see `plans/LENS-DAY-13-PAIR-REPORT.md`. Finding F-10 below.
 **STRIDE category**: T (Tampering) — an attacker can craft prompts
 that bypass the Lens's classifier while still being prompt injections.
 
-**Status (Day 13)**: OPEN. Known gap, mitigation in progress.
+**Status (Day 14)**: PARTIALLY CLOSED. One epoch of continuation
+training reduced the PAIR bypass rate from 5% (3/60) to 2% (1/60).
+LLM-refined bypass rate dropped from 10% (3/30) to **0% (0/30)**.
 
 **Attack vector**: An attacker wraps a prompt injection in a
 "creative writing" frame. Instead of "Ignore all previous instructions",
