@@ -29,19 +29,23 @@ Each file is a JSON array of `{input, expected_match, expected_category, expecte
 
 ```
 test/
-├── README.md                      <- this file
-├── schema.test.mjs                <- schema validator unit tests (Day 2)
-├── telemetry.smoke.mjs            <- APIClient + mock backend smoke test (Day 2)
-├── event-construction.test.mjs    <- content.js event sites produce v1 (Day 3)
-├── integration.test.mjs           <- full chain: content.js -> SW -> APIClient
-│                                      -> JSONL (Day 4)
-├── fp-opt-in.test.mjs             <- in-banner "Help improve detection"
-│                                      opt-in prompt UI behavior (Day 5)
-├── mock-backend.mjs               <- local HTTP server that captures telemetry
+├── README.md                          <- this file
+├── schema.test.mjs                    <- schema validator unit tests (Day 2)
+├── telemetry.smoke.mjs                <- APIClient + mock backend smoke test (Day 2)
+├── event-construction.test.mjs        <- content.js event sites produce v1 (Day 3)
+├── integration.test.mjs               <- full chain: content.js -> SW -> APIClient
+│                                          -> JSONL (Day 4)
+├── fp-opt-in.test.mjs                 <- in-banner "Help improve detection"
+│                                          opt-in prompt UI behavior (Day 5)
+├── security-sender-validation.test.mjs <- service worker rejects foreign senders
+│                                          (Day 8 / F-01)
+├── security-bundle-verification.test.mjs <- Ed25519 bundle signature check
+│                                          (Day 8 / F-02)
+├── mock-backend.mjs                   <- local HTTP server that captures telemetry
 ├── fixtures/
-│   └── valid-event.json           <- canonical LensEvent for tests
-└── mock-output/                   <- JSONL stream written by mock-backend.mjs
-    └── events.jsonl               <- gitignored
+│   └── valid-event.json               <- canonical LensEvent for tests
+└── mock-output/                       <- JSONL stream written by mock-backend.mjs
+    └── events.jsonl                   <- gitignored
 ```
 
 > **Why no `package.json`?** The AegisGate Lens ships as plain JavaScript
@@ -56,12 +60,14 @@ test/
 From the repo root (`lens-repo-bootstrap/`):
 
 ```bash
-# Run all Node tests (schema + smoke + event-construction + integration + fp-opt-in).
+# Run all Node tests (8 suites).
 node test/schema.test.mjs && \
 node test/telemetry.smoke.mjs && \
 node test/event-construction.test.mjs && \
 node test/integration.test.mjs && \
-node test/fp-opt-in.test.mjs
+node test/fp-opt-in.test.mjs && \
+node test/security-sender-validation.test.mjs && \
+node test/security-bundle-verification.test.mjs
 
 # Or run them individually:
 node test/schema.test.mjs
@@ -69,6 +75,8 @@ node test/telemetry.smoke.mjs
 node test/event-construction.test.mjs
 node test/integration.test.mjs
 node test/fp-opt-in.test.mjs
+node test/security-sender-validation.test.mjs
+node test/security-bundle-verification.test.mjs
 
 # Start the mock backend in one terminal and watch events in another.
 node test/mock-backend.mjs
@@ -137,6 +145,30 @@ Smoke tests live in `telemetry.smoke.mjs`. The smoke test boots its own mock bac
 - A second FP dismissal after "Not now" does NOT show the card.
 - A user with `fpTelemetryEnabled = true` (opted in via the popup) does NOT see the card.
 - `dismissAsFalsePositive` still emits the `dismiss_false_positive` telemetry event with `lens_event_version: 1` even when the card shows.
+
+**`security-sender-validation.test.mjs`** — 9 assertions that the service worker's `chrome.runtime.onMessage` listener rejects any sender whose `id` does not match our own extension (Day 8 / F-01 fix):
+- OWN_ID is set on chrome.runtime.
+- Own-extension message reaches the handler.
+- Foreign extension `lens.telemetry` is rejected.
+- Foreign extension `lens.opt_in` is rejected (the most dangerous attack: turning telemetry on without user consent).
+- Foreign extension `lens.stats` is rejected.
+- `sender.id === undefined` is rejected.
+- `sender.id === ''` is rejected.
+- Case-bypass is rejected (case-sensitive comparison).
+- Malformed message (no `type`) from a foreign sender is rejected.
+
+**`security-bundle-verification.test.mjs`** — 9 assertions that the Ed25519 bundle signature verification in `src/util/bundle-loader.js` actually works (Day 8 / F-02 evidence):
+- Valid signed bundle parses successfully.
+- Flipping one byte in the payload fails signature verification.
+- Flipping one byte in the signature fails verification.
+- Removing the magic value fails (header not found).
+- Changing the magic value fails.
+- Truncating the bundle (last byte removed) fails.
+- Appending an extra byte fails signature verification.
+- Bundle header contains expected fields.
+- `reconstructModels` produces a usable model list.
+
+The fixture is the real `lens_ml_build/aegisgate-lens-v0.1.1.bundle` (8.7 MB, 41 model files). The verification IS wired — this test is the executable proof.
 
 ### `tools/lens-cli/telemetry-tail.mjs`
 

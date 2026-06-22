@@ -77,6 +77,8 @@ Out-of-scope (covered elsewhere):
 **STRIDE category**: S (Spoofing), I (Information Disclosure), D (DoS),
 E (Elevation of Privilege).
 
+**Status (Day 8)**: RESOLVED — sender-id validation added and tested.
+
 **Attack vector**: Any Chrome extension with `host_permissions` for our
 extension pages OR any web page allowed by `externally_connectable` (we
 don't set this — so only extensions with the matching IDs can connect;
@@ -101,70 +103,102 @@ chrome.runtime.sendMessage(
 );
 ```
 
-**Current mitigation**: The schema validator rejects events with
-forbidden fields. The rate limit caps the damage at 100 events/min.
-The privacy policy + Day 4 integration test cover the *content* of
-events, not the *sender*.
+**Fix (Day 8)**: In `src/service-worker.js`, the `onMessage` listener
+now validates `sender.id === chrome.runtime.id` (where OWN_ID is
+derived from `chrome.runtime.id`) at the top of every dispatch:
 
-**Residual risk**: Medium. A determined attacker with an installed
-malicious extension can disable the privacy guarantee (turn telemetry
-on without consent) and DoS the rate limit.
+```javascript
+const OWN_ID = (typeof chrome !== 'undefined' && chrome.runtime &&
+  chrome.runtime.id) || '';
+if (!sender || sender.id !== OWN_ID) {
+  log.warn('[AegisGate Lens] rejecting message from foreign sender:',
+    sender && sender.id);
+  sendResponse({ error: 'foreign sender rejected' });
+  return false;
+}
+```
 
-**Recommended action (Day 8-10)**:
+Case-sensitive comparison (no `toLowerCase()` bypass). Undefined and
+empty-string sender IDs are rejected.
 
-In `src/service-worker.js`, validate `sender.id === chrome.runtime.id`
-at the top of the `onMessage` listener. Reject otherwise. Add an
-integration test (`test/security-sender-validation.test.mjs`) that
-sends a message with a forged `sender.id` and asserts it is rejected.
+**Verification**: `test/security-sender-validation.test.mjs` runs
+9 assertions:
 
-**Severity**: CVSS 6.5 (Medium). Authenticated via installed malicious
-extension; requires victim to install one.
+1. OWN_ID is set on chrome.runtime.
+2. Own-extension message reaches handler.
+3. Foreign extension `lens.telemetry` is rejected.
+4. Foreign extension `lens.opt_in` is rejected (the most dangerous
+   attack vector — turning telemetry on without user consent).
+5. Foreign extension `lens.stats` is rejected.
+6. `sender.id === undefined` is rejected.
+7. `sender.id === ''` is rejected.
+8. Case-bypass (`aegisgate-lens-extension-id` vs
+   `AEGISGATE-LENS-EXTENSION-ID`) is rejected.
+9. Malformed message (no type) from foreign sender is rejected.
 
-### F-02: Bundle signing keys exist but are not wired into the load path
+**Residual risk**: Very low. The fix is a one-line check on
+`sender.id`. Chrome itself enforces `sender.id` is the actual
+extension ID for cross-extension messages; we just compare it
+correctly.
+
+**Severity**: Originally CVSS 6.5 (Medium). Reclassified to
+**RESOLVED** with evidence.
+
+### F-02: Bundle signing verification
 
 **STRIDE category**: T (Tampering).
 
-**Attack vector**: If the ML bundle (`aegisgate-lens-transformer-v0.2.0.bundle`)
-or regex bundle (`aegisgate-lens-v0.1.0.bundle`) is downloaded from a
-mirror or modified in transit, the content script loads it as-is. A
-tampered bundle could execute arbitrary JS inside our content-script
-context — equivalent to RCE on every AI provider page we support.
+**Status (Day 8)**: RESOLVED — verification IS wired and tested.
 
-**Reproduction**:
+**Originally filed as**: "Ed25519 signing keys exist but bundle
+verification not wired." On Day 8 inspection, the verification is in
+fact wired in `src/util/bundle-loader.js`:
 
-1. Set up a local mirror of `chrome.runtime.getURL('aegisgate-lens-v0.1.0.bundle')`.
-2. Replace the bundle with one that contains `eval('alert(1)')` in its
-   init.
-3. Confirm the content script loads it without verification.
+```javascript
+// Splits the bundle bytes into pre-signature content + 64-byte Ed25519
+// signature.
+const bundleNoSig = bytes.slice(0, bytes.length - 64);
+const signature   = bytes.slice(bytes.length - 64);
+...
+const publicKey = base64Decode(SIGNING_PUBLIC_KEY_B64);
+const isValid   = await ed25519Verify(publicKey, bundleNoSig, signature);
+if (!isValid) {
+  throw new Error('Bundle signature verification FAILED - bundle may be tampered');
+}
+```
 
-(Note: in MV3, `chrome.runtime.getURL` always returns the local
-extension URL, so this attack requires write access to the extension's
-files on disk — i.e., local-machine compromise. But during dev, the
-bundle is served from `lens-final-dist/` which a malicious npm
-dependency could replace.)
+Plus a SHA-256 chain over the payload and each individual file in the
+bundle. The public key is hardcoded as a base64 constant at the top of
+the loader.
 
-**Current mitigation**: The Ed25519 key pair exists at
-`keys/lens-signing-private.pem` (private) and
-`keys/lens-signing-public.pem` (public). The signature is computed at
-build time. But: there is **no verification code** in
-`util/bundle-loader.js`. The signature is generated but never checked.
+**Verification**: `test/security-bundle-verification.test.mjs` runs
+9 assertions against the real `lens_ml_build/aegisgate-lens-v0.1.1.bundle`
+fixture (8.7MB). All 9 pass:
 
-**Residual risk**: Medium (during dev / build pipeline compromise).
-Low in production (the Chrome Web Store re-signs bundles).
+1. Valid signed bundle parses successfully.
+2. Flipping one byte in the payload fails signature verification.
+3. Flipping one byte in the signature fails verification.
+4. Removing the magic value fails (header not found).
+5. Changing the magic value fails.
+6. Truncating the bundle (last byte removed) fails.
+7. Appending an extra byte fails signature verification.
+8. Bundle header contains expected fields (bundle_version,
+   total_payload_size, payload_sha256, files[] with per-file
+   sha256/size/offset).
+9. `reconstructModels` produces usable model list (41 files in v0.1.1).
 
-**Recommended action (Day 8-10)**:
+**Residual risk**: Low in production (Chrome Web Store re-signs
+bundles). Medium during dev if a malicious npm dependency replaces
+the bundle files on disk — but `parseBundle` will throw at load time
+because the Ed25519 signature will not match the modified bytes.
 
-In `util/bundle-loader.js`:
+**Recommended action**: None for code. Add CI step that runs
+`test/security-bundle-verification.test.mjs` on every PR.
 
-1. Read the public key from a string constant (NOT from the bundle
-   itself).
-2. After loading a bundle, verify its Ed25519 signature against the
-   embedded signature manifest.
-3. If verification fails, log a `[CRITICAL]` warning and refuse to
-   initialize the engine.
-
-**Severity**: CVSS 7.5 (High) during dev; CVSS 5.0 (Medium) in
-production.
+**Severity**: Originally CVSS 7.5 (High) during dev / CVSS 5.0 (Medium)
+in production. Reclassified to **RESOLVED** with evidence; residual
+risk is now Low (Chrome Web Store double-signs) + Medium dev-pipeline
+risk (mitigated by the same Ed25519 check at load time).
 
 ### F-03: Content script accepts input from attacker-controlled DOM
 
@@ -385,28 +419,37 @@ including the version and timestamp.
 
 ## Summary table
 
-| ID | Category | Severity | Status | Action target |
+| ID | Category | Original severity | Status (Day 8) | Action target |
 |---|---|---|---|---|
-| F-01 | S, I, D, E | Medium (6.5) | OPEN | Day 8 |
-| F-02 | T | Medium-High (5.0-7.5) | OPEN | Day 8 |
+| F-01 | S, I, D, E | Medium (6.5) | **RESOLVED** | Done (Day 8) |
+| F-02 | T | Medium-High (5.0-7.5) | **RESOLVED** | Done (Day 8) |
 | F-03 | T, E | N/A (intended) | — | — |
 | F-04 | D | Low (3.5) | OPEN | Day 9 |
 | F-05 | D, T | Medium (5.5) | OPEN | Day 9 (backend owner) |
 | F-06 | T, E | Low (2.0) | OPEN | Day 10 |
 | F-07 | I | N/A (accepted) | — | — |
-| F-08 | S | Same as F-01 | — | Day 8 |
+| F-08 | S | Same as F-01 | **RESOLVED** (via F-01) | Done (Day 8) |
 | F-09 | R | Low (1.5) | — | — |
 
 ## Action plan (Day 8-10)
 
-Day 8: Add `sender.id` validation to the service worker (F-01, F-08).
-Wire Ed25519 bundle verification into `util/bundle-loader.js` (F-02).
+**Day 8 (DONE)**:
+- ✅ F-01 / F-08: Add `sender.id` validation to the service worker.
+  Test: `test/security-sender-validation.test.mjs` (9 assertions).
+- ✅ F-02: Confirm and test Ed25519 bundle verification IS wired.
+  Test: `test/security-bundle-verification.test.mjs` (9 assertions
+  on the real 8.7MB `lens_ml_build/aegisgate-lens-v0.1.1.bundle`).
 
-Day 9: Add `dismissals` pruning to `storage.js` (F-04). File the
-backend rate-limit issue in the Platform monorepo (F-05).
+**Day 9 (planned)**:
+- F-04: Add `dismissals` pruning to `storage.js` so the
+  `chrome.storage.local` quota doesn't fill with expired entries.
+- F-05: File the backend IP rate-limit issue in the Platform
+  monorepo. The Lens itself can't fix this; it must land in the
+  backend.
 
-Day 10: Add `test/security-csp.test.mjs` that asserts no
-`eval`/`new Function`/`innerHTML` in `src/` (F-06).
+**Day 10 (planned)**:
+- F-06: Add `test/security-csp.test.mjs` that asserts no
+  `eval`/`new Function`/`innerHTML` in `src/`. CI gate.
 
 ## References
 

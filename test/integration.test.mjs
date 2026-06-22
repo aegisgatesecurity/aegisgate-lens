@@ -208,6 +208,10 @@ function buildChromeStub() {
     },
     getURL(p) { return 'chrome-extension://test/' + p; },
     getManifest() { return { version: '0.2.2-test' }; },
+    // Day 8 / F-01: the OWN_ID the service worker compares sender.id
+    // against. Must match the id field in sendMessageFromContent's
+    // sender object below.
+    id: 'test-extension-id',
     lastError: null,
   };
 

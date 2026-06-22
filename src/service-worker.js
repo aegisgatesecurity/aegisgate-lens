@@ -290,6 +290,30 @@ importScripts(
         sendResponse({ error: 'invalid message' });
         return false;
       }
+
+      // Day 8 / F-01 (threat model): reject messages from any sender
+      // that is not our own extension. Without this check, any
+      // installed Chrome extension (or any web page that knows our
+      // extension ID) can:
+      //   - turn telemetry on/off without user consent
+      //     (lens.opt_in)
+      //   - fill the rate limit (lens.telemetry spam)
+      //   - read local stats (lens.stats, lens.get_state)
+      // chrome.runtime.id is the canonical own-extension ID; compare
+      // against sender.id to ensure the message came from our own
+      // content script or popup. sender.id may be undefined for
+      // messages from the same JS context (e.g. our own code), but in
+      // practice all production senders set it; treat undefined as
+      // not-our-own and reject for safety. See plans/LENS-THREAT-MODEL.md
+      // for the full attack-vector writeup.
+      const OWN_ID = (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id) || '';
+      if (!sender || sender.id !== OWN_ID) {
+        log.warn('[AegisGate Lens] rejecting message from foreign sender:',
+          sender && sender.id);
+        sendResponse({ error: 'foreign sender rejected' });
+        return false;
+      }
+
       const reply = (function () {
         if (msg.type === 'lens.telemetry') {
           return handleTelemetry(msg.event || msg.payload || {});
