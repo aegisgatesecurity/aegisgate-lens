@@ -18,6 +18,7 @@ paths-ignore:
   - lens_ml_build/**
   - harness/**
   - docs/**
+  - lens-final-dist/**
   - pen-test/evidence/**
   - '**/*.bundle'
   - '**/*.safetensors'

@@ -174,6 +174,9 @@ jobs:
         # doesn't work in headless containers. The
         # chrome-stable deb is widely used in CI environments
         # (including Puppeteer and Playwright CI workflows).
+        # Day 15 fix: removed explicit 'libasound2' (Ubuntu 24.04
+        # renamed it to libasound2t64; apt dependency resolver
+        # will pick the right one if we don't pin the name).
         run: |
           wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add - 2>/dev/null || true
           echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
@@ -183,7 +186,6 @@ jobs:
             libatk-bridge2.0-0 \
             libgtk-3-0 \
             libgbm1 \
-            libasound2 \
             google-chrome-stable
           google-chrome-stable --version
           # Create a symlink so the test harness's findChromium
