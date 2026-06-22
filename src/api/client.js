@@ -74,6 +74,12 @@
 
   /**
    * @typedef {Object} LensEvent
+   * @property {number} lens_event_version  Schema version. The extension
+   *                                       emits 1 (see
+   *                                       plans/AEGISGATE-LENS-DAY-2-SCHEMA-V1.md
+   *                                       in the lens-repo-bootstrap repo).
+   *                                       The backend accepts ONLY
+   *                                       version 1 today.
    * @property {string} domain_hash
    * @property {string} category
    * @property {string} severity
@@ -82,9 +88,18 @@
    * @property {string} model_version
    * @property {string} lens_version
    * @property {number} confidence
-   * @property {string} [id]            Client-side UUID; optional, not
+   * @property {string} [id]          Client-side UUID; optional, not
    *                                     stored server-side (Go marks
    *                                     this field Required: false).
+   *
+   * Note: fp_reason exists in the browser-side schema (privacy/schema.js)
+   * for in-extension validation, but is intentionally NOT part of the
+   * wire format. The schema allowlist enforcement (see
+   * plans/AEGISGATE-LENS-DAY-2-SCHEMA-V1.md) prevents fp_reason from
+   * being sent to the backend. If we ever decide to ship fp_reason
+   * over the wire, both this typedef and pkg/lensbackend/validation.go
+   * must be updated together (see Threat Model F-02 for the build-time
+   * cross-schema check that enforces this).
    */
 
   /**

@@ -808,7 +808,7 @@
       try {
         chrome.storage.local.set({ fpOptInPromptSeen: true });
       } catch (err) {
-        log.warn('[AegisGate Lens] could not save fpOptInPromptSeen:', err);
+        log.warn('[AegisGate Lens] could not save fp-opt-in flag:', err);
       }
       if (self.hideBanner) self.hideBanner();
     });
