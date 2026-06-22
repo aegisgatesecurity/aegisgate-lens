@@ -37,6 +37,13 @@ jobs:
     timeout-minutes: 30
     if: false  # Skip the job even when manually dispatched. See comment above.
 
+    # Day 19 fix (CodeQL #4): explicit permissions block to avoid
+    # actions/missing-workflow-permissions lint warning. Even though
+    # this job is gated to `if: false` and never runs in practice,
+    # CodeQL still flags the missing permissions.
+    permissions:
+      contents: read
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

@@ -148,6 +148,9 @@ console.log('');
   const responses = await dispatch(listeners, { type: 'lens.get_state' }, 'aegisgate-lens-extension-id');
   const state = responses.find((r) => r && typeof r === 'object' && 'enabled' in r);
   log('forge_optin_with_xss_version',
+    // linter-disable-next-line js/bad-tag-filter False positive: this
+    // regex is a pen-test SENTINEL — checking whether a forged opt-in
+    // value contains `<script>`. It is not an HTML filter.
     state && state.lens_version && /<script>/.test(state.lens_version) ? 'FINDING' : 'PASS',
     `state.lens_version echoed: ${JSON.stringify(state && state.lens_version)}. The lens_version field is just a string; it's never rendered as HTML. No XSS.`);
 }

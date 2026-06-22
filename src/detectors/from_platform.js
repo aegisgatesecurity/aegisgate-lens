@@ -847,6 +847,12 @@
       category: 'owasp_insecure_output',
       name: 'owasp_LLM02-001',
       severity: 'high',
+      // linter-disable-next-line js/bad-tag-filter False positive: this
+      // regex is the Lens's DETECTION pattern for HTML injection in LLM
+      // output, not a sanitizer. The Lens detects and warns; the user
+      // decides. Source: pkg/compliance/owasp.go LLM02-001 in Platform.
+      // TODO Day 19+: add `//nolint:gosec` to the Go source so the
+      // generator picks up the suppression comment.
       regex: new RegExp('<\\s*(script\\b[^>]*>[^<]*</\\s*script\\s*>|iframe\\s+[^>]*src\\s*=|object\\s+[^>]*data\\s*=|embed\\s+[^>]*src\\s*=|meta\\s+http-equiv\\s*=\\s*["\']?refresh|form\\s+[^>]*action\\s*=\\s*["\']?\\s*javascript|on(load|error|click|mouseover)\\s*=\\s*["\'][^"\']*["\'])', 'gi'),
       description: 'Potential HTML injection in LLM output',
       compliance: Object.freeze(['OWASP-LLM']),
