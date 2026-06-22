@@ -212,7 +212,11 @@ jobs:
         run: |
           # Ensure the test-extension module is set up.
           (cd tools/test-extension && go mod download)
-          go test -race -count=1 -v ./tools/test-extension/...
+          # Run tests from INSIDE tools/test-extension/ (it's a
+          # Go submodule). ./tools/test-extension/... from the
+          # Platform root would not resolve because tools/test-extension
+          # is its own module (tools/test-extension/go.mod).
+          (cd tools/test-extension && go test -race -count=1 -v ./...)
           go run ./tools/test-extension/ \
             --dist /tmp/lens-dist \
             --tests "$GITHUB_WORKSPACE/lens/test" \
