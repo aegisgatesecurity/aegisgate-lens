@@ -210,14 +210,17 @@ jobs:
       - name: Run test harness
         working-directory: platform
         run: |
-          # Ensure the test-extension module is set up.
+          # tools/test-extension/ is a Go submodule with its own go.mod.
+          # ALL go commands that target it must run from inside the
+          # submodule directory (the parent module doesn't contain
+          # tools/test-extension as a package).
           (cd tools/test-extension && go mod download)
-          # Run tests from INSIDE tools/test-extension/ (it's a
-          # Go submodule). ./tools/test-extension/... from the
-          # Platform root would not resolve because tools/test-extension
-          # is its own module (tools/test-extension/go.mod).
+          # Run unit tests for the harness itself.
           (cd tools/test-extension && go test -race -count=1 -v ./...)
-          go run ./tools/test-extension/ \
+          # Build a binary and run it (avoid 'go run ./tools/...' which
+          # would resolve the path against the parent module).
+          (cd tools/test-extension && go build -o /tmp/test-extension ./. )
+          /tmp/test-extension \
             --dist /tmp/lens-dist \
             --tests "$GITHUB_WORKSPACE/lens/test" \
             --provider chatgpt \
