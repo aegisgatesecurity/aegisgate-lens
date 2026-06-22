@@ -39,8 +39,11 @@
   const NS = (typeof window !== 'undefined' ? window : self).AegisGateLens =
     (typeof window !== 'undefined' ? window : self).AegisGateLens || {};
 
-  /** The required fields. Adding a field here forces a breaking change. */
+  /** The required fields. Adding a field here forces a breaking change.
+   *  See plans/AEGISGATE-LENS-DAY-2-SCHEMA-V1.md for the §v1 contract.
+   */
   const REQUIRED_FIELDS = Object.freeze([
+    'lens_event_version',
     'domain_hash',
     'category',
     'severity',
@@ -50,6 +53,17 @@
     'lens_version',
     'confidence',
   ]);
+
+  /** Schema version this validator enforces. Bumped on breaking changes.
+   *  Keep this single source of truth in sync with the backend Go struct.
+   */
+  const SCHEMA_VERSION = 1;
+
+  /** The set of schema versions we accept on the wire. v0 (versionless)
+   *  events are rejected — Day 2 is the cut-over. Older clients must
+   *  upgrade before they can send telemetry.
+   */
+  const ACCEPTED_SCHEMA_VERSIONS = Object.freeze([1]);
 
   /** The valid categories. Must match validation.go AllCategories. */
   const VALID_CATEGORIES = Object.freeze([
@@ -147,6 +161,23 @@
       if (!(field in obj)) {
         return fail('missing required field: ' + field);
       }
+    }
+
+    // lens_event_version: positive int in ACCEPTED_SCHEMA_VERSIONS.
+    // This MUST be the first per-field check after the presence
+    // check, because the rest of the schema is interpreted under a
+    // versioned contract. A versionless event (legacy v0 clients) is
+    // rejected at this point.
+    if (typeof obj.lens_event_version !== 'number' ||
+        !Number.isInteger(obj.lens_event_version)) {
+      return fail('lens_event_version must be an integer');
+    }
+    if (ACCEPTED_SCHEMA_VERSIONS.indexOf(obj.lens_event_version) === -1) {
+      return fail(
+        'lens_event_version ' + obj.lens_event_version +
+        ' is not accepted (this client accepts ' +
+        JSON.stringify(ACCEPTED_SCHEMA_VERSIONS) + ')'
+      );
     }
 
     // domain_hash: exactly 16 lowercase hex chars.
@@ -248,6 +279,7 @@
     // Build the normalized event. We do NOT include fields that
     // were not in the input, even if they have zero values.
     const event = {
+      lens_event_version: obj.lens_event_version,
       domain_hash: obj.domain_hash,
       category: obj.category,
       severity: obj.severity,
@@ -278,5 +310,11 @@
   NS.privacy = NS.privacy || {};
   NS.privacy.schema = Object.freeze({
     validate: validate,
+    SCHEMA_VERSION: SCHEMA_VERSION,
+    ACCEPTED_SCHEMA_VERSIONS: ACCEPTED_SCHEMA_VERSIONS,
+    REQUIRED_FIELDS: REQUIRED_FIELDS,
+    VALID_CATEGORIES: VALID_CATEGORIES,
+    VALID_SEVERITIES: VALID_SEVERITIES,
+    VALID_USER_ACTIONS: VALID_USER_ACTIONS,
   });
 })();

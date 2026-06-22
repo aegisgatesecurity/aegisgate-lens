@@ -1,20 +1,15 @@
 # test/
 
-This directory will hold test case files (JSON) for the AegisGate Lens detector.
+Two test layers live here. They are intentionally separate:
 
-**Status: empty in v0.1-pre-build. Populated in Step D of the build sequence.**
+1. **Detector fixtures** (JSON) — used by the Go test harness in the
+   Platform monorepo (`tools/test-extension/`) to verify that the
+   in-browser regex/ML detectors flag the right things.
+2. **Telemetry test harness** (Node, no dependencies) — used to verify
+   that the Lens's telemetry path (validate → sendEvent → backend)
+   behaves correctly end-to-end. Added on Day 2 of the 30-day plan.
 
-The test harness is a Go program in the Platform monorepo at `tools/test-extension/`. It:
-
-1. Reads the JSON test cases from this directory.
-2. Builds the extension.
-3. Launches headless Chromium (via the Chrome DevTools Protocol, no third-party deps).
-4. Loads the extension and the test cases.
-5. Drives the test cases through the extension's detection logic.
-6. Asserts the expected outputs.
-7. Writes a JSON report.
-
-The test cases are organized by detector category:
+## Layer 1: Detector fixtures
 
 ```
 test/
@@ -22,11 +17,97 @@ test/
 ├── pii_phone.json
 ├── pii_ssn.json
 ├── pii_credit_card.json
-├── api_key_aws.json
-├── source_code.json
-└── false_positives.json
+├── false_positives.json
+└── ...
 ```
 
-Each file is a JSON array of `{input, expected_match, expected_category, expected_severity}` records. The `input` is the synthetic prompt text (redacted, never real PII), and the test harness checks that the detector's output matches `expected_*`.
+Each file is a JSON array of `{input, expected_match, expected_category, expected_severity}` records. The `input` is the synthetic prompt text (redacted, never real PII), and the Go test harness checks that the detector's output matches `expected_*`.
 
-**No real PII in the test cases.** All test inputs use synthetic data: `user@example.com`, `555-01-0123`, `4111-1111-1111-1111` (the canonical Stripe test card), `AKIAIOSFODNN7EXAMPLE` (the AWS documentation example key), etc. See the [Privacy Policy](../docs/PRIVACY-POLICY.md) for the data-handling commitments.
+**No real PII in the test cases.** All test inputs use synthetic data: `user@example.com`, `555-01-0123`, `4111-1111-1111-1111` (the canonical Stripe test card), `AKIAIOSFODNN7EXAMPLE` (the AWS documentation example key), etc. See `docs/PRIVACY-POLICY.md` for the data-handling commitments.
+
+## Layer 2: Telemetry test harness (Day 2)
+
+```
+test/
+├── README.md                      <- this file
+├── schema.test.mjs                <- schema validator unit tests
+├── telemetry.smoke.mjs            <- end-to-end smoke test (mock backend + APIClient)
+├── mock-backend.mjs               <- local HTTP server that captures telemetry
+├── fixtures/
+│   └── valid-event.json           <- canonical LensEvent for tests
+└── mock-output/                   <- JSONL stream written by mock-backend.mjs
+    └── events.jsonl               <- gitignored
+```
+
+> **Why no `package.json`?** The AegisGate Lens ships as plain JavaScript
+> with no build step and no runtime dependencies. The repo's `.gitignore`
+> deliberately excludes `package.json`, `package-lock.json`, and
+> `node_modules/`. The Node-based test harness uses **only Node built-ins**
+> (`node:assert`, `node:http`, `node:fs`, `node:vm`, `node:url`) so no
+> `npm install` is required. Just run the `.mjs` files with Node 20+.
+
+### Running the tests
+
+From the repo root (`lens-repo-bootstrap/`):
+
+```bash
+# Run all Node tests (schema + smoke), sequentially.
+node test/schema.test.mjs && node test/telemetry.smoke.mjs
+
+# Or run them individually:
+node test/schema.test.mjs
+node test/telemetry.smoke.mjs
+
+# Start the mock backend in one terminal and watch events in another.
+node test/mock-backend.mjs
+node tools/lens-cli/telemetry-tail.mjs --follow
+```
+
+### What `npm test` verifies
+
+**`schema.test.mjs`** — 21 assertions on `src/privacy/schema.js`:
+- Valid event passes.
+- `lens_event_version: 1` is required.
+- Legacy `lens_event_version: 0` is rejected.
+- Future `lens_event_version: 2` is rejected.
+- Each of the 8 other required fields is checked for presence.
+- `prompt_text` and `url` are rejected as unknown fields (privacy guardrail).
+- Invalid category / severity / user_action enum values are rejected.
+- Domain-hash length and case are validated.
+- Timestamp must be within ±24h of the client clock.
+- Confidence must be in [0, 1].
+- Non-object input is rejected.
+- Field order in the normalized event is stable.
+
+**`telemetry.smoke.mjs`** — 13 end-to-end assertions on the telemetry path:
+- `/healthz` round-trips through the APIClient.
+- A valid event reaches the mock backend (full path: validate → sendEvent → fetch → JSONL).
+- A forbidden field is rejected by `validate()` (privacy guardrail).
+- A versionless event is rejected by `validate()` (Day 2 cut-over).
+- `sendEvent` propagates validation errors as throws.
+- The 100/min rate limit accepts exactly 100 events and silently drops the rest.
+- `http://production-style` URLs are rejected at construction.
+- `https://` URLs are allowed at construction.
+- `http://127.0.0.1` (localhost) is allowed.
+- `http://example.com` is rejected (not localhost).
+- Missing bearer token is rejected at construction.
+- Invalid baseUrl is rejected at construction.
+- The JSONL output contains every accepted event (one per line).
+
+### Adding new tests
+
+Schema tests live in `schema.test.mjs`. Each test is a top-level `await test(name, fn)` call. The runner prints `PASS`/`FAIL` per assertion and exits non-zero if any fail.
+
+Smoke tests live in `telemetry.smoke.mjs`. The smoke test boots its own mock backend on a random free port; you do not need to start `mock-backend.mjs` manually to run the smoke test.
+
+### `tools/lens-cli/telemetry-tail.mjs`
+
+A read-only viewer for the JSONL stream emitted by the mock backend. Prints one line per event with severity color, category, user action, confidence, and domain hash. Useful for "is the detector firing the way I expect?" debugging without having to instrument the browser.
+
+It is read-only and never sends telemetry. See `tools/lens-cli/telemetry-tail.mjs` for usage.
+
+## Privacy guarantees for these tests
+
+The schema validator's allowlist enforcement (`unknown field: prompt_text` is rejected) is the privacy contract for telemetry. Any future field added to the event MUST be added to `REQUIRED_FIELDS` or `id` in `src/privacy/schema.js` AND to the backend Go struct's JSON tags — otherwise it will be rejected client-side before it ever hits the wire.
+
+The tests in this directory do not exercise prompt content, URLs, or page content. They exercise metadata only. If you find yourself wanting to add a test that does, **stop and re-read `legal/AEGISGATE-LENS-LEGAL-DEVELOPER-CONSTRAINTS.md` §4**.

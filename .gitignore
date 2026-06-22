@@ -51,3 +51,11 @@ ml-artifacts/models/minilm_l12_tier3/model.safetensors
 ml-artifacts/dist_tier3_v2/model.onnx
 ml-artifacts/dist_tier3_v2/model_fp32.onnx
 ml-artifacts/dist_tier3_v2/model__int8.onnx
+
+# Day 2 test harness - mock-backend JSONL stream (regenerated on every run).
+# Don't ship the local debugging output; the source-of-truth is the
+# telemetry endpoint, not the test fixture.
+test/mock-output/
+
+# Python bytecode from the Go-adjacent harness directory.
+harness/__pycache__/
