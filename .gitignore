@@ -59,3 +59,5 @@ test/mock-output/
 
 # Python bytecode from the Go-adjacent harness directory.
 harness/__pycache__/
+
+pen-test/evidence/
