@@ -40,7 +40,10 @@ def main():
     parser = argparse.ArgumentParser(description='Day 14 retrain (continuation)')
     parser.add_argument('--base-model',
                         default='ml-artifacts/models/minilm_l12_tier3/',
-                        help='Existing Tier 3 checkpoint to continue from')
+                        help='Existing Tier 3 checkpoint to continue from (model weights)')
+    parser.add_argument('--tokenizer-source',
+                        default='ml-artifacts/models/minilm_l12_tier3/',
+                        help='Where to load the tokenizer from (may differ from --base-model if model dir lacks tokenizer files)')
     parser.add_argument('--train',
                         default='ml-artifacts/training_data_tier3/train.jsonl')
     parser.add_argument('--val',
@@ -57,9 +60,10 @@ def main():
     args = parser.parse_args()
 
     print('=' * 70)
-    print('AegisGate Lens - Day 14: Tier 3 Continuation Training')
+    print('AegisGate Lens - Tier 3 Continuation Training')
     print('=' * 70)
     print(f'Base model:        {args.base_model}')
+    print(f'Tokenizer source:  {args.tokenizer_source}')
     print(f'Train data:        {args.train}')
     print(f'Val data:          {args.val}')
     print(f'Output:            {args.output}')
@@ -85,8 +89,9 @@ def main():
     print()
 
     # Load tokenizer + model from existing checkpoint.
-    print(f'Loading base model from {args.base_model}...')
-    tokenizer = AutoTokenizer.from_pretrained(args.base_model)
+    print(f'Loading tokenizer from {args.tokenizer_source}...')
+    tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_source)
+    print(f'Loading model from {args.base_model}...')
     model = AutoModelForSequenceClassification.from_pretrained(args.base_model)
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')

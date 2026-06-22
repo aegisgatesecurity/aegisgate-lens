@@ -50,7 +50,10 @@ lens_ml_build/
 ml-artifacts/models/minilm_l12_tier3/model.safetensors
 ml-artifacts/models/minilm_l12_tier3_v2/model.safetensors
 ml-artifacts/models/minilm_l12_tier3_v2/checkpoint-*/
+ml-artifacts/models/minilm_l12_tier3_v3/model.safetensors
+ml-artifacts/models/minilm_l12_tier3_v3/checkpoint-*/
 ml-artifacts/dist_tier3_v2/model.onnx
+ml-artifacts/dist_tier3_v2/model.onnx.data
 ml-artifacts/dist_tier3_v2/model_fp32.onnx
 ml-artifacts/dist_tier3_v2/model__int8.onnx
 ml-artifacts/dist_tier3_v2/minilm_model_fp32.onnx.data
