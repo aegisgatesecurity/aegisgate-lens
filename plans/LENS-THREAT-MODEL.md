@@ -1,9 +1,14 @@
 # AegisGate Lens — Threat Model (STRIDE)
 
-**Status**: Draft for Day 6-7 review.
-**Version**: v0.1 (2026-06-22)
+**Status**: All 13 findings triaged; 11 resolved, 1 residual, 1 accepted.
+**Version**: v0.2 (2026-06-22, post-Day-18)
 **Audience**: AegisGate Security internal; enterprise customers on request.
 **Methodology**: STRIDE (Spoofing, Tampering, Repudiation, Information Disclosure, DoS, Elevation of Privilege).
+
+**Score progression**: 7/10 (Day 11) → 8.5/10 (Day 13) → 9/10 (Day 15) →
+9.5/10 (Day 17) → **9.5/10 (Day 18)**. Day 18 added SLSA L2 provenance
+(release artifact supply chain) which closes F-13. The remaining
+gap is operational (third-party audit, SLSA L3 hardening).
 
 ## Purpose
 
@@ -529,6 +534,7 @@ including the version and timestamp.
 | F-10 | T | Medium (5.3) | **CLOSED** (Day 15) | Creative-writing-frame attack class eliminated |
 | F-11 | T | Medium-low (4.0) | **CLOSED** (Day 17) | Wordplay/inversion attack class eliminated |
 | F-12 | — | — | **RESIDUAL** | All known attack classes caught; defense-in-depth remains (regex tier + AI safety) |
+| F-13 | T | Medium (5.5) → Low (1.0) | **RESOLVED** (Day 18) | SLSA L2 provenance on every release |
 
 ## Action plan (Day 8-10)
 
@@ -715,6 +721,68 @@ F-11 is a **different** attack class.
 **Severity**: CVSS 4.0 (Medium-low). Lower than F-10 because the
 attack requires more sophistication and the response doesn't directly
 produce harmful content unless the AI complies with the inversion.
+
+---
+
+### F-13: Release artifact supply chain (no provenance before Day 18)
+
+**STRIDE category**: T (Tampering).
+
+**Status (Day 18)**: **RESOLVED** via SLSA Build Level 2 provenance
+(`actions/attest-build-provenance@v3` + `softprops/action-gh-release@v2`).
+Every release artifact from `lens-v0.2.2` forward carries a signed
+in-toto provenance attestation in the GitHub Attestations store.
+
+**Attack vector (pre-Day-18)**: An attacker who compromises the GitHub
+release pipeline (e.g., a malicious Dependabot auto-merge, a hijacked
+maintainer PAT, or a compromised GitHub Actions cache) could replace
+the published `.zip` with a backdoored version. Users downloading
+"the latest release" would receive the attacker's payload.
+
+**Mitigation in place (Day 18)**:
+
+1. **SLSA Build Level 2 provenance** signed by the workflow's
+   OIDC token via Sigstore/Fulcio.
+2. **Public Rekor transparency log** — every provenance is recorded
+   in a public append-only log, making it detectable if a backdated
+   provenance is later produced for the same artifact.
+3. **GitHub Attestations store** — provenance is queryable per artifact
+   via `gh attestation verify`.
+4. **Verification command documented** in the release body and in
+   `VERIFY.md` (Day 19+).
+
+**Verification path**:
+
+```bash
+gh attestation verify \
+  --owner aegisgatesecurity \
+  --repo aegisgate-platform \
+  aegisgate-lens-0.2.2.zip
+```
+
+A passing verify confirms the ZIP was built by the canonical
+`.github/workflows/release-lens.yml` workflow at the tagged commit
+of the Platform repo. A failing verify (or absent attestation)
+indicates the artifact was NOT produced by the canonical pipeline.
+
+**Residual risk**: The GitHub OIDC token could be compromised if the
+GitHub Actions infrastructure itself is compromised. This is a GitHub
+trust boundary, not ours. SLSA Level 3 (which requires a hardened build
+platform) would mitigate this further but is out of scope for our
+single-maintainer model.
+
+**Severity before Day 18**: CVSS 5.5 (Medium) — limited exploitability
+for a single-maintainer repo, but a real risk for enterprise customers
+who need supply chain attestation.
+
+**Severity after Day 18**: CVSS 1.0 (Low) — attestation provides
+strong evidence of provenance; mitigation of the residual OIDC trust
+boundary requires L3 or external SLSA infrastructure.
+
+**Recommended action (Day 19+)**: Add a Lens-side Node test that
+downloads a Lens release artifact and runs `gh attestation verify` on
+it in CI, so any future regression in the provenance workflow is
+caught immediately.
 
 ---
 
