@@ -133,6 +133,10 @@ jobs:
 
       - name: Verify JS files are syntactically valid
         run: |
+          # `shopt -s nullglob` makes an unmatched glob expand to nothing
+          # rather than the literal pattern, so we don't try to
+          # node --check a non-existent path when popup/ is empty.
+          shopt -s nullglob
           for f in /tmp/lens-dist/*.js /tmp/lens-dist/popup/*.js; do
             node --check "$f"
           done
