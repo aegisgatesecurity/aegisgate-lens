@@ -1,14 +1,28 @@
 # AegisGate Lens — Threat Model (STRIDE)
 
 **Status**: All 13 findings triaged; 11 resolved, 1 residual, 1 accepted.
-**Version**: v0.2 (2026-06-22, post-Day-18)
+**Version**: v0.3 (2026-06-22, post-Day-19 cleanup)
 **Audience**: AegisGate Security internal; enterprise customers on request.
 **Methodology**: STRIDE (Spoofing, Tampering, Repudiation, Information Disclosure, DoS, Elevation of Privilege).
 
 **Score progression**: 7/10 (Day 11) → 8.5/10 (Day 13) → 9/10 (Day 15) →
-9.5/10 (Day 17) → **9.5/10 (Day 18)**. Day 18 added SLSA L2 provenance
-(release artifact supply chain) which closes F-13. The remaining
-gap is operational (third-party audit, SLSA L3 hardening).
+9.5/10 (Day 17) → **9.5/10 (Day 18)**, refined Day 19 as a split:
+
+  - **Engineering posture: 9.7/10** (Day 18 closed F-13; the only
+    unmitigated engineering threat). All 13 STRIDE findings are
+    triaged; 11 resolved, 1 residual (F-12, intentionally defensive
+    posture), 1 accepted (F-07, public-bundle by design).
+
+  - **Trust posture: 9.0/10** (operations / distribution / supply-chain
+    trust). The remaining 0.5 from engineering → 10 is operational:
+    third-party security audit, SLSA Level 3 hardening, verified
+    Chrome Web Store publisher, end-user security education.
+
+  - **Combined: 9.5/10** (averaged). This breakdown is more honest than
+    the single number — enterprise customers should look at the split.
+
+Day 18 added SLSA Level 2 provenance (closes F-13, release artifact
+supply chain). Day 19 cleaned up 3 CodeQL false-positive alerts.
 
 ## Purpose
 
