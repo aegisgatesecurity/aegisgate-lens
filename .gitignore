@@ -47,3 +47,7 @@ lens_ml_build/
 
 # Local testing servers and outputs
 /tmp/lens_*
+ml-artifacts/models/minilm_l12_tier3/model.safetensors
+ml-artifacts/dist_tier3_v2/model.onnx
+ml-artifacts/dist_tier3_v2/model_fp32.onnx
+ml-artifacts/dist_tier3_v2/model__int8.onnx
