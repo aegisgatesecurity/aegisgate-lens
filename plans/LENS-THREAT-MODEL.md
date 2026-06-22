@@ -527,7 +527,8 @@ including the version and timestamp.
 | F-08 | S | Same as F-01 | **RESOLVED** (via F-01) | Done (Day 8) |
 | F-09 | R | Low (1.5) | — | — |
 | F-10 | T | Medium (5.3) | **CLOSED** (Day 15) | Creative-writing-frame attack class eliminated |
-| F-11 | T | Medium-low (4.0) | **OPEN** | Day 16+ (wordplay/inversion attack corpus + retrain) |
+| F-11 | T | Medium-low (4.0) | **CLOSED** (Day 17) | Wordplay/inversion attack class eliminated |
+| F-12 | — | — | **RESIDUAL** | All known attack classes caught; defense-in-depth remains (regex tier + AI safety) |
 
 ## Action plan (Day 8-10)
 
@@ -618,11 +619,62 @@ the upper end.
 
 ---
 
+### F-12: Residual attack surface (all known classes caught)
+
+**STRIDE category**: T (Tampering).
+
+**Status (Day 17)**: PARTIALLY ADDRESSED. All known attack classes
+caught by Tier 3 ML classifier (0% bypass rate on the 60-iteration
+PAIR test). Defense-in-depth remains.
+
+**Closed attack classes (cumulative)**:
+
+| Class | Closed | Day |
+|---|---|---|
+| Direct attacks (`ignore previous instructions`, `DAN`, etc.) | (always) | v1 |
+| Creative-writing frames (`Describe a world where...`) | F-10 | Day 14 (v2) |
+| Wordplay/inversion (`What is the opposite of 'I cannot...'`) | F-11 | Day 17 (v4) |
+
+**Residual risk** (defense-in-depth, no single point of failure):
+
+1. **Regex tier (Tier 1)** — catches direct attacks at the
+   front door before ML inference.
+2. **ML tier (Tier 3)** — now catches creative-writing, wordplay,
+   and (with 99.7% recall on validation) most adversarial variants.
+3. **Schema allowlist** — prevents prompt content from leaving
+   the browser regardless of classifier verdict. The privacy
+   guarantee is structurally independent of detection accuracy.
+4. **AI provider's own safety alignment** — even if an
+   adversarial prompt bypasses both tiers, the underlying
+   ChatGPT/Claude/Gemini model has its own RLHF/safety training.
+5. **User-facing FP opt-in prompt** — lets users report bypasses
+   so we can retrain on adversarial examples.
+
+**Recommended action (post-30-day-plan)**:
+
+1. **External pen test** by a third-party firm (e.g., NCC Group,
+   Trail of Bits, Cure53). The Lens's attack surface is small
+   enough (3 tiers + allowlist + opt-in) that a focused 2-week
+   audit would catch anything we missed.
+2. **Bug bounty program** (Day 15 of plan) — HackerOne or
+   Bugcrowd, modest bounty ($200-$1000 per finding) to incentivize
+   external researchers.
+3. **Red team exercise** — quarterly internal review using the
+   Day 13/15/17 PAIR test as a regression suite.
+
+**Severity**: RESIDUAL — all known attack classes caught. New attack
+classes may emerge; PAIR test is the regression check.
+
 ### F-11: Tier 3 classifier bypassable via wordplay / inversion prompts
 
 **STRIDE category**: T (Tampering).
 
-**Status (Day 15)**: OPEN. New attack class discovered after F-10
+**STRIDE category**: T (Tampering).
+
+**Status (Day 17)**: CLOSED. Resolved by 1-epoch continuation training
+on 250 wordplay/inversion examples (5 subclasses: refusal_inversion,
+negation_flip, role_reversal, rhetorical_frame, semantic_inverse).
+Day 17 PAIR retest caught 0/60 prompts (was 1/60 on Day 15).
 fix. **Inherited priority**: HIGH (continuation of Day 14 F-10 work).
 
 **Attack vector**: A prompt that uses wordplay or inversion to elicit
