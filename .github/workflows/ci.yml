@@ -119,7 +119,7 @@ jobs:
           #   a binary flag, so we skip the --help smoke test.
           # - We pass `--` before the binary args to be explicit.
           mkdir -p /tmp/lens-dist
-          go run ./tools/build-lens-extension/ -- \
+          go run ./tools/build-lens-extension/ \
             --src "$GITHUB_WORKSPACE/lens/src" \
             --dist /tmp/lens-dist \
             --version "$LENS_VERSION" \
