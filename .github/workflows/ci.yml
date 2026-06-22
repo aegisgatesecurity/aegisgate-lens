@@ -114,12 +114,12 @@ jobs:
         working-directory: platform
         run: |
           # tools/build-lens-extension/ is a Go package (not a built
-          # binary), so we use `go run` for everything. Day 15: this
-          # step previously tried to run the dir as a binary and
-          # failed with "Is a directory" exit 126.
-          go run ./tools/build-lens-extension/ --help
+          # binary), so we use `go run` for everything. Day 15 fix:
+          # - `go run --help` interprets --help as a go-run flag, not
+          #   a binary flag, so we skip the --help smoke test.
+          # - We pass `--` before the binary args to be explicit.
           mkdir -p /tmp/lens-dist
-          go run ./tools/build-lens-extension/ \
+          go run ./tools/build-lens-extension/ -- \
             --src "$GITHUB_WORKSPACE/lens/src" \
             --dist /tmp/lens-dist \
             --version "$LENS_VERSION" \
