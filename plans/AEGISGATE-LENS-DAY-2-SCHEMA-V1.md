@@ -24,6 +24,13 @@ All four must land in the same commit. The CI gate (not yet built) will assert t
 
 ### Required fields (9)
 
+> **Day 3 update**: every event-construction site in `src/content.js`
+> and `src/service-worker.js` now sets `lens_event_version: NS.privacy.schema.SCHEMA_VERSION`
+> (i.e. `1`). The value is read from the canonical export, never
+> hardcoded, so a future version bump changes one constant in one
+> place. See `test/event-construction.test.mjs` for the executable
+> verification.
+
 | Field | Type | Constraint | Notes |
 |---|---|---|---|
 | `lens_event_version` | integer | `=== 1` | New in v1. Day 2 cut-over rejects versionless events. |
@@ -36,11 +43,12 @@ All four must land in the same commit. The CI gate (not yet built) will assert t
 | `lens_version` | string | non-empty | e.g., `"0.2.2"`. |
 | `confidence` | number | finite, in `[0.0, 1.0]` | Detector's confidence score. |
 
-### Optional fields (1)
+### Optional fields (2)
 
 | Field | Type | Constraint | Notes |
 |---|---|---|---|
 | `id` | string | any non-empty | Client-side UUID for deduplication. Server marks this `Required: false`. |
+| `fp_reason` | string | non-empty, ≤200 chars, no URL-shaped values | Free-text reason the user gave when dismissing a false positive. Set by the in-banner false-positive form. Allowed only on `user_action === 'dismiss_false_positive'` events; ignored on others. The validator enforces length and URL-shape; the constructor site is expected to enforce the `user_action` gate. |
 
 ### Enums
 
@@ -51,6 +59,7 @@ All four must land in the same commit. The CI gate (not yet built) will assert t
 - `pii_credit_card`
 - `secret_api_key`
 - `source_code`
+- `health_check` (Day 3 addition: synthetic category for the "Send test event" diagnostic in the popup; not produced by detectors)
 
 **Severities** (`severity`):
 - `info`
@@ -64,6 +73,7 @@ All four must land in the same commit. The CI gate (not yet built) will assert t
 - `edit`
 - `cancel`
 - `dismiss`
+- `dismiss_false_positive` (Day 3 addition: set by `sendFPTelemetry` in `src/content.js` when the user dismisses a detection as a false positive; gated by `fpTelemetryEnabled` opt-in flag in `chrome.storage.local`)
 
 ### Privacy guardrails (enforced via allowlist)
 

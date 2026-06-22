@@ -56,6 +56,14 @@ importScripts(
     return;
   }
 
+  // Schema reference for current-event-version constant. Day 3 cut-over:
+  // every event we construct below sets lens_event_version to this value.
+  // privacy/schema.js is imported above via importScripts, so NS.privacy.schema
+  // is always populated in the service-worker context. If it isn't, we
+  // deliberately leave SCHEMA_VERSION undefined so the event fails
+  // client-side validate() rather than sending an unversioned event.
+  const SCHEMA_VERSION = (NS.privacy && NS.privacy.schema && NS.privacy.schema.SCHEMA_VERSION) || undefined;
+
   /**
    * The current Lens version. Kept in sync by the build tool.
    */
@@ -210,6 +218,7 @@ importScripts(
     const token = await storage.getBearerToken().catch(() => '');
     const client = new APIClient({ baseUrl: baseUrl, bearerToken: token });
     const event = {
+      lens_event_version: SCHEMA_VERSION,
       domain_hash: '0000000000000000',
       category: 'health_check',
       severity: 'info',

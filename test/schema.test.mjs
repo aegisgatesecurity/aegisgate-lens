@@ -286,6 +286,36 @@ await test('id field is optional', () => {
   assert.equal('id' in r.event, false);
 });
 
+await test('fp_reason field is allowed (string, optional)', () => {
+  const ev = validEvent({ fp_reason: 'regex matched my own notes' });
+  const r = validate(ev, NOW_MS);
+  assert.equal(r.valid, true, 'fp_reason should be accepted: ' + (r.reason || ''));
+  assert.equal(r.event.fp_reason, 'regex matched my own notes');
+});
+
+await test('fp_reason as non-string is rejected', () => {
+  const ev = validEvent({ fp_reason: 42 });
+  const r = validate(ev, NOW_MS);
+  assert.equal(r.valid, false);
+  assert.match(r.reason, /fp_reason/);
+});
+
+await test('fp_reason with a URL-looking value is rejected (privacy guardrail)', () => {
+  // fp_reason is free-text metadata; URLs are forbidden elsewhere in the
+  // schema so we keep this rule tight: no URL-shaped values.
+  const ev = validEvent({ fp_reason: 'see https://example.com' });
+  const r = validate(ev, NOW_MS);
+  assert.equal(r.valid, false);
+  assert.match(r.reason, /fp_reason/);
+});
+
+await test('fp_reason with a 1000-char value is rejected (length cap)', () => {
+  const ev = validEvent({ fp_reason: 'x'.repeat(1000) });
+  const r = validate(ev, NOW_MS);
+  assert.equal(r.valid, false);
+  assert.match(r.reason, /fp_reason/);
+});
+
 // ----- Summary -------------------------------------------------------------
 
 console.log('');

@@ -65,6 +65,18 @@
    */
   const ACCEPTED_SCHEMA_VERSIONS = Object.freeze([1]);
 
+  /** Maximum length of fp_reason. Caps the cost of an attacker-controlled
+   *  long-string DoS and keeps events small. Matches the per-event budget.
+   */
+  const FP_REASON_MAX_LENGTH = 200;
+
+  /** URL shape detection. Conservative: matches http://, https://,
+   *  and protocol-relative //host forms. fp_reason is meant to be a
+   *  short natural-language reason ("matched my own notes",
+   *  "regex too greedy"), not a URL — if one shows up we reject.
+   */
+  const URL_PATTERN = /https?:\/\/|\/\/[A-Za-z0-9]/;
+
   /** The valid categories. Must match validation.go AllCategories. */
   const VALID_CATEGORIES = Object.freeze([
     'pii_email',
@@ -73,6 +85,11 @@
     'pii_credit_card',
     'secret_api_key',
     'source_code',
+    // Synthetic category for the "Send test event" diagnostic in the
+    // popup. NOT produced by detectors; only emitted by
+    // service-worker.js handleTestEvent to verify the bearer token
+    // round-trips. The backend filters it out of detection statistics.
+    'health_check',
   ]);
 
   /** The valid severities. Must match validation.go isValidSeverity. */
@@ -90,6 +107,11 @@
     'edit',
     'cancel',
     'dismiss',
+    // Set by src/content.js sendFPTelemetry when the user dismisses a
+    // detection as a false positive. The presence of fp_reason (if any)
+    // is tied to this action. The backend filters fp events from the
+    // detection-rate statistics.
+    'dismiss_false_positive',
   ]);
 
   /** Domain hash length: 16 hex characters. Must match validation.go. */
@@ -148,6 +170,7 @@
     const allowed = new Set([
       ...REQUIRED_FIELDS,
       'id', // optional
+      'fp_reason', // optional; only on dismiss_false_positive events
     ]);
     for (const key of Object.keys(obj)) {
       if (!allowed.has(key)) {
@@ -276,6 +299,29 @@
       }
     }
 
+    // fp_reason: optional string, short, no URL-shaped values.
+    // The event constructor is expected to set this only when
+    // user_action === 'dismiss_false_positive'; the validator does
+    // not enforce that gate (the action enum doesn't yet include
+    // 'dismiss_false_positive' as a wire value — see Day 4 TODOs).
+    if (obj.fp_reason !== undefined) {
+      if (typeof obj.fp_reason !== 'string') {
+        return fail('fp_reason must be a string when present');
+      }
+      if (obj.fp_reason.length === 0) {
+        return fail('fp_reason must be non-empty when present');
+      }
+      if (obj.fp_reason.length > FP_REASON_MAX_LENGTH) {
+        return fail(
+          'fp_reason must be <= ' + FP_REASON_MAX_LENGTH +
+          ' chars, got ' + obj.fp_reason.length,
+        );
+      }
+      if (URL_PATTERN.test(obj.fp_reason)) {
+        return fail('fp_reason must not contain URL-shaped values');
+      }
+    }
+
     // Build the normalized event. We do NOT include fields that
     // were not in the input, even if they have zero values.
     const event = {
@@ -291,6 +337,9 @@
     };
     if (typeof obj.id === 'string') {
       event.id = obj.id;
+    }
+    if (typeof obj.fp_reason === 'string') {
+      event.fp_reason = obj.fp_reason;
     }
     return { valid: true, event: event };
   }

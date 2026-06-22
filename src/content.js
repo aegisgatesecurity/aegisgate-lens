@@ -36,6 +36,13 @@
   const log = NS.logger || console;
   const { detect, describeCategory } = (NS.detectors) || {};
   const { computeDomainHash } = (NS.privacy && NS.privacy.domainHash) || {};
+  // Schema reference for current-event-version constant. Day 3 cut-over:
+  // every event we construct below sets lens_event_version to this value.
+  // If the version is undefined (e.g. running without privacy/schema.js
+  // loaded), we fall back to undefined which means client-side validate()
+  // will reject the event — fail loud, never silently send unversioned
+  // events. See plans/AEGISGATE-LENS-DAY-2-SCHEMA-V1.md.
+  const SCHEMA_VERSION = (NS.privacy && NS.privacy.schema && NS.privacy.schema.SCHEMA_VERSION) || undefined;
   const mlEngine = NS.mlEngine || null;
   const transformerEngine = NS.transformerEngine || null;
   const TRANSFORMER_UNCERTAIN_LOW = 0.3;
@@ -715,6 +722,7 @@
           for (let i = 0; i < self.currentDetections.length; i++) {
             const d = self.currentDetections[i];
             const event = {
+              lens_event_version: SCHEMA_VERSION,
               domain_hash: self.domainHash,
               category: d.category,
               severity: d.severity,
@@ -723,8 +731,13 @@
               model_version: LENS_VERSION + '+regex-v1+ml-5way-v1',
               lens_version: LENS_VERSION,
               confidence: d.mlScore || 1.0,
-              fp_reason: reason || null,
             };
+            // fp_reason is optional; only attach when the user typed
+            // something. Empty string or null would be rejected by
+            // schema.validate() (must be non-empty when present).
+            if (typeof reason === 'string' && reason.length > 0) {
+              event.fp_reason = reason;
+            }
             try {
               chrome.runtime.sendMessage({ type: 'lens.telemetry', event: event });
             } catch (err) {
@@ -751,6 +764,7 @@
     for (let i = 0; i < this.currentDetections.length; i++) {
       const d = this.currentDetections[i];
       const event = {
+        lens_event_version: SCHEMA_VERSION,
         domain_hash: this.domainHash,
         category: d.category,
         severity: d.severity,

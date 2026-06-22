@@ -32,6 +32,8 @@ test/
 ├── README.md                      <- this file
 ├── schema.test.mjs                <- schema validator unit tests
 ├── telemetry.smoke.mjs            <- end-to-end smoke test (mock backend + APIClient)
+├── event-construction.test.mjs    <- regression: every event-construction site
+│                                      in src/ produces a v1 event (Day 3)
 ├── mock-backend.mjs               <- local HTTP server that captures telemetry
 ├── fixtures/
 │   └── valid-event.json           <- canonical LensEvent for tests
@@ -51,12 +53,15 @@ test/
 From the repo root (`lens-repo-bootstrap/`):
 
 ```bash
-# Run all Node tests (schema + smoke), sequentially.
-node test/schema.test.mjs && node test/telemetry.smoke.mjs
+# Run all Node tests (schema + smoke + event-construction), sequentially.
+node test/schema.test.mjs && \
+node test/telemetry.smoke.mjs && \
+node test/event-construction.test.mjs
 
 # Or run them individually:
 node test/schema.test.mjs
 node test/telemetry.smoke.mjs
+node test/event-construction.test.mjs
 
 # Start the mock backend in one terminal and watch events in another.
 node test/mock-backend.mjs
