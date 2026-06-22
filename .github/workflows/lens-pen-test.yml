@@ -1,0 +1,127 @@
+# =========================================================================
+# AegisGate Lens - Pen Test Workflow (on-demand)
+# =========================================================================
+#
+# Runs the full Lens pen-test suite against a freshly-built Lens
+# backend. The backend is built from the Platform monorepo's
+# cmd/lensbackend/main.go (NEW in Day 11 for this purpose).
+#
+# Triggered:
+#   - Manual dispatch (with optional rate-limit override)
+#   - Weekly on Sunday at 04:00 UTC (after security.yml at 03:00)
+#
+# Outputs evidence JSON files as artifacts for review.
+#
+# This is the GitHub-Actions version of the local pen-test
+# documented in plans/LENS-PEN-TEST-REPORT.md.
+# =========================================================================
+
+name: Lens Pen Test
+
+on:
+  schedule:
+    - cron: '0 4 * * 0'
+  workflow_dispatch:
+    inputs:
+      rate_limit_per_min:
+        description: 'Backend rate limit (events/minute)'
+        required: false
+        default: '100'
+      bearer_token:
+        description: 'Bearer token for the test backend'
+        required: false
+        default: 'pentest-token-gh-actions'
+
+permissions:
+  contents: read
+
+jobs:
+  pen-test:
+    name: Pen-test against real Lens backend binary
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout Lens repo
+        uses: actions/checkout@v6
+        with:
+          lfs: true
+
+      - name: Checkout Platform repo (sibling, for the Lens backend)
+        uses: actions/checkout@v6
+        with:
+          repository: aegisgatesecurity/aegisgate-platform
+          path: ../aegisgate-platform
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.26.4'
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+
+      - name: Generate self-signed cert for backend TLS
+        run: |
+          openssl req -x509 -newkey ed25519 -keyout /tmp/lens-test.key \
+            -out /tmp/lens-test.crt -days 1 -nodes \
+            -subj "/CN=localhost" \
+            -addext "subjectAltName=DNS:chat.openai.com,DNS:chatgpt.com,DNS:localhost"
+
+      - name: Generate HMAC key for per-install rate limiting
+        run: |
+          head -c 32 /dev/urandom > /tmp/lens-hmac.bin
+
+      - name: Build the Lens backend
+        run: |
+          cd ../aegisgate-platform
+          go build -o /tmp/lensbackend ./cmd/lensbackend/
+
+      - name: Start Lens backend on TLS port 9443
+        run: |
+          LENS_PORT=9443 \
+          LENS_TLS_CERT=/tmp/lens-test.crt \
+          LENS_TLS_KEY=/tmp/lens-test.key \
+          LENS_BEARER_TOKEN="${{ inputs.bearer_token || 'pentest-token-gh-actions' }}" \
+          LENS_IOC_STORE_PATH=/tmp/lens-ioc \
+          LENS_HMAC_KEY=/tmp/lens-hmac.bin \
+          LENS_RATE_LIMIT_PER_MIN="${{ inputs.rate_limit_per_min || '100' }}" \
+          nohup /tmp/lensbackend > /tmp/lens-backend.log 2>&1 &
+          sleep 3
+          # Verify it started.
+          curl -sk https://localhost:9443/api/v1/lens/healthz || (cat /tmp/lens-backend.log; exit 1)
+
+      - name: Run pen-test attack scripts
+        run: |
+          cd $GITHUB_WORKSPACE
+          mkdir -p pen-test/evidence
+          set +e
+          for f in pen-test/01-f01-foreign-sender.sh \
+                   pen-test/02-f02-bundle-tamper.sh \
+                   pen-test/03-f04-dismissals-flood.sh \
+                   pen-test/04-f05-rate-limit-bypass.sh; do
+            echo "=== $f ==="
+            TARGET=https://chat.openai.com:9443 \
+              GOOD_TOKEN="${{ inputs.bearer_token || 'pentest-token-gh-actions' }}" \
+              FIXTURE="$GITHUB_WORKSPACE/lens_ml_build/aegisgate-lens-v0.1.1.bundle" \
+              bash "$f" 2>&1 | tail -20 || true
+          done
+          for f in pen-test/05-f06-dom-xss.mjs \
+                   pen-test/06-f08-extension-hijack.mjs \
+                   pen-test/07-f09-opt-in-tamper.mjs \
+                   pen-test/08-prompt-injection-bypass.mjs; do
+            echo "=== $f ==="
+            node "$f" 2>&1 | tail -20 || true
+          done
+
+      - name: Upload pen-test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lens-pen-test-evidence-${{ github.sha }}
+          path: pen-test/evidence/
+
+      - name: Stop Lens backend
+        if: always()
+        run: pkill -f /tmp/lensbackend || true

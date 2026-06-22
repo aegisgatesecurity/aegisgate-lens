@@ -1,0 +1,123 @@
+# =========================================================================
+# AegisGate Lens - Governance Workflow
+# =========================================================================
+#
+# Runs on every push and pull_request:
+#   1. DCO Check   - every commit must have Signed-off-by (strict on PRs,
+#                    advisory on push-to-main).
+#   2. Branch name - feature branches must follow conventional prefixes.
+#   3. PR title    - PR titles must follow Conventional Commits format.
+#
+# Mirrors the Platform repo's governance approach in a single file.
+# =========================================================================
+
+name: Governance
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dco:
+    name: DCO Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Verify Signed-off-by on all commits
+        env:
+          STRICT: ${{ github.event_name == 'pull_request' && '1' || '0' }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          set -e
+          echo "## DCO Verification" >> $GITHUB_STEP_SUMMARY
+          MISSING=0
+          BOT_COMMITS=0
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            COMMITS=$(git log --format="%H" "origin/${BASE_REF:-main}..HEAD")
+            STRICT=1
+          else
+            COMMITS=$(git log --format="%H" -1)
+            STRICT=0
+          fi
+          for COMMIT in $COMMITS; do
+            AUTHOR=$(git log --format="%an" -1 "$COMMIT")
+            EMAIL=$(git log --format="%ae" -1 "$COMMIT")
+            # Exempt bot authors.
+            if echo "$AUTHOR" | grep -qiE '(dependabot|renovate|github-actions)[bot]$|bot$'; then
+              SUBJECT=$(git log --format="%s" -1 "$COMMIT")
+              echo "Skipping DCO for bot commit: $SUBJECT ($AUTHOR)" >> $GITHUB_STEP_SUMMARY
+              BOT_COMMITS=$((BOT_COMMITS+1))
+              continue
+            fi
+            # Exempt merge commits.
+            PARENT_COUNT=$(git rev-list --parents -1 "$COMMIT" | awk '{print NF}')
+            if [ "$PARENT_COUNT" -gt 2 ]; then
+              SUBJECT=$(git log --format="%s" -1 "$COMMIT")
+              echo "Skipping DCO for merge commit: $SUBJECT" >> $GITHUB_STEP_SUMMARY
+              continue
+            fi
+            SIGNOFF=$(git log --format="%B" -1 "$COMMIT" | grep -c "Signed-off-by:" || true)
+            if [ "$SIGNOFF" -eq 0 ]; then
+              SUBJECT=$(git log --format="%s" -1 "$COMMIT")
+              echo "Missing Signed-off-by: $SUBJECT ($AUTHOR <$EMAIL>)" >> $GITHUB_STEP_SUMMARY
+              echo "  Fix: git commit --amend --signoff" >> $GITHUB_STEP_SUMMARY
+              MISSING=1
+            fi
+          done
+          if [ "$MISSING" -eq 1 ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "See [DCO.md](../blob/main/DCO.md) for instructions." >> $GITHUB_STEP_SUMMARY
+            if [ "$STRICT" = "1" ]; then
+              echo "DCO check failed - all PR commits must include Signed-off-by"
+              exit 1
+            else
+              echo "DCO advisory: commits without Signed-off-by detected (push to main, non-blocking)"
+            fi
+          else
+            echo "DCO check passed: all commits signed off (or exempted)" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  branch-name:
+    name: Branch Name Convention
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Check branch name
+        run: |
+          BRANCH="${{ github.head_ref }}"
+          if echo "$BRANCH" | grep -qE '^(main|release/.+|dependabot/.+|renovate/.+|security/.+|lens/.+)$'; then
+            echo "Branch name '$BRANCH' is valid"
+            exit 0
+          fi
+          echo "::error::Branch name '$BRANCH' does not match convention"
+          echo "Allowed prefixes: main, release/*, dependabot/*, renovate/*, security/*, lens/*"
+          exit 1
+
+  pr-title:
+    name: PR Title (Conventional Commits)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Check PR title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          # Conventional Commits: <type>(<scope>): <subject>
+          # Allowed types: feat, fix, docs, refactor, test, chore, security, ci
+          if echo "$PR_TITLE" | grep -qE '^(feat|fix|docs|refactor|test|chore|security|ci)(\(.+\))?!?: .+'; then
+            echo "PR title '$PR_TITLE' follows Conventional Commits"
+            exit 0
+          fi
+          echo "::error::PR title '$PR_TITLE' does not follow Conventional Commits"
+          echo "Expected: type(scope)?: subject (e.g., 'feat(banner): add severity tint')"
+          exit 1

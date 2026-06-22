@@ -1,0 +1,75 @@
+# =========================================================================
+# AegisGate Lens - Cross-Repo Platform Tests
+# =========================================================================
+#
+# Mirrors the Platform repo's build-lens.yml but in reverse: this
+# workflow checks out the Platform monorepo as a sibling, runs the
+# Platform's pkg/lensbackend/ Go test suite against the Lens wire
+# protocol shape defined in src/api/client.js.
+#
+# Purpose: catch cross-repo drift between the Lens extension and the
+# Platform backend. The Day 11 pen test caught two CRITICAL bugs
+# (missing lens_event_version in Go struct; per-install rate limit
+# silently disabled) that 108 in-house Node tests missed because they
+# used an in-process mock backend. This workflow is the automated
+# equivalent.
+#
+# Runs:
+#   - On every push to main (catches Lens changes that break Platform)
+#   - On every push to Platform's main branch (catches Platform changes
+#     that break the Lens; wired via workflow_run below)
+#   - Weekly on Sunday at 02:00 UTC
+# =========================================================================
+
+name: Cross-Repo Platform Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 2 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  platform-tests:
+    name: Platform pkg/lensbackend tests against Lens wire shape
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout Lens repo
+        uses: actions/checkout@v6
+        with:
+          lfs: true
+
+      - name: Checkout Platform repo (sibling)
+        uses: actions/checkout@v6
+        with:
+          repository: aegisgatesecurity/aegisgate-platform
+          path: ../aegisgate-platform
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.26.4'
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+
+      - name: Run Platform pkg/lensbackend Go tests
+        working-directory: ../aegisgate-platform
+        run: go test -short ./pkg/lensbackend/...
+
+      - name: Run Lens wire-protocol test
+        # This test asserts the Lens emits the exact shape the
+        # Platform expects (URL paths, headers, body schema).
+        run: node test/wire-protocol.test.mjs
+
+      - name: Run Lens integration test (end-to-end with mock backend)
+        run: node test/integration.test.mjs

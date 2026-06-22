@@ -1,0 +1,51 @@
+# =========================================================================
+# AegisGate Lens - Dependabot Configuration
+# =========================================================================
+#
+# Mirrors the Platform repo's dependabot.yml. We watch:
+#   - GitHub Actions workflow versions (most common drift source).
+#   - Docker base images (none today; placeholder for future).
+#
+# The Lens extension itself has no npm/go dependencies in src/ (we
+# use Node built-ins only by design). The test runners also use
+# built-ins only. So we don't need a `package-ecosystem: npm` block.
+#
+# If/when we add npm dependencies (e.g., for a build tool), add a
+# block:
+#
+#   - package-ecosystem: "npm"
+#     directory: "/"
+#     schedule:
+#       interval: "weekly"
+#     open-pull-requests-limit: 5
+#     labels:
+#       - dependencies
+#       - npm
+#
+# =========================================================================
+
+version: 2
+updates:
+
+  # Keep GitHub Actions on current major versions to avoid
+  # deprecation warnings and security CVEs in older action versions.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/New_York"
+    open-pull-requests-limit: 3
+    labels:
+      - dependencies
+      - ci
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+    groups:
+      # Batch minor + patch updates into a single PR to reduce noise.
+      minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"

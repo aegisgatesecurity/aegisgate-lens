@@ -1,0 +1,43 @@
+# =========================================================================
+# AegisGate Lens - CODEOWNERS
+# =========================================================================
+#
+# GitHub uses this file to auto-assign reviewers and to enforce
+# branch-protection rules (Settings -> Branches -> Require review
+# from Code Owners).
+#
+# Pattern: path   @owner
+#
+# The lens repo uses a single-team model: the @aegisgatesecurity/lens-team
+# must approve every change to source, tests, and security plans. The
+# security-team is a separate owner for the threat-model + pen-test +
+# security-critical files (so a security review is required before
+# any of those can change).
+#
+# The Platform repo's CODEOWNERS is more complex (multiple teams); the
+# Lens is a single-team repo for now. Adjust as the team grows.
+#
+# Order matters: later rules override earlier ones. The fallback rule
+# at the bottom assigns the lens-team for everything not otherwise
+# listed.
+# =========================================================================
+
+# Default: every change requires review from the Lens maintainers.
+/               @aegisgatesecurity/lens-team
+
+# Security-critical files require explicit security-team approval.
+/plans/LENS-THREAT-MODEL.md        @aegisgatesecurity/security-team @aegisgatesecurity/lens-team
+/plans/LENS-PEN-TEST-REPORT.md     @aegisgatesecurity/security-team @aegisgatesecurity/lens-team
+/plans/LENS-F05-BACKEND-RATE-LIMIT.md @aegisgatesecurity/security-team @aegisgatesecurity/lens-team
+/src/privacy/schema.js             @aegisgatesecurity/security-team @aegisgatesecurity/lens-team
+/src/util/bundle-loader.js         @aegisgatesecurity/security-team @aegisgatesecurity/lens-team
+/src/service-worker.js             @aegisgatesecurity/security-team @aegisgatesecurity/lens-team
+/src/api/client.js                 @aegisgatesecurity/security-team @aegisgatesecurity/lens-team
+
+# Tests: explicit ownership so test changes have a clear reviewer.
+/test/                             @aegisgatesecurity/lens-team
+/pen-test/                         @aegisgatesecurity/security-team @aegisgatesecurity/lens-team
+
+# Build infrastructure: Platform team owns the build tool that
+# produces the Lens bundle.
+/keys/                             @aegisgatesecurity/security-team

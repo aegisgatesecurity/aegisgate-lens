@@ -1,0 +1,89 @@
+# =========================================================================
+# AegisGate Lens - Node Test Suite Workflow
+# =========================================================================
+#
+# Runs the 10 Lens Node test suites on every push and PR:
+#   - schema.test.mjs (25 assertions)
+#   - telemetry.smoke.mjs (13 assertions)
+#   - event-construction.test.mjs (8 assertions)
+#   - integration.test.mjs (7 assertions)
+#   - fp-opt-in.test.mjs (8 assertions)
+#   - security-sender-validation.test.mjs (9 assertions)
+#   - security-bundle-verification.test.mjs (9 assertions)
+#   - dismissals-pruning.test.mjs (8 assertions)
+#   - wire-protocol.test.mjs (10 assertions)
+#   - security-csp.test.mjs (11 assertions)
+#
+# Total: 108 assertions. All must pass.
+#
+# Runs in parallel on Node 20 LTS (matches what extension stores
+# target). The integration test and security-bundle-verification
+# tests need lens_ml_build/ fixtures; those are committed to the
+# repo (8.7 MB v0.1.1 + 80 MB v0.2.0 transformer).
+#
+# We avoid npm dependencies. Node built-ins only.
+# =========================================================================
+
+name: Lens Node Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  unit-tests:
+    name: Unit + Integration + Security Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          lfs: true
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+
+      - name: Run schema.test.mjs
+        run: node test/schema.test.mjs
+
+      - name: Run telemetry.smoke.mjs
+        run: node test/telemetry.smoke.mjs
+
+      - name: Run event-construction.test.mjs
+        run: node test/event-construction.test.mjs
+
+      - name: Run integration.test.mjs
+        run: node test/integration.test.mjs
+
+      - name: Run fp-opt-in.test.mjs
+        run: node test/fp-opt-in.test.mjs
+
+      - name: Run security-sender-validation.test.mjs
+        run: node test/security-sender-validation.test.mjs
+
+      - name: Run security-bundle-verification.test.mjs
+        run: node test/security-bundle-verification.test.mjs
+
+      - name: Run dismissals-pruning.test.mjs
+        run: node test/dismissals-pruning.test.mjs
+
+      - name: Run wire-protocol.test.mjs
+        run: node test/wire-protocol.test.mjs
+
+      - name: Run security-csp.test.mjs
+        run: node test/security-csp.test.mjs
+
+      - name: Summarize
+        if: always()
+        run: |
+          echo "## Lens Node Test Summary" >> $GITHUB_STEP_SUMMARY
+          echo "10 test suites run. See individual step results above." >> $GITHUB_STEP_SUMMARY
