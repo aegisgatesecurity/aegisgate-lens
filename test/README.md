@@ -35,6 +35,8 @@ test/
 ├── event-construction.test.mjs    <- content.js event sites produce v1 (Day 3)
 ├── integration.test.mjs           <- full chain: content.js -> SW -> APIClient
 │                                      -> JSONL (Day 4)
+├── fp-opt-in.test.mjs             <- in-banner "Help improve detection"
+│                                      opt-in prompt UI behavior (Day 5)
 ├── mock-backend.mjs               <- local HTTP server that captures telemetry
 ├── fixtures/
 │   └── valid-event.json           <- canonical LensEvent for tests
@@ -54,17 +56,19 @@ test/
 From the repo root (`lens-repo-bootstrap/`):
 
 ```bash
-# Run all Node tests (schema + smoke + event-construction + integration).
+# Run all Node tests (schema + smoke + event-construction + integration + fp-opt-in).
 node test/schema.test.mjs && \
 node test/telemetry.smoke.mjs && \
 node test/event-construction.test.mjs && \
-node test/integration.test.mjs
+node test/integration.test.mjs && \
+node test/fp-opt-in.test.mjs
 
 # Or run them individually:
 node test/schema.test.mjs
 node test/telemetry.smoke.mjs
 node test/event-construction.test.mjs
 node test/integration.test.mjs
+node test/fp-opt-in.test.mjs
 
 # Start the mock backend in one terminal and watch events in another.
 node test/mock-backend.mjs
@@ -123,6 +127,16 @@ Smoke tests live in `telemetry.smoke.mjs`. The smoke test boots its own mock bac
 - An opted-out user triggers zero backend traffic AND zero local audit entries.
 - Multiple detections from one user action produce multiple events.
 - A fresh detection chain produces a v1 event in the JSONL.
+
+**`fp-opt-in.test.mjs`** — 8 assertions on the in-banner "Help improve detection" opt-in prompt (Day 5):
+- The card appears on the first FP dismissal when neither flag is set.
+- The card body contains the privacy guarantee ("anonymous metadata", "no prompt text", "no URLs", "off by default").
+- Clicking "Allow" sets `fpTelemetryEnabled = true` AND `fpOptInPromptSeen = true`, and hides the banner.
+- Clicking "Not now" sets only `fpOptInPromptSeen = true`, and hides the banner.
+- A second FP dismissal after "Allow" does NOT show the card.
+- A second FP dismissal after "Not now" does NOT show the card.
+- A user with `fpTelemetryEnabled = true` (opted in via the popup) does NOT see the card.
+- `dismissAsFalsePositive` still emits the `dismiss_false_positive` telemetry event with `lens_event_version: 1` even when the card shows.
 
 ### `tools/lens-cli/telemetry-tail.mjs`
 

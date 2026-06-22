@@ -649,7 +649,180 @@
       const key = this.makeDismissKey(d);
       this.storeDismissal(key, reason);
     }
-    this.hideBanner();
+
+    // Day 5: surface the opt-in prompt for FP telemetry, but only if
+    // the user has not yet seen it AND has not already enabled it.
+    // The prompt is keyed on chrome.storage.local; both flags persist
+    // across sessions so the user is asked at most once.
+    //
+    // The banner stays visible while we read the flags asynchronously;
+    // if the user has not yet decided, we render the opt-in card and
+    // let its own buttons handle hiding the banner. Otherwise we hide
+    // the banner immediately (pre-Day-5 behavior).
+    this.maybeShowFPOptInCard(function (showCard) {
+      if (!showCard) {
+        this.hideBanner();
+      }
+    }.bind(this));
+  };
+
+  /**
+   * Show the opt-in prompt for false-positive telemetry, unless the
+   * user has already enabled FP telemetry OR has already seen and
+   * dismissed the prompt.
+   *
+   * Day 5: this is the only call site. The card appears once per
+   * installation, on the first false-positive dismiss. The privacy
+   * guarantee is explicit: anonymous metadata, never prompt content,
+   * no URLs, no per-user identifiers. See
+   * plans/AEGISGATE-LENS-DAY-2-SCHEMA-V1.md for the wire format.
+   *
+   * Reads two flags from chrome.storage.local:
+   *   - fpTelemetryEnabled (boolean): set when the user clicks
+   *     "Help improve detection". When true, sendFPTelemetry will
+   *     actually send events.
+   *   - fpOptInPromptSeen (boolean): set when the user clicks EITHER
+   *     button. Prevents the card from reappearing on every FP
+   *     dismiss.
+   */
+  /**
+   * @param {function(boolean):void} cb Callback invoked with true if
+   *   the opt-in card was rendered (caller should NOT hide the banner
+   *   in that case — the card's own buttons will hide it). Invoked
+   *   with false if the user has already enabled or already seen the
+   *   prompt (caller should proceed with normal hideBanner).
+   */
+  ContentScript.prototype.maybeShowFPOptInCard = function (cb) {
+    const self = this;
+    if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) {
+      if (cb) cb(false);
+      return;
+    }
+    try {
+      chrome.storage.local.get(
+        ['fpTelemetryEnabled', 'fpOptInPromptSeen'],
+        function (result) {
+          if (result.fpTelemetryEnabled) {
+            if (cb) cb(false);
+            return; // already opted in
+          }
+          if (result.fpOptInPromptSeen) {
+            if (cb) cb(false);
+            return; // already decided (Allow or Not now, previously)
+          }
+          self.showFPOptInCard();
+          if (cb) cb(true);
+        },
+      );
+    } catch (err) {
+      log.warn('[AegisGate Lens] could not read FP opt-in flags:', err);
+      if (cb) cb(false);
+    }
+  };
+
+  /**
+   * Render the opt-in card inside the banner. The card is styled in
+   * the AegisGate brand palette (dark glass, cyan accent) and contains:
+   *   - Title: "Help improve detection"
+   *   - Privacy guarantee: short, plain-language statement
+   *   - Two actions: "Help improve detection" (enable) and
+   *     "Not now" (dismiss for this installation).
+   *
+   * Both actions set fpOptInPromptSeen = true so the card does not
+   * reappear. Only the "Help improve detection" action also sets
+   * fpTelemetryEnabled = true.
+   */
+  ContentScript.prototype.showFPOptInCard = function () {
+    if (!this.banner) return;
+    if (typeof document === 'undefined' || !document.createElement) return;
+
+    // Day 5: capture this so the card's button click handlers (which
+    // are regular functions, not arrow functions, so 'this' would be
+    // the button) can call back into the content script.
+    const self = this;
+
+    const card = document.createElement('div');
+    Object.assign(card.style, {
+      background: 'rgba(10, 12, 16, 0.92)',
+      border: '1px solid rgba(56, 189, 248, 0.35)',
+      borderLeft: '3px solid #38bdf8',
+      borderRadius: '4px',
+      padding: '12px 14px',
+      marginTop: '10px',
+      marginBottom: '4px',
+      fontFamily: 'Inter, system-ui, sans-serif',
+      fontSize: '13px',
+      color: '#f8fafc',
+      lineHeight: '1.45',
+    });
+    card.setAttribute('data-aegis-fp-opt-in', '1');
+
+    // Title.
+    const title = document.createElement('div');
+    Object.assign(title.style, {
+      fontWeight: '600',
+      marginBottom: '6px',
+      color: '#f8fafc',
+      fontSize: '14px',
+    });
+    title.textContent = 'Help improve detection';
+    card.appendChild(title);
+
+    // Privacy guarantee.
+    const body = document.createElement('div');
+    Object.assign(body.style, { marginBottom: '10px', color: '#cbd5e1' });
+    body.textContent =
+      'AegisGate Lens uses your dismissals to tune future detections. ' +
+      'We send anonymous metadata only (no prompt text, no URLs, no page content, ' +
+      'no personal identifiers). Off by default. You can change this any time ' +
+      'in the extension popup.';
+    card.appendChild(body);
+
+    // Actions row.
+    const actions = document.createElement('div');
+    Object.assign(actions.style, { display: 'flex', gap: '8px', flexWrap: 'wrap' });
+
+    const allowBtn = document.createElement('button');
+    allowBtn.textContent = 'Allow';
+    Object.assign(allowBtn.style, buttonStyle('#38bdf8'));
+    allowBtn.addEventListener('click', function () {
+      try {
+        chrome.storage.local.set({
+          fpTelemetryEnabled: true,
+          fpOptInPromptSeen: true,
+        });
+      } catch (err) {
+        log.warn('[AegisGate Lens] could not save fpTelemetryEnabled:', err);
+      }
+      // Day 5: the card's actions own the banner lifecycle. dismissAsFalsePositive
+      // deferred hideBanner() so the user can read the privacy guarantee; we
+      // hide now that they've decided.
+      if (self.hideBanner) self.hideBanner();
+    });
+    actions.appendChild(allowBtn);
+
+    const dismissBtn = document.createElement('button');
+    dismissBtn.textContent = 'Not now';
+    Object.assign(dismissBtn.style, buttonStyle('#94a3b8'));
+    dismissBtn.addEventListener('click', function () {
+      try {
+        chrome.storage.local.set({ fpOptInPromptSeen: true });
+      } catch (err) {
+        log.warn('[AegisGate Lens] could not save fpOptInPromptSeen:', err);
+      }
+      if (self.hideBanner) self.hideBanner();
+    });
+    actions.appendChild(dismissBtn);
+
+    card.appendChild(actions);
+
+    // Insert at the END of the banner so it appears below the FP form
+    // and the main action buttons (Cancel / Edit / Send anyway). The
+    // banner will be hidden by hideBanner() right after this method
+    // returns, so the card is only visible if the user re-opens the
+    // banner via the detection list, OR if the content script is
+    // re-displayed on a new detection with stale state.
+    this.banner.appendChild(card);
   };
 
   /**

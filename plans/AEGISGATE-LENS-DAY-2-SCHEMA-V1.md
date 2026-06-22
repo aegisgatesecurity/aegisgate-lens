@@ -30,6 +30,29 @@ All four must land in the same commit. The CI gate (not yet built) will assert t
 > hardcoded, so a future version bump changes one constant in one
 > place. See `test/event-construction.test.mjs` for the executable
 > verification.
+>
+> **Day 4 update**: `LENS_VERSION` in `src/content.js` is no longer
+> hardcoded to `'0.1.0'`. Both `src/content.js` and `src/service-worker.js`
+> now read `chrome.runtime.getManifest().version` at IIFE time, so the
+> reported `lens_version` field reflects the actual extension version.
+> The integration test (`test/integration.test.mjs`) verifies the value
+> is `'0.2.2-test'` end-to-end.
+>
+> **Day 5 update**: the false-positive opt-in flow uses two flags in
+> `chrome.storage.local` to gate when the in-banner prompt appears:
+>
+> - `fpTelemetryEnabled` (boolean) — when true, `sendFPTelemetry`
+>   actually sends events. Set by the popup's opt-in toggle OR by
+>   the in-banner "Allow" button.
+> - `fpOptInPromptSeen` (boolean) — set when the user clicks EITHER
+>   "Allow" or "Not now". Prevents the prompt from reappearing on
+>   every FP dismissal.
+>
+> The prompt body text contains an explicit privacy guarantee:
+> "anonymous metadata only (no prompt text, no URLs, no page content,
+> no personal identifiers)". The contract test is
+> `test/fp-opt-in.test.mjs` "opt-in card contains the privacy
+> guarantee text".
 
 | Field | Type | Constraint | Notes |
 |---|---|---|---|
