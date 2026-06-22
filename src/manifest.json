@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "AegisGate Lens",
-  "version": "0.1.0",
-  "description": "Privacy-first sensitive-data detection for AI prompts. No prompt content ever leaves your browser. Apache 2.0. https://aegisgatesecurity.io/lens",
+  "version": "0.2.2",
+  "description": "Real-time prompt injection detection for AI chat platforms. 3-tier on-device cascade. No prompt content ever leaves your browser. Apache 2.0. https://aegisgatesecurity.io/lens",
   "author": "AegisGate Security, LLC",
   "homepage_url": "https://aegisgatesecurity.io/lens",
   "icons": {
@@ -60,7 +60,17 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["aegisgate-lens-v0.1.0.bundle", "aegisgate-lens-transformer-v0.2.0.bundle", "ml_model/*.json"],
+      "resources": [
+        "aegisgate-lens-v0.1.0.bundle",
+        "aegisgate-lens-transformer-v0.2.0.bundle",
+        "ml_model/*.json",
+        "icons/icon-16.png",
+        "icons/icon-32.png",
+        "icons/icon-48.png",
+        "icons/icon-128.png",
+        "logo.png",
+        "welcome.html"
+      ],
       "matches": [
         "https://chat.openai.com/*",
         "https://chatgpt.com/*",

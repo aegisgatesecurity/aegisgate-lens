@@ -118,16 +118,36 @@
    * @param {string} s
    * @returns {{bg: string, fg: string}}
    */
+  /**
+   * AegisGate brand palette (matches https://aegisgatesecurity.io):
+   *   critical: #f43f5e (rose)
+   *   high:     #f59e0b (amber)
+   *   medium:   #38bdf8 (sophisticated cyan)
+   *   low:      #10b981 (emerald)
+   *   safe:     #94a3b8 (slate)
+   *
+   * Returns the accent color + a readable foreground for that accent
+   * on a dark glass background.
+   */
   function severityTint(s) {
     switch (s) {
-      case 'critical': return { bg: '#dc2626', fg: '#ffffff' };
-      case 'high':     return { bg: '#f59e0b', fg: '#1f2937' };
-      case 'medium':   return { bg: '#fbbf24', fg: '#1f2937' };
-      case 'low':      return { bg: '#e5e7eb', fg: '#1f2937' };
-      case 'info':     return { bg: '#e5e7eb', fg: '#1f2937' };
-      default:         return { bg: '#e5e7eb', fg: '#1f2937' };
+      case 'critical': return { accent: '#f43f5e', fg: '#ffffff', label: 'CRITICAL' };
+      case 'high':     return { accent: '#f59e0b', fg: '#0a0c10', label: 'HIGH' };
+      case 'medium':   return { accent: '#38bdf8', fg: '#0a0c10', label: 'MEDIUM' };
+      case 'low':      return { accent: '#10b981', fg: '#0a0c10', label: 'LOW' };
+      case 'info':     return { accent: '#94a3b8', fg: '#0a0c10', label: 'INFO' };
+      default:         return { accent: '#94a3b8', fg: '#0a0c10', label: 'INFO' };
     }
   }
+
+  /**
+   * Banner background - shared glass panel in deep midnight.
+   * Severity color is applied as a left accent border + a thin
+   * top hairline, not a full-color fill (better readability on
+   * dark themes, less page takeover).
+   */
+  const BANNER_BG = 'rgba(10, 12, 16, 0.92)';
+  const BANNER_FONT_FAMILY = 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
 
   /** Sleep helper. */
   function sleep(ms) {
@@ -319,14 +339,18 @@
       position: 'fixed',
       top: '0', left: '0', right: '0',
       zIndex: '2147483647',
-      background: '#fef3c7',
-      borderBottom: '2px solid #f59e0b',
-      padding: '12px 16px',
-      paddingRight: '40px',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      background: BANNER_BG,
+      // Severity accent border applied in updateBannerContent.
+      borderBottom: '1px solid rgba(56, 189, 248, 0.18)',
+      borderLeft: '3px solid #38bdf8', // default; overwritten by severity
+      padding: '14px 44px 14px 18px',
+      fontFamily: BANNER_FONT_FAMILY,
       fontSize: '14px',
-      color: '#1f2937',
-      boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+      lineHeight: '1.5',
+      color: '#f8fafc',
+      backdropFilter: 'blur(12px)',
+      WebkitBackdropFilter: 'blur(12px)',
+      boxShadow: '0 4px 24px rgba(0, 0, 0, 0.45)',
     });
     document.body.appendChild(banner);
     this.banner = banner;
@@ -342,16 +366,83 @@
     while (this.banner.firstChild) {
       this.banner.removeChild(this.banner.firstChild);
     }
+    // Header: AegisGate icon + title + severity badge.
     const header = document.createElement('div');
-    Object.assign(header.style, { fontWeight: '600', marginBottom: '6px' });
+    Object.assign(header.style, {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '10px',
+      marginBottom: '8px',
+      flexWrap: 'wrap',
+    });
+
+    // Resolve a representative severity from the detection set
+    // (critical > high > medium > low > info).
+    const sevRank = { critical: 5, high: 4, medium: 3, low: 2, info: 1 };
+    let topSev = detections[0] && detections[0].severity || 'info';
+    for (let i = 1; i < detections.length; i++) {
+      const s = detections[i].severity || 'info';
+      if ((sevRank[s] || 0) > (sevRank[topSev] || 0)) topSev = s;
+    }
+    const tint = severityTint(topSev);
+
+    // Apply severity accent to the banner's left border + bottom hairline.
+    this.banner.style.borderLeft = '3px solid ' + tint.accent;
+    this.banner.style.borderBottom = '1px solid ' + tint.accent;
+
+    // Small AegisGate shield icon (chrome-extension:// icon URL).
+    const icon = document.createElement('img');
+    icon.src = (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL)
+      ? chrome.runtime.getURL('icons/icon-32.png')
+      : 'icons/icon-32.png';
+    icon.alt = '';
+    icon.width = 20;
+    icon.height = 20;
+    Object.assign(icon.style, {
+      width: '20px',
+      height: '20px',
+      flexShrink: '0',
+      display: 'block',
+    });
+    header.appendChild(icon);
+
+    // Title text
+    const title = document.createElement('span');
+    Object.assign(title.style, {
+      fontWeight: '600',
+      color: '#f8fafc',
+      letterSpacing: '-0.01em',
+    });
     const count = detections.length;
-    header.textContent =
-      '\uD83D\uDEE1\uFE0F AegisGate Lens: ' + count + ' sensitive item' +
+    title.textContent =
+      'AegisGate Lens: ' + count + ' sensitive item' +
       (count === 1 ? '' : 's') + ' detected in your prompt.';
+    header.appendChild(title);
+
+    // Severity badge - terminal-style code, not a colored pill.
+    const badge = document.createElement('span');
+    Object.assign(badge.style, {
+      fontFamily: 'ui-monospace, "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace',
+      fontSize: '10px',
+      fontWeight: '500',
+      letterSpacing: '0.12em',
+      padding: '2px 6px',
+      border: '1px solid ' + tint.accent,
+      color: tint.accent,
+      background: 'transparent',
+      textTransform: 'uppercase',
+    });
+    badge.textContent = '[' + tint.label + ']';
+    header.appendChild(badge);
+
     this.banner.appendChild(header);
 
     const list = document.createElement('ul');
-    Object.assign(list.style, { margin: '0 0 8px 0', paddingLeft: '20px' });
+    Object.assign(list.style, {
+      margin: '0 0 10px 0',
+      paddingLeft: '20px',
+      color: '#94a3b8',
+    });
     for (let i = 0; i < detections.length; i++) {
       const d = detections[i];
       const li = document.createElement('li');
@@ -377,10 +468,12 @@
     Object.assign(fpLink.style, {
       background: 'transparent',
       border: 'none',
-      color: '#1d4ed8',
+      color: '#38bdf8',
       textDecoration: 'underline',
+      textUnderlineOffset: '2px',
       cursor: 'pointer',
       fontSize: '13px',
+      fontFamily: 'inherit',
       padding: '0',
     });
     fpLink.setAttribute('aria-expanded', 'false');
@@ -391,11 +484,10 @@
     const fpForm = document.createElement('div');
     Object.assign(fpForm.style, {
       display: 'none',
-      background: '#fffbeb',
-      border: '1px solid #fbbf24',
-      borderRadius: '4px',
-      padding: '8px 12px',
-      marginBottom: '8px',
+      background: 'rgba(17, 20, 29, 0.7)',
+      border: '1px solid rgba(56, 189, 248, 0.25)',
+      padding: '10px 12px',
+      marginBottom: '10px',
     });
     const fpLabel = document.createElement('div');
     Object.assign(fpLabel.style, { fontWeight: '500', marginBottom: '4px', fontSize: '13px' });
@@ -428,7 +520,7 @@
 
     const fpSubmitBtn = document.createElement('button');
     fpSubmitBtn.textContent = 'Submit & dismiss (24h)';
-    Object.assign(fpSubmitBtn.style, buttonStyle('#0891b2'));
+    Object.assign(fpSubmitBtn.style, buttonStyle('#38bdf8'));
     fpSubmitBtn.addEventListener('click', () => {
       // Collect selected reasons
       const selected = [];
@@ -441,7 +533,7 @@
 
     const fpJustDismissBtn = document.createElement('button');
     fpJustDismissBtn.textContent = 'Just dismiss (24h)';
-    Object.assign(fpJustDismissBtn.style, buttonStyle('#6b7280'));
+    Object.assign(fpJustDismissBtn.style, buttonStyle('#94a3b8'));
     fpJustDismissBtn.addEventListener('click', () => {
       this.dismissAsFalsePositive(null);
     });
@@ -464,7 +556,7 @@
 
     const cancelBtn = document.createElement('button');
     cancelBtn.textContent = 'Cancel';
-    Object.assign(cancelBtn.style, buttonStyle('#6b7280'));
+    Object.assign(cancelBtn.style, buttonStyle('#94a3b8'));
     cancelBtn.addEventListener('click', () => {
       this.recordAction('cancel');
       this.hideBanner();
@@ -473,7 +565,7 @@
 
     const editBtn = document.createElement('button');
     editBtn.textContent = 'Edit';
-    Object.assign(editBtn.style, buttonStyle('#3b82f6'));
+    Object.assign(editBtn.style, buttonStyle('#38bdf8'));
     editBtn.addEventListener('click', () => {
       this.recordAction('edit');
       this.hideBanner();
@@ -482,7 +574,7 @@
 
     const sendBtn = document.createElement('button');
     sendBtn.textContent = 'Send anyway';
-    Object.assign(sendBtn.style, buttonStyle('#dc2626'));
+    Object.assign(sendBtn.style, buttonStyle('#f43f5e'));
     sendBtn.addEventListener('click', () => {
       this.recordAction('send_anyway');
       this.hideBanner();
@@ -496,11 +588,15 @@
     dismissBtn.textContent = '\u00D7';
     dismissBtn.setAttribute('aria-label', 'Dismiss this warning');
     Object.assign(dismissBtn.style, {
-      position: 'absolute', top: '8px', right: '12px',
+      position: 'absolute', top: '10px', right: '14px',
       background: 'transparent', border: 'none',
-      fontSize: '20px', lineHeight: '1', cursor: 'pointer',
-      color: '#1f2937', padding: '0 4px',
+      fontSize: '22px', lineHeight: '1', cursor: 'pointer',
+      color: '#94a3b8', padding: '0 6px',
+      fontFamily: 'inherit',
+      transition: 'color 120ms ease',
     });
+    dismissBtn.addEventListener('mouseenter', () => { dismissBtn.style.color = '#f8fafc'; });
+    dismissBtn.addEventListener('mouseleave', () => { dismissBtn.style.color = '#94a3b8'; });
     dismissBtn.addEventListener('click', () => {
       this.recordAction('dismiss');
       this.hideBanner();
@@ -677,16 +773,26 @@
    * @param {string} bg
    * @returns {Object}
    */
-  function buttonStyle(bg) {
+  /**
+   * Dark-theme button style. Renders as an outlined button on
+   * the banner's glass background, with the given accent color.
+   *
+   * @param {string} accent Border + text color.
+   * @returns {Object} Style object suitable for Object.assign.
+   */
+  function buttonStyle(accent) {
     return {
-      background: bg,
-      color: '#ffffff',
-      border: 'none',
-      padding: '6px 12px',
-      borderRadius: '4px',
+      background: 'transparent',
+      color: accent,
+      border: '1px solid ' + accent,
+      padding: '5px 12px',
+      borderRadius: '0',
       cursor: 'pointer',
-      fontSize: '14px',
+      fontSize: '13px',
       fontWeight: '500',
+      fontFamily: 'inherit',
+      letterSpacing: '0.01em',
+      transition: 'background 120ms ease, color 120ms ease',
     };
   }
 
