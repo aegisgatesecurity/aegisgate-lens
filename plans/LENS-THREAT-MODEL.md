@@ -226,43 +226,88 @@ attacker-controlled input — that's the threat model of the user.
 
 **Severity**: N/A (intended).
 
-### F-04: `chrome.storage.local` is unbounded for some keys
+### F-04: `chrome.storage.local` is unbounded for `dismissals`
 
 **STRIDE category**: D (Denial of Service).
 
+**Status (Day 9)**: RESOLVED — pruning + cap added and tested.
+
 **Attack vector**: The `dismissals` key in `chrome.storage.local`
-stores one entry per dismissed detection, with 24h expiry. The
-`lens.local_audit` key is capped at 1000 entries (`storage.js`). But
-`dismissals` is not capped.
+stores one entry per dismissed detection, with 24h expiry. A page
+that triggers many distinct detections (e.g., pasting the entire
+English dictionary into the prompt field) could fill
+`chrome.storage.local` to the 10MB quota.
 
-A page that triggers many distinct detections (e.g., pasting the
-entire English dictionary into the prompt field) could fill
-`chrome.storage.local` to the 10MB quota. When the quota is full,
-`chrome.storage.local.set` rejects and dismissal tracking silently
-fails.
+**Fix (Day 9)**: In `src/content.js`, `ContentScript.prototype.storeDismissal`
+now performs two-step pruning before writing:
 
-**Reproduction**:
+1. **Prune expired entries**: any entry with `expires_at < now` is
+   removed (they'd just be dead weight — `isDismissed` already
+   filters them on read, but they'd still consume quota).
+2. **Cap enforcement**: if the count is still >=
+   `ContentScript.DISMISSAL_MAX_ENTRIES` (1000), drop the oldest
+   entries (by `dismissed_at`) until we're at `MAX - 1`, leaving
+   room for the new entry.
 
-1. Visit an AI provider page.
-2. Paste a large body of text containing many distinct "detection-shaped"
-   strings.
-3. Dismiss each as false positive.
-4. Observe `chrome.storage.local.getBytesInUse('dismissals')` grow.
+The 1000-entry cap corresponds to ~120 KB at ~120 bytes per entry,
+well under the 10 MB `chrome.storage.local` quota. This caps the
+worst-case storage growth at 0.012 MB per 1000 dismissals.
 
-**Current mitigation**: `dismissals` have 24h expiry, but expired
-entries are NOT pruned. The quota eventually fills.
+**Verification**: `test/dismissals-pruning.test.mjs` runs 8 assertions:
 
-**Residual risk**: Low. The quota is 10MB per extension, and the
-Lens's storage is otherwise minimal.
+1. `DISMISSAL_MAX_ENTRIES === 1000` (sanity).
+2. 100 expired + 1 new → only 1 entry remains.
+3. 50 expired + 50 live + 1 new → 51 entries (pruned correctly).
+4. 1000 (MAX) valid + 1 new → exactly 1000 entries (oldest dropped).
+5. 500 expired + 500 live + 1 new → 501 entries (pruning keeps live
+   entries even when input was at cap).
+6. New entry has correct shape (`dismissed_at`, `expires_at`,
+   `reason`).
+7. Domain hash prefix preserved in key (regression).
+8. 100000 pre-existing entries bounded to ≤1000 after a single
+   `storeDismissal` call (worst-case scenario from F-04 attack
+   vector).
 
-**Recommended action (Day 8-10)**:
+**Residual risk**: Very low. The cap is a hard ceiling regardless
+of input.
 
-In `src/storage.js`, on every `appendLocalAudit` call, prune
-expired dismissals from the same `dismissals` object. Add a unit
-test that fills the dismissals key with 10000 expired entries and
-asserts the next write prunes them.
+**Severity**: Originally CVSS 3.5 (Low). Reclassified to
+**RESOLVED** with evidence.
 
-**Severity**: CVSS 3.5 (Low).
+---
+
+### F-05: Backend has no IP-based rate limit; only client-side
+
+**STRIDE category**: D (Denial of Service), T (Tampering).
+
+**Status (Day 9)**: HANDED OFF to Platform monorepo.
+
+**Out of scope for this repo**: The Lens extension cannot fix the
+backend. The fix must land in `pkg/lensbackend/` in the Platform
+monorepo (Go code).
+
+**Attack vector**: A botnet that obtains valid bearer tokens (by
+installing the extension or via XSS in any page the victim visits)
+can send unlimited telemetry events. Client-side rate limit is
+100/min per installation; with 10,000 IPs and 10,000 tokens, the
+botnet can send ~100,000,000 events/hour.
+
+**Hand-off document**: `plans/LENS-BACKEND-RATE-LIMIT-ISSUE.md`
+contains the full issue body ready to be filed in the Platform
+monorepo. It includes:
+
+- Threat context (link to F-05 in this threat model).
+- Proposed three-layer rate limit (IP, token+IP, anomaly detection).
+- Reference Go code for `pkg/lensbackend/telemetry.go`.
+- Acceptance criteria.
+- Out-of-scope notes.
+
+**Recommended action**: File the issue in the Platform monorepo.
+The fix is independent of any Lens extension release; it can ship
+whenever the backend team has bandwidth.
+
+**Severity**: Originally CVSS 5.5 (Medium). Reclassified to
+**HANDED OFF** — implementation pending in Platform monorepo.
 
 ### F-05: Backend has no IP-based rate limit; only client-side
 
@@ -419,13 +464,13 @@ including the version and timestamp.
 
 ## Summary table
 
-| ID | Category | Original severity | Status (Day 8) | Action target |
+| ID | Category | Original severity | Status (Day 9) | Action target |
 |---|---|---|---|---|
 | F-01 | S, I, D, E | Medium (6.5) | **RESOLVED** | Done (Day 8) |
 | F-02 | T | Medium-High (5.0-7.5) | **RESOLVED** | Done (Day 8) |
 | F-03 | T, E | N/A (intended) | — | — |
-| F-04 | D | Low (3.5) | OPEN | Day 9 |
-| F-05 | D, T | Medium (5.5) | OPEN | Day 9 (backend owner) |
+| F-04 | D | Low (3.5) | **RESOLVED** | Done (Day 9) |
+| F-05 | D, T | Medium (5.5) | **HANDED OFF** | Platform monorepo (Day 9 handoff) |
 | F-06 | T, E | Low (2.0) | OPEN | Day 10 |
 | F-07 | I | N/A (accepted) | — | — |
 | F-08 | S | Same as F-01 | **RESOLVED** (via F-01) | Done (Day 8) |
@@ -440,12 +485,12 @@ including the version and timestamp.
   Test: `test/security-bundle-verification.test.mjs` (9 assertions
   on the real 8.7MB `lens_ml_build/aegisgate-lens-v0.1.1.bundle`).
 
-**Day 9 (planned)**:
-- F-04: Add `dismissals` pruning to `storage.js` so the
-  `chrome.storage.local` quota doesn't fill with expired entries.
-- F-05: File the backend IP rate-limit issue in the Platform
-  monorepo. The Lens itself can't fix this; it must land in the
-  backend.
+**Day 9 (DONE)**:
+- ✅ F-04: Pruning + 1000-entry cap added to
+  `ContentScript.prototype.storeDismissal`. Test:
+  `test/dismissals-pruning.test.mjs` (8 assertions).
+- ✅ F-05: Handed off to Platform monorepo. Full issue body in
+  `plans/LENS-BACKEND-RATE-LIMIT-ISSUE.md` ready to file.
 
 **Day 10 (planned)**:
 - F-06: Add `test/security-csp.test.mjs` that asserts no

@@ -41,6 +41,8 @@ test/
 │                                          (Day 8 / F-01)
 ├── security-bundle-verification.test.mjs <- Ed25519 bundle signature check
 │                                          (Day 8 / F-02)
+├── dismissals-pruning.test.mjs        <- chrome.storage.local dismissals cap
+│                                          + expiry pruning (Day 9 / F-04)
 ├── mock-backend.mjs                   <- local HTTP server that captures telemetry
 ├── fixtures/
 │   └── valid-event.json               <- canonical LensEvent for tests
@@ -60,14 +62,15 @@ test/
 From the repo root (`lens-repo-bootstrap/`):
 
 ```bash
-# Run all Node tests (8 suites).
+# Run all Node tests (9 suites).
 node test/schema.test.mjs && \
 node test/telemetry.smoke.mjs && \
 node test/event-construction.test.mjs && \
 node test/integration.test.mjs && \
 node test/fp-opt-in.test.mjs && \
 node test/security-sender-validation.test.mjs && \
-node test/security-bundle-verification.test.mjs
+node test/security-bundle-verification.test.mjs && \
+node test/dismissals-pruning.test.mjs
 
 # Or run them individually:
 node test/schema.test.mjs
@@ -77,6 +80,7 @@ node test/integration.test.mjs
 node test/fp-opt-in.test.mjs
 node test/security-sender-validation.test.mjs
 node test/security-bundle-verification.test.mjs
+node test/dismissals-pruning.test.mjs
 
 # Start the mock backend in one terminal and watch events in another.
 node test/mock-backend.mjs
@@ -169,6 +173,16 @@ Smoke tests live in `telemetry.smoke.mjs`. The smoke test boots its own mock bac
 - `reconstructModels` produces a usable model list.
 
 The fixture is the real `lens_ml_build/aegisgate-lens-v0.1.1.bundle` (8.7 MB, 41 model files). The verification IS wired — this test is the executable proof.
+
+**`dismissals-pruning.test.mjs`** — 8 assertions on the chrome.storage.local dismissals cap (Day 9 / F-04 fix):
+- `DISMISSAL_MAX_ENTRIES === 1000` (sanity).
+- 100 expired entries + 1 new → only 1 entry remains.
+- 50 expired + 50 live + 1 new → 51 entries (pruned correctly).
+- 1000 (cap) valid + 1 new → exactly 1000 entries (oldest dropped).
+- 500 expired + 500 live + 1 new → 501 entries (pruning keeps live entries).
+- New entry has correct shape (`dismissed_at`, `expires_at`, `reason`).
+- Domain hash prefix preserved in the storage key (regression).
+- 100,000 pre-existing entries bounded to ≤1000 after a single `storeDismissal` call (worst-case F-04 attack).
 
 ### `tools/lens-cli/telemetry-tail.mjs`
 

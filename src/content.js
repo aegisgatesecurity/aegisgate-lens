@@ -835,13 +835,34 @@
   };
 
   /**
+   * Maximum number of dismissal entries to keep in chrome.storage.local.
+   * Caps the cost of an attacker who triggers many distinct detections
+   * (e.g. pastes a large corpus into the prompt). See plans/LENS-THREAT-MODEL.md
+   * finding F-04 (CVSS 3.5 Low). 1000 entries at ~120 bytes each is
+   * ~120 KB, well under the 10 MB chrome.storage.local quota.
+   */
+  ContentScript.DISMISSAL_MAX_ENTRIES = 1000;
+
+  /**
    * Store a dismissal in chrome.storage.local with 24h expiration.
+   *
+   * Day 9 / F-04: this method now prunes the dismissals object before
+   * writing:
+   *   1. Entries with expires_at < now are removed (they'd just be
+   *      dead weight).
+   *   2. If the total count still exceeds DISMISSAL_MAX_ENTRIES,
+   *      the oldest entries (by dismissed_at) are pruned first.
+   *
+   * This keeps chrome.storage.local bounded so a page that triggers
+   * many distinct detections cannot fill the 10 MB quota and silently
+   * break dismissal tracking.
    */
   ContentScript.prototype.storeDismissal = function (key, reason) {
     if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) {
       log.warn('[AegisGate Lens] chrome.storage.local unavailable');
       return;
     }
+    const self = this;
     const now = Math.floor(Date.now() / 1000);
     const expires = now + 24 * 60 * 60;  // 24 hours
     const dismissKey = this.domainHash + '::' + key;
@@ -852,9 +873,32 @@
     };
     try {
       chrome.storage.local.get('dismissals', function (result) {
-        const dismissals = result.dismissals || {};
+        const dismissals = Object.assign({}, result.dismissals || {});
+        // 1. Prune expired entries.
+        for (const k of Object.keys(dismissals)) {
+          if (dismissals[k].expires_at < now) {
+            delete dismissals[k];
+          }
+        }
+        // 2. If over the cap, drop the oldest entries (by dismissed_at)
+        //    until we are at cap - 1, leaving room for the new entry.
+        const keys = Object.keys(dismissals);
+        if (keys.length >= ContentScript.DISMISSAL_MAX_ENTRIES) {
+          keys.sort(function (a, b) {
+            return dismissals[a].dismissed_at - dismissals[b].dismissed_at;
+          });
+          const dropCount = keys.length - (ContentScript.DISMISSAL_MAX_ENTRIES - 1);
+          for (let i = 0; i < dropCount; i++) {
+            delete dismissals[keys[i]];
+          }
+        }
+        // 3. Insert the new entry.
         dismissals[dismissKey] = entry;
-        chrome.storage.local.set({ dismissals: dismissals });
+        try {
+          chrome.storage.local.set({ dismissals: dismissals });
+        } catch (err) {
+          log.warn('[AegisGate Lens] dismissals.set failed (quota?):', err);
+        }
       });
     } catch (err) {
       log.warn('[AegisGate Lens] storage failed:', err);
