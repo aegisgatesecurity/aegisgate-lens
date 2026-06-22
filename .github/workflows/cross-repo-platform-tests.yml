@@ -46,11 +46,15 @@ jobs:
         with:
           lfs: true
 
-      - name: Checkout Platform repo (sibling)
+      - name: Checkout Platform repo (subdirectory, for cross-repo test)
         uses: actions/checkout@v6
         with:
           repository: aegisgatesecurity/aegisgate-platform
-          path: ../aegisgate-platform
+          # IMPORTANT: must be a subdir of $GITHUB_WORKSPACE (the Lens
+          # checkout). GitHub Actions requires the path to be INSIDE
+          # the workspace; ../aegisgate-platform is outside it and
+          # fails with "Repository path is not under <lens workspace>".
+          path: aegisgate-platform
 
       - name: Setup Go
         uses: actions/setup-go@v6
@@ -63,7 +67,7 @@ jobs:
           node-version: '20'
 
       - name: Run Platform pkg/lensbackend Go tests
-        working-directory: ../aegisgate-platform
+        working-directory: aegisgate-platform
         run: go test -short ./pkg/lensbackend/...
 
       - name: Run Lens wire-protocol test

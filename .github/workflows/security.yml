@@ -86,7 +86,7 @@ jobs:
           lfs: true
 
       - name: Run Trivy filesystem scan
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.28.0
         with:
           scan-type: fs
           scan-ref: .
@@ -122,6 +122,11 @@ jobs:
         uses: github/codeql-action/init@v3
         with:
           languages: javascript
+          # legacy-ts/ contains TypeScript source from a previous
+          # experiment; CodeQL (configured for JavaScript) flags syntax
+          # errors. Excluded via paths-ignore in codeql-config.yml at
+          # the repo root.
+          config-file: ./codeql-config.yml
 
       - name: Perform CodeQL analysis
         uses: github/codeql-action/analyze@v3

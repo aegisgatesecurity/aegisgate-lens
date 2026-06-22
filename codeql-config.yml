@@ -1,0 +1,24 @@
+# CodeQL configuration for the AegisGate Lens repo.
+#
+# Excludes:
+#   - legacy-ts/  : TypeScript files from a previous experiment that
+#                    CodeQL (configured for JavaScript) flags as syntax
+#                    errors. Either migrate to plain JS or delete.
+#   - ml-artifacts/ : Training data and model weights (binary files).
+#                    CodeQL doesn't analyze these productively.
+#   - lens_ml_build/ : Pre-built signed bundles (binary).
+#   - harness/    : Python harness + cascade test artifacts.
+#   - docs/       : Generated documentation.
+#
+# Reference: https://docs.github.com/en/code-security/code-scanning/automatically-scanning-your-code-for-vulnerabilities-and-errors/customizing-code-scanning#changing-the-files-that-are-scanned
+
+paths-ignore:
+  - legacy-ts/**
+  - ml-artifacts/**
+  - lens_ml_build/**
+  - harness/**
+  - docs/**
+  - pen-test/evidence/**
+  - '**/*.bundle'
+  - '**/*.safetensors'
+  - '**/coverage/**'

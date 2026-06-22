@@ -45,6 +45,11 @@ TODO-local.md
 src/ml_model/
 lens_ml_build/
 
+# Allow the v0.1.1 bundle as a CI test fixture (used by security-bundle-verification.test.mjs).
+# This bundle is the signed v0.1.1 release artifact. The test verifies Ed25519
+# signature + SHA-256 chain. The 8.4 MB size is acceptable for a signed-release fixture.
+!lens_ml_build/aegisgate-lens-v0.1.1.bundle
+
 # Local testing servers and outputs
 /tmp/lens_*
 ml-artifacts/models/minilm_l12_tier3/model.safetensors
