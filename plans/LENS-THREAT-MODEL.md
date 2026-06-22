@@ -280,34 +280,69 @@ of input.
 
 **STRIDE category**: D (Denial of Service), T (Tampering).
 
-**Status (Day 9)**: HANDED OFF to Platform monorepo.
+**Status (Day 10)**: RESOLVED in Platform monorepo with cross-repo
+verification.
 
-**Out of scope for this repo**: The Lens extension cannot fix the
-backend. The fix must land in `pkg/lensbackend/` in the Platform
-monorepo (Go code).
+**Originally filed as**: "Backend has no IP rate limit; client-side
+only." On Day 10 inspection of the Platform repo
+(`/home/chaos/Desktop/AegisGate/consolidated/aegisgate-platform`), the
+implementation was found to already exist in
+`pkg/lensbackend/ratelimit.go`. The implementation is **stronger than
+the original handoff proposed** — instead of IP-based limiting (which
+would false-positive on NAT'd corporate networks), it uses per-installation
+limiting keyed by HMAC-SHA-256(domain_hash, server_secret).
 
-**Attack vector**: A botnet that obtains valid bearer tokens (by
-installing the extension or via XSS in any page the victim visits)
-can send unlimited telemetry events. Client-side rate limit is
-100/min per installation; with 10,000 IPs and 10,000 tokens, the
-botnet can send ~100,000,000 events/hour.
+**Implementation (Platform repo)**:
 
-**Hand-off document**: `plans/LENS-BACKEND-RATE-LIMIT-ISSUE.md`
-contains the full issue body ready to be filed in the Platform
-monorepo. It includes:
+- `pkg/lensbackend/ratelimit.go` (173 lines):
+  - `ClientRateLimitPerMin = 100` (matches client-side extension limit)
+  - `GlobalRateLimitPerMin = 10000` (configurable via
+    `LENS_RATE_LIMIT_PER_MIN` env var)
+  - `LensRateLimiter` struct wraps `upstream/aegisgate/pkg/resilience/ratelimit`
+    (the Platform's existing rate limiter, vendored in the monorepo)
+  - Per-installation key: `HMAC-SHA-256(domain_hash, server_hmac_key)`
+    so a malicious client cannot enumerate other installations' rate
+    buckets by guessing domain hashes.
+  - HTTP 429 + `Retry-After: 60` + JSON error body on rate-limit
+    failure.
 
-- Threat context (link to F-05 in this threat model).
-- Proposed three-layer rate limit (IP, token+IP, anomaly detection).
-- Reference Go code for `pkg/lensbackend/telemetry.go`.
-- Acceptance criteria.
-- Out-of-scope notes.
+- `pkg/lensbackend/server_test.go::TestRateLimiter`:
+  - Verifies exactly 100 events accepted from a single installation
+    in one minute.
+  - Verifies the 101st request is rejected.
+  - Verifies per-installation isolation: a second installation is
+    unaffected by the first's quota exhaustion.
 
-**Recommended action**: File the issue in the Platform monorepo.
-The fix is independent of any Lens extension release; it can ship
-whenever the backend team has bandwidth.
+**Cross-repo verification (Day 10)**:
+
+1. Ran `go test ./pkg/lensbackend/...` in Platform repo. All
+   tests pass (TestRateLimiter, TestHandlers_HandleTelemetry_*,
+   TestServer_NewServer_*, TestServerRequiresBearerToken, etc. —
+   30+ tests).
+
+2. Added `test/wire-protocol.test.mjs` in the Lens repo (10
+   assertions) that drives `src/api/client.js` against a captured
+   fetch and asserts the Lens's outgoing requests match the
+   Platform's expected wire protocol shape:
+
+   - `POST /api/v1/lens/telemetry` with `Authorization: Bearer <token>`
+     and `Content-Type: application/json` body.
+   - `GET /api/v1/lens/check?domain=<host>` with `Authorization: Bearer`.
+   - `GET /api/v1/lens/stats` with `Authorization: Bearer`.
+   - `GET /api/v1/lens/healthz` (no auth).
+   - 4xx errors surface as thrown `Error` with status code in the
+     message (matches Platform's `writeError`).
+   - Platform's `TestRateLimiter` invariant (100 accepted, 101st
+     dropped) is mirrored as a Lens-side rate-limit assertion.
+
+   This test catches future drift if the Platform changes its wire
+   protocol on either side.
+
+**Residual risk**: Very low. The rate limit is enforced server-side
+and verified by both sides.
 
 **Severity**: Originally CVSS 5.5 (Medium). Reclassified to
-**HANDED OFF** — implementation pending in Platform monorepo.
+**RESOLVED** with evidence.
 
 ### F-05: Backend has no IP-based rate limit; only client-side
 
@@ -350,6 +385,8 @@ In the Lens backend (Go, owned by Platform monorepo):
 
 **STRIDE category**: T (Tampering), E (Elevation of Privilege).
 
+**Status (Day 10)**: RESOLVED — automated CSP test added as CI gate.
+
 **Attack vector**: The `content_security_policy.extension_pages` in
 `manifest.json` is `script-src 'self'; object-src 'self'`. This applies
 to the extension popup, welcome page, and service worker. It does
@@ -358,26 +395,40 @@ NOT apply to content scripts.
 In MV3, content scripts cannot use `eval()` or `new Function()`
 regardless of CSP, because they run in an isolated world with
 `eval()` always disabled. Inline `<script>` tags injected via
-`document.createElement('script')` ARE blocked by default. But the
-content script CAN inject inline scripts into the page (where they
-run in the page's CSP context, not ours).
+`document.createElement('script')` ARE blocked by default.
 
-**Current mitigation**: No `eval()` or `new Function()` anywhere in
-`src/`. No `innerHTML` use anywhere. All DOM updates use
-`textContent` (verified by `grep -rn innerHTML src/` returning zero
-hits on Day 6).
+**Original Day 6 manual survey** found:
+- Zero `eval()` calls in `src/` (all grep hits were regex patterns
+  containing the word "eval", e.g. `(eval|exec|system|shell|popen)`).
+- Zero `new Function()` calls.
+- Zero `innerHTML` / `outerHTML` / `document.write` usage.
+- Zero `setTimeout('string', ...)` calls.
+- All DOM updates use `textContent` (XSS-safe).
 
-**Residual risk**: Low. The MV3 isolated world is the strongest
-mitigation.
+**CI gate (Day 10)**: `test/security-csp.test.mjs` runs 11
+assertions that codify the manual survey as an automated check:
 
-**Recommended action (Day 10)**:
+1. No `eval(` in `src/` (regex matches actual function-call syntax,
+   not string-literal occurrences).
+2. No `new Function(` in `src/`.
+3. No `Function('...')` (implicit eval) in `src/`.
+4. No `.innerHTML =` in `src/`.
+5. No `.outerHTML =` in `src/`.
+6. No `document.write(` in `src/`.
+7. No `setTimeout('...', ...)` in `src/`.
+8. No `setInterval('...', ...)` in `src/`.
+9. `manifest.json` CSP for `extension_pages` includes
+   `script-src 'self'` and excludes `'unsafe-eval'` /
+   `'unsafe-inline'`.
+10. `manifest.json` `host_permissions` is the canonical backend
+    (`https://lens.aegisgatesecurity.io/*`) or localhost only.
+11. `manifest.json` `permissions` is `storage` only (no broad
+    permissions like `tabs`, `activeTab`, `<all_urls>`).
 
-1. Verify the absence of `eval`, `new Function`, `innerHTML` in CI.
-2. Add a test (`test/security-csp.test.mjs`) that asserts no dynamic
-   code execution in `src/`.
-3. Document the CSP policy in `docs/CSP-POLICY.md`.
+**Residual risk**: Very low. The test catches regressions in CI.
 
-**Severity**: CVSS 2.0 (Low). Defense-in-depth.
+**Severity**: Originally CVSS 2.0 (Low). Reclassified to
+**RESOLVED** with evidence.
 
 ### F-07: `web_accessible_resources` exposes bundles to AI provider pages
 
@@ -464,37 +515,37 @@ including the version and timestamp.
 
 ## Summary table
 
-| ID | Category | Original severity | Status (Day 9) | Action target |
+| ID | Category | Original severity | Status (Day 10) | Action target |
 |---|---|---|---|---|
 | F-01 | S, I, D, E | Medium (6.5) | **RESOLVED** | Done (Day 8) |
 | F-02 | T | Medium-High (5.0-7.5) | **RESOLVED** | Done (Day 8) |
 | F-03 | T, E | N/A (intended) | — | — |
 | F-04 | D | Low (3.5) | **RESOLVED** | Done (Day 9) |
-| F-05 | D, T | Medium (5.5) | **HANDED OFF** | Platform monorepo (Day 9 handoff) |
-| F-06 | T, E | Low (2.0) | OPEN | Day 10 |
+| F-05 | D, T | Medium (5.5) | **RESOLVED** | Done (Day 10, cross-repo) |
+| F-06 | T, E | Low (2.0) | **RESOLVED** | Done (Day 10) |
 | F-07 | I | N/A (accepted) | — | — |
 | F-08 | S | Same as F-01 | **RESOLVED** (via F-01) | Done (Day 8) |
 | F-09 | R | Low (1.5) | — | — |
 
 ## Action plan (Day 8-10)
 
-**Day 8 (DONE)**:
-- ✅ F-01 / F-08: Add `sender.id` validation to the service worker.
-  Test: `test/security-sender-validation.test.mjs` (9 assertions).
-- ✅ F-02: Confirm and test Ed25519 bundle verification IS wired.
-  Test: `test/security-bundle-verification.test.mjs` (9 assertions
-  on the real 8.7MB `lens_ml_build/aegisgate-lens-v0.1.1.bundle`).
+**Week 1 / Security Foundation: COMPLETE.**
 
-**Day 9 (DONE)**:
-- ✅ F-04: Pruning + 1000-entry cap added to
-  `ContentScript.prototype.storeDismissal`. Test:
-  `test/dismissals-pruning.test.mjs` (8 assertions).
-- ✅ F-05: Handed off to Platform monorepo. Full issue body in
-  `plans/LENS-BACKEND-RATE-LIMIT-ISSUE.md` ready to file.
+All 9 threat-model findings triaged. 6 of 9 resolved with code +
+tests (F-01, F-02, F-04, F-05, F-06, F-08). 3 accepted as designed
+(F-03, F-07, F-09). Test coverage: 108 assertions across 10 test
+suites in `lens-repo-bootstrap`, plus 30+ Go tests in the Platform
+monorepo's `pkg/lensbackend/`.
 
-**Day 10 (planned)**:
-- F-06: Add `test/security-csp.test.mjs` that asserts no
-  `eval`/`new Function`/`innerHTML` in `src/`. CI gate.
+| Day | Deliverable | Status |
+|---|---|---|
+| 6-7 | Threat model (STRIDE) | ✅ Done |
+| 8 | F-01 sender-id validation + F-02 bundle verification | ✅ Done |
+| 9 | F-04 dismissals pruning + F-05 backend handoff | ✅ Done |
+| 10 | F-05 cross-repo verification + F-06 CSP test + wire-protocol shape test | ✅ Done |
+
+Day 11-12 (Week 2): Penetration testing — see
+`plans/LENS-PEN-TEST-REPORT.md` (to be authored).
 
 ## References
 

@@ -43,6 +43,10 @@ test/
 │                                          (Day 8 / F-02)
 ├── dismissals-pruning.test.mjs        <- chrome.storage.local dismissals cap
 │                                          + expiry pruning (Day 9 / F-04)
+├── wire-protocol.test.mjs             <- Lens -> Platform wire-protocol shape
+│                                          (Day 10 / F-05 cross-repo verification)
+├── security-csp.test.mjs              <- no eval/Function/innerHTML in src/
+│                                          + manifest CSP/permissions minimal (Day 10 / F-06)
 ├── mock-backend.mjs                   <- local HTTP server that captures telemetry
 ├── fixtures/
 │   └── valid-event.json               <- canonical LensEvent for tests
@@ -62,7 +66,7 @@ test/
 From the repo root (`lens-repo-bootstrap/`):
 
 ```bash
-# Run all Node tests (9 suites).
+# Run all Node tests (10 suites).
 node test/schema.test.mjs && \
 node test/telemetry.smoke.mjs && \
 node test/event-construction.test.mjs && \
@@ -70,7 +74,9 @@ node test/integration.test.mjs && \
 node test/fp-opt-in.test.mjs && \
 node test/security-sender-validation.test.mjs && \
 node test/security-bundle-verification.test.mjs && \
-node test/dismissals-pruning.test.mjs
+node test/dismissals-pruning.test.mjs && \
+node test/wire-protocol.test.mjs && \
+node test/security-csp.test.mjs
 
 # Or run them individually:
 node test/schema.test.mjs
@@ -81,6 +87,8 @@ node test/fp-opt-in.test.mjs
 node test/security-sender-validation.test.mjs
 node test/security-bundle-verification.test.mjs
 node test/dismissals-pruning.test.mjs
+node test/wire-protocol.test.mjs
+node test/security-csp.test.mjs
 
 # Start the mock backend in one terminal and watch events in another.
 node test/mock-backend.mjs
@@ -183,6 +191,35 @@ The fixture is the real `lens_ml_build/aegisgate-lens-v0.1.1.bundle` (8.7 MB, 41
 - New entry has correct shape (`dismissed_at`, `expires_at`, `reason`).
 - Domain hash prefix preserved in the storage key (regression).
 - 100,000 pre-existing entries bounded to ≤1000 after a single `storeDismissal` call (worst-case F-04 attack).
+
+**`wire-protocol.test.mjs`** — 10 assertions on the Lens-side wire protocol shape (Day 10 / F-05 cross-repo verification):
+- `POST /api/v1/lens/telemetry` uses POST + `Authorization: Bearer <token>` + `Content-Type: application/json`.
+- Authorization header format is exactly `Bearer <token>` (no typos).
+- `GET /api/v1/lens/check?domain=<host>` uses GET + Bearer.
+- `GET /api/v1/lens/stats` uses GET + Bearer.
+- `GET /api/v1/lens/healthz` uses GET.
+- 4xx responses (including 429 rate limit) surface as thrown `Error` with HTTP status code.
+- 401 responses (bad bearer) throw with HTTP status code.
+- 400 responses from `DisallowUnknownFields` (forbidden field) surface the backend's error body.
+- The body sent to the backend contains exactly the v1 fields in canonical order (`lens_event_version` first).
+- Lens-side rate limit mirrors the Platform's `TestRateLimiter` invariant: 100 accepted, 101st dropped, exactly 100 fetch calls.
+
+Companion test to the Platform's `pkg/lensbackend/server_test.go::TestRateLimiter`. Catches wire-protocol drift on either side.
+
+**`security-csp.test.mjs`** — 11 assertions on the strict CSP / dynamic code execution invariants (Day 10 / F-06 CI gate):
+- No `eval(` in `src/` (regex matches actual function-call syntax, not string-literal occurrences).
+- No `new Function(` in `src/`.
+- No `Function('...')` (implicit eval) in `src/`.
+- No `.innerHTML =` in `src/`.
+- No `.outerHTML =` in `src/`.
+- No `document.write(` in `src/`.
+- No `setTimeout('...', ...)` in `src/`.
+- No `setInterval('...', ...)` in `src/`.
+- `manifest.json` CSP for `extension_pages` includes `script-src 'self'` and excludes `'unsafe-eval'` / `'unsafe-inline'`.
+- `manifest.json` `host_permissions` is the canonical backend or localhost only.
+- `manifest.json` `permissions` is `storage` only (no broad permissions).
+
+This codifies the manual Day-6 survey as an automated CI gate.
 
 ### `tools/lens-cli/telemetry-tail.mjs`
 
