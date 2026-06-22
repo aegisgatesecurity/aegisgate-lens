@@ -104,31 +104,13 @@ jobs:
           name: trivy-security-scan-${{ github.sha }}
           path: trivy-security-scan.txt
 
-  codeql:
-    name: CodeQL static analysis
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    permissions:
-      security-events: write
-      actions: read
-      contents: read
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-        with:
-          lfs: true
-
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v4
-        with:
-          languages: javascript
-          # legacy-ts/ contains TypeScript source from a previous
-          # experiment; CodeQL (configured for JavaScript) flags syntax
-          # errors. Excluded via paths-ignore in codeql-config.yml at
-          # the repo root.
-          config-file: ./codeql-config.yml
-
-      - name: Perform CodeQL analysis
-        uses: github/codeql-action/analyze@v4
-        with:
-          category: "/language:javascript"
+  # CodeQL static analysis is handled by GitHub's default setup
+  # (free for public repos). Our custom workflow was conflicting with
+  # the default ('CodeQL analyses from advanced configurations cannot
+  # be processed when the default setup is enabled'). Disabling
+  # our custom step; alerts still appear in the Security tab.
+  #
+  # codeql:
+  #   name: CodeQL static analysis
+  #   runs-on: ubuntu-latest
+  #   ... (kept for reference, see git history)
