@@ -61,3 +61,5 @@ test/mock-output/
 harness/__pycache__/
 
 pen-test/evidence/
+
+pen-test/__pycache__/
