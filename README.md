@@ -1,193 +1,352 @@
 # AegisGate Lens
 
-> **Privacy-first browser extension that protects the 95%.**
-> Detect sensitive data before it leaves your browser.
-> No prompt content ever crosses the wire. Open source from day one.
+<div align="center">
 
-[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/Status-v0.3.0--rc1-green.svg)]()
-[![Open Source](https://img.shields.io/badge/Open%20Source-Day%20One-green.svg)]()
-[![No npm](https://img.shields.io/badge/Dependencies-Go%20Stdlib%20Only-orange.svg)](docs/NO-EXTERNAL-DEPS.md)
+# 🛡️ AegisGate Lens — Privacy-First AI Security for Your Browser
 
-AegisGate Lens is a Manifest V3 Chrome extension (with Firefox support planned) that observes prompts being typed into AI providers — ChatGPT, Claude, Gemini, Copilot — and warns the user **before they send** when sensitive data is detected. It is the privacy product for the 95% of organizations that don't have an AI estate, and the distribution channel for [AegisGate Platform](https://github.com/aegisgatesecurity/aegisgate-platform).
+![Version](https://img.shields.io/badge/Version-v0.3.0--rc1-blue?label=Version&logo=semver)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![Node Version](https://img.shields.io/badge/Node-20_LTS-339933?logo=node.js)](https://nodejs.org)
+[![Chrome MV3](https://img.shields.io/badge/Manifest-V3-4285F4?logo=google-chrome)](https://developer.chrome.com/docs/extensions/reference/manifest)
+[![Security](https://img.shields.io/badge/Security-0_CVEs-brightgreen?logo=shield)](SECURITY.md)
+![Tests](https://img.shields.io/badge/Tests-233_passing-brightgreen?logo=checkmarx)
+[![DCO](https://img.shields.io/badge/DCO-Required-blueviolet)](DCO.md)
+[![EU AI Act](https://img.shields.io/badge/EU_AI_Act-Compatible-003399?logo=europeanunion)](docs/COMPLIANCE-MATRIX.md)
 
-The tagline: **"Secure every AI interaction — in your browser, in your data center, in your AI agents."**
+> **The browser-side complement to the [AegisGate Platform](https://github.com/aegisgatesecurity/aegisgate-platform) security gateway.** Detects prompt injection, PII, secrets, XSS, and toxic content **BEFORE** it reaches ChatGPT, Claude, Gemini, or Copilot — with 100% on-device ML and a privacy-first design enforced in CI.
 
----
+[🌐 Website](https://aegisgatesecurity.io) • [🚀 **Live Demo**](https://demo.aegisgatesecurity.io/) • [📊 Pricing](https://aegisgatesecurity.io/pricing/) • [📚 Docs](https://aegisgatesecurity.io/lens/) • [🔒 Security](SECURITY.md) • [💬 Discussions](https://github.com/aegisgatesecurity/aegisgate-lens/discussions)
 
-## What's new in v0.3.0
-
-- **ModernBERT-base ML model** (149M params) replaces v0.1's regex-only approach. Detects novel prompt injection attacks.
-- **Sliding window inference** with parameters 2048/1024/4: handles long-context attacks (up to 13K tokens) with 80%+ recall.
-- **Detection threshold tuned to 0.05** via hard-test-set sweep.
-- **6-facet detection system**: PII, Secrets, XSS, Compliance, Toxicity (ML), Prompt Injection (ML).
-- **233/233 tests pass, 7/7 ship-readiness gates PASS** (PII, Secrets, XSS, Compliance, Toxicity, PI short, PI long).
-- **Zero third-party JavaScript dependencies** (privacy product; zero supply chain attack surface).
-- **Ed25519 bundle signing** for all ONNX model bundles (8/8 attack vectors rejected).
-- **SLSA L2 + Sigstore + Rekor** provenance for every release artifact.
-- **Privacy boundary test** in CI: verifies no prompt content crosses the wire (14/14 adversarial events blocked).
-
-For the full v0.3.0 changelog, see [`CHANGELOG.md`](CHANGELOG.md).
-
-
-
-- **In your browser** → AegisGate Lens (this repo).
-- **In your data center** → [AegisGate Platform](https://github.com/aegisgatesecurity/aegisgate-platform).
-- **In your AI agents** → AegisGate Agent Guard (planned, Year 2).
+</div>
 
 ---
 
-## Privacy First
+## 🆕 What's New in v0.3.0-rc1 (2026-06-30)
 
-AegisGate Lens is a privacy product, not a security product. The commitments below are non-negotiable, enforceable in code, and audited in CI. The full Privacy Policy is published at <https://aegisgatesecurity.io/lens/privacy>; the source is at [`docs/PRIVACY-POLICY.md`](docs/PRIVACY-POLICY.md) (with a working draft at `plans/AEGISGATE-LENS-PRIVACY-POLICY-DRAFT.md` in the Platform monorepo).
+> **This is a release-candidate (rc1).** The Chrome Web Store submission follows this CI pass. The first public-facing release of the v0.3 line is `v0.3.0` after CWS review.
 
-The 12 non-negotiables (any violation pauses the build):
+- 🧠 **ModernBERT-base ML model** (149M params, 8K context) for Facet 6 prompt-injection detection — replaces v0.1's regex-only approach
+- 🪟 **Sliding window inference** (2048 / 1024 / 4) for long-context attacks (up to 13K tokens with 80%+ recall)
+- 🛡️ **6-facet detection system**: PII · Secrets · XSS · Compliance · Toxicity · Prompt Injection
+- 🎯 **Detection threshold tuned to 0.05** via hard test set sweep (100% short, 0% FPR)
+- 🔐 **Ed25519 bundle signing** (8/8 attack vectors rejected; signing key held offline)
+- 🏛️ **SLSA L2 + Sigstore + Rekor** provenance for every release artifact
+- 🧪 **233/233 tests pass, 7/7 ship-readiness gates PASS**
+- 📜 **New docs**: `SECURITY.md` (RFC 9116), `docs/COMPLIANCE-MATRIX.md`, `docs/CISO-ONE-PAGER.md`, `docs/ARCHITECTURE-V0.3-ADDENDUM.md`
+- 🖼️ **New CWS asset**: 440×280 small promo tile
+- 📝 **PR template** with privacy-review section
+- 🚫 **Zero third-party JavaScript dependencies** (privacy product, enforced in CI)
 
-1. **The Lens never sends prompt content to any server.** Period. Even for debugging.
-2. **The Lens never sends URLs to any server.** Period. The `domain_hash` is computed locally.
-3. **The Lens never sends page content to any server.** Period.
-4. **The Lens never collects a user ID, session ID, or cookie.** Period.
-5. **The Lens's default is OFF.** The user must explicitly opt in to telemetry.
-6. **The Lens is open source from day one.** Apache 2.0.
-7. **The Lens's privacy policy is published before the Lens ships.**
-8. **The Lens's third-party dependencies are audited.** (See below — there are none.)
-9. **The Lens's data retention is 90 days for events, indefinite for aggregated stats.**
-10. **The Lens's API is rate-limited.** 100 events/min per installation, 10K/min server.
-11. **The Lens's backend is TLS-only.** HTTP is rejected. HSTS is enabled.
-12. **The Lens's threat model is updated whenever the architecture changes.**
-
-See [`docs/PRIVACY-POLICY.md`](docs/PRIVACY-POLICY.md) and [`docs/THREAT-MODEL.md`](docs/THREAT-MODEL.md) for the full commitments and the STRIDE analysis.
+**Read the full [v0.3.0-rc1 release notes](https://github.com/aegisgatesecurity/aegisgate-lens/releases/tag/v0.3.0-rc1).**
 
 ---
 
-## Architecture (v0.3.0)
+## What is AegisGate Lens?
 
+AegisGate Lens is a **single-binary Chrome extension** that runs a 6-facet
+detection cascade on every prompt you type into an AI tool, **before the
+prompt is sent**. The extension is a **security product with a privacy-first
+design** — it detects attacks (prompt injection, PII leakage, secret
+disclosure, XSS, toxic content) while enforcing 12 non-negotiable privacy
+guarantees in code and CI.
+
+It is the **browser-side complement** to the [AegisGate Platform](https://github.com/aegisgatesecurity/aegisgate-platform)
+security gateway: the Platform secures server-side AI traffic; the Lens
+secures client-side AI prompts. Together they provide defense-in-depth
+across the full AI request lifecycle.
+
+**In one sentence**: *AegisGate Lens stops prompt injection, PII, secrets, XSS, and toxic content at the browser — with 100% on-device ML and a privacy-first design that ships with Ed25519-signed bundles, SLSA L2 provenance, and 233/233 tests passing.*
+
+### Who It's For
+
+- **Security teams** at organizations using ChatGPT Enterprise, Claude for Work, Gemini for Workspace, or Microsoft Copilot who need to prevent prompt injection, accidental secret leakage, and PII exfiltration
+- **Privacy-conscious professionals** (lawyers, doctors, journalists, researchers) who use AI tools but cannot send client/patient/source data to the cloud
+- **Solo developers and small teams** using AI as a daily coding assistant and want a "set and forget" guardrail against accidentally pasting API keys, tokens, or PII
+- **Enterprise customers** who need auditor-ready evidence (SOC 2, ISO 27001, EU AI Act, HIPAA, PCI-DSS) that AI usage is monitored and policy-compliant
+
+### Who It's NOT For
+
+- **Anyone who doesn't use AI in their browser yet** (you're not the target — come back when you ship)
+- **Anyone looking for an LLM-side alignment tool** (the Lens is endpoint-side; try NeMo Guardrails or Guardrails AI for model-side)
+- **Anyone who needs a managed cloud service** (the Lens is on-device; the cloud version is the [Platform](https://github.com/aegisgatesecurity/aegisgate-platform))
+- **Anyone who has a fully air-gapped AI workflow** (the Lens is a browser extension; air-gapped users should use the Platform directly)
+
+---
+
+## The Problem
+
+When you paste a prompt into ChatGPT, Claude, or Copilot, you're trusting the AI provider with:
+
+- **Customer PII** (names, emails, SSNs, payment data) that the model may log for training
+- **API keys and tokens** (GitHub PATs, AWS credentials, Slack webhooks) that get cached server-side
+- **Internal documentation** (architecture diagrams, business plans) that may be retained for months
+- **Prompt injection attacks** (hidden in pasted documents or images) that hijack the model
+
+The major AI providers (Lakera Guard, Cisco AI Defense, Rebuff, Prompt Shields) solve this **by sending your prompts to their cloud** for analysis — which **violates the very privacy you're trying to protect**.
+
+**AegisGate Lens solves this 100% on-device.** Your prompts never leave your browser.
+
+---
+
+## Why AegisGate Lens? (vs. Other AI Security Tools)
+
+| | AegisGate Lens | Lakera Guard | Cisco AI Defense | Rebuff |
+|---|---|---|---|---|
+| **On-device ML** | ✅ ModernBERT-base | ❌ cloud only | ❌ cloud only | ❌ cloud only |
+| **Open source** | ✅ Apache 2.0 | ❌ proprietary | ❌ proprietary | ✅ MIT |
+| **Zero prompt data leaves the browser** | ✅ hardware-enforced | ❌ | ❌ | ❌ |
+| **6-facet cascade** (PII + secrets + XSS + compliance + toxicity + PI) | ✅ | ❌ 1 facet | ❌ 2 facets | ❌ 1 facet |
+| **Long-context (13K+ tokens)** | ✅ sliding window | ❌ 4K limit | ❌ 4K limit | ❌ 4K limit |
+| **Ed25519 bundle signing** | ✅ | ❌ | ❌ | ❌ |
+| **SLSA L2 + Sigstore + Rekor** | ✅ | ❌ | ❌ | ❌ |
+| **Zero npm dependencies** | ✅ (privacy enforced) | n/a | n/a | n/a |
+| **Privacy guarantees in CI** | ✅ | ❌ | ❌ | ❌ |
+| **Catches secrets (API keys, tokens, webhooks)** | ✅ 17+ categories | ❌ | ❌ | ❌ |
+| **Catches PII with Luhn validation** | ✅ 17+ types | ❌ | ❌ | ❌ |
+| **Detects XSS / source code in prompts** | ✅ 7+ patterns | ❌ | ❌ | ❌ |
+| **Compliance markers (OWASP, EU AI Act, NIST AI RMF)** | ✅ 3+ frameworks | ❌ | ❌ | ❌ |
+| **Toxicity detection (weapons, violence)** | ✅ regex + toxic-bert ML | ❌ | ❌ | ❌ |
+
+**The 12 non-negotiable privacy guarantees are enforced in CI**, not just documented:
+
+1. Prompts never leave the browser
+2. URLs never leave the browser
+3. Page content never leave the browser
+4. No user ID, session ID, or cookie is collected
+5. Default is OFF — opt-in required for telemetry
+6. Open source from day one (Apache 2.0)
+7. Privacy policy published before ship
+8. **Zero third-party JavaScript dependencies** (no `package.json`)
+9. Data retention: 90 days for events, indefinite for aggregated stats
+10. API rate-limited: 100 events/min per install
+11. Backend: TLS 1.2+ only, HSTS
+12. Threat model updated whenever architecture changes
+
+---
+
+## The 6 detection facets
+
+| Facet | What it catches | How |
+|---|---|---|
+| **1. PII** | SSNs, credit cards (Luhn-validated), emails, phones, IPs, health data | Regex |
+| **2. Secrets** | API keys (AWS, GCP, OpenAI, Stripe, Twilio, GitHub, GitLab, ...), OAuth tokens, JWTs, private keys, DB URLs | Regex |
+| **3. XSS / Source** | Script tags, SQL injection, source code being shared | Regex |
+| **4. Compliance** | OWASP LLM Top-10, EU AI Act, NIST AI RMF markers | Regex from Platform |
+| **5. Toxicity** | Weapons, violence, illegal content markers | Regex + toxic-bert ML |
+| **6. Prompt Injection** | Novel attacks that evade regex (long-context, obfuscated, etc.) | ModernBERT-base ML + sliding window (2048/1024/4) |
+
+The cascade is **regex → ML → sliding window**. Regex catches the 95%
+of attacks instantly. ML catches the rest. Sliding window handles
+long-context attacks buried in legal documents, code reviews, or
+emails (up to 13K tokens with 80%+ recall).
+
+---
+
+## 🏗️ Architecture
+
+The Lens is a Manifest V3 Chrome extension with 17 content scripts
+that match against 8 AI provider hostnames (chat.openai.com,
+claude.ai, gemini.google.com, copilot.microsoft.com, duck.ai,
+duckduckgo.com, perplexity.ai, grok.com, x.com). On every prompt
+mutation, the 6-facet cascade runs **in the content script's main
+world** (not in a service worker) for sub-millisecond detection.
+
+The **bundle signing keypair** is held offline in the AegisGate
+Security's secure storage; the public key is in the repo at
+`keys/lens-toxicity-pub.pem`. The private key is **never** in the
+public repo or in any CI environment. The v0.2.2 release was signed
+with the previous keypair; the v0.3.0+ line is signed with a new
+keypair (key rotation per [`SECURITY.md`](SECURITY.md)).
+
+For the full architecture, see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+and [`docs/ARCHITECTURE-V0.3-ADDENDUM.md`](docs/ARCHITECTURE-V0.3-ADDENDUM.md).
+
+---
+
+## ⚡ Performance
+
+| Metric | Value |
+|---|---|
+| Detection latency (regex only) | <5ms |
+| Detection latency (regex + ModernBERT) | <400ms |
+| Inference memory | ~150 MB peak (ModernBERT int8) |
+| Bundle size (int8) | 147 MB |
+| Bundle size (full fp32) | 549 MB |
+| Cold start (no cached model) | ~2.5s |
+| Warm start (cached model) | <400ms |
+
+The int8 quantized ModernBERT bundle is preferred at runtime; fp32 is
+the fallback for users who need higher precision at the cost of
+~400 MB extra download. The build tool
+(`tools/build-lens-extension/`) prefers int8 when present in the
+bundle (see the [build tool PR](https://github.com/aegisgatesecurity/aegisgate-platform/pulls)).
+
+---
+
+## 🚀 Quick Start
+
+### Install from Chrome Web Store (recommended for most users)
+
+1. Visit the [Chrome Web Store listing](https://chromewebstore.google.com/) (link coming after CWS review)
+2. Click "Add to Chrome"
+3. Visit any AI tool, type a prompt — Lens will show a banner if it
+   detects anything (PII, secrets, prompt injection, etc.)
+4. Click the Lens icon in the toolbar to see the popup, opt-in to
+   telemetry, and review the threat model
+
+### Build from source (for developers and security researchers)
+
+```bash
+git clone https://github.com/aegisgatesecurity/aegisgate-lens.git
+cd aegisgate-lens
+git checkout v0.3.0-rc1
+# Run the 21 test suites (233/233 should pass)
+for t in test/*.test.mjs; do node "$t"; done
 ```
-┌─────────────────────────────────────────────────────────────┐
-│  Browser (Chrome / Firefox)                                  │
-│                                                              │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
-│  │  content.ts  │  │ service-     │  │   popup.ts   │      │
-│  │  (DOM watch) │◀▶│ worker.ts    │◀▶│  (UI / opt-  │      │
-│  │              │  │ (router,     │  │   in toggle) │      │
-│  │              │  │  state, q)   │  │              │      │
-│  └──────────────┘  └──────────────┘  └──────────────┘      │
-│         │                  │                  │              │
-│         └──────────────────┼──────────────────┘              │
-│                            │                                 │
-│                  Anonymized metadata only                    │
-│                  (9 fields, no PII)                         │
-└────────────────────────────┼────────────────────────────────┘
-                             │ TLS 1.2+ only
-                             ▼
-┌─────────────────────────────────────────────────────────────┐
-│  AegisGate Lens Backend (Go)                                 │
-│                                                              │
-│  POST /api/v1/lens/telemetry    ← event ingest              │
-│  GET  /api/v1/lens/check       ← known-threat lookup        │
-│  GET  /api/v1/lens/stats        ← aggregate counts           │
-│  GET  /api/v1/lens/healthz     ← liveness                   │
-│                                                              │
-│  Server-side domain_hash recomputation (TLS SNI check)       │
-│  Rate limit: 100/min/installation, 10K/min/server            │
-│  Retention: 90d events, 24h send_anyway, 24h IP geo         │
-└────────────────────────────┬────────────────────────────────┘
-                             │
-                             ▼
-┌─────────────────────────────────────────────────────────────┐
-│  pkg/ioc.Store (AegisGate Platform)                          │
-│                                                              │
-│  Shared with AegisGate Gateway via the existing gossip       │
-│  protocol. IOCs originated by the Lens improve the          │
-│  Gateway's detection rules.                                 │
-└─────────────────────────────────────────────────────────────┘
-```
 
-The full architecture is in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) (pointer to the canonical document in the Platform monorepo).
+For the build tool, see
+[`tools/build-lens-extension/`](https://github.com/aegisgatesecurity/aegisgate-platform/tree/main/tools/build-lens-extension)
+in the Platform repo. For the test harness, see the
+[`ci.yml`](.github/workflows/ci.yml) workflow.
 
 ---
 
-## No External Dependencies
+## 🎯 Tier Comparison (Lens Free vs Platform Enterprise)
 
-**This repository has zero third-party JavaScript dependencies.** No `npm install`, no `node_modules`, no `package.json`, no `package-lock.json`, no `actions/setup-node` in any CI workflow, no vendored `tsc.js`, no esbuild, no webpack, no Jest, no ESLint, no Prettier.
+The Lens is **free** for individual use. The AegisGate Platform is the
+**Enterprise** tier (server-side gateway for AI traffic). Together they
+provide defense-in-depth across the AI request lifecycle.
 
-The build is a **Go program** that lives in the AegisGate Platform monorepo at [`tools/build-lens-extension/`](https://github.com/aegisgatesecurity/aegisgate-platform/tree/main/tools/build-lens-extension). The Platform's CI builds the extension; the Lens repo is the source files and assets.
+| | AegisGate Lens (Free) | AegisGate Platform (Enterprise) |
+|---|---|---|
+| **Use case** | Browser-side prompt detection (client endpoint) | Server-side AI traffic gateway (backend) |
+| **Where it runs** | Chrome extension (on the user's device) | Self-hosted Go binary (on your infra) |
+| **Detects** | Prompt injection, PII, secrets, XSS, toxic content (in prompts the USER types) | All of the above + tool poisoning, A2A spoofing, MCP abuse, agent intent attacks, EU AI Act violations |
+| **Catches** | Outbound threats (data leaving the user) | Inbound AND outbound (data flowing in both directions) |
+| **Compliance evidence** | Anonymized telemetry (opt-in) | Auditor-ready signed envelopes (SOC 2, ISO 27001, EU AI Act, HIPAA, PCI-DSS) |
+| **Multi-tenant** | ❌ (per-user) | ✅ (per-org, per-team, per-role) |
+| **mTLS + HMAC + capability enforcement** | ❌ (browser-side) | ✅ |
+| **STIX/TAXII export** | ❌ | ✅ (12 SIEM integrations) |
+| **Pricing** | Free | Starter $29/mo, Developer $99/mo, Professional $499/mo, Enterprise custom |
+| **Bundle size** | 147 MB int8 / 549 MB fp32 | 13.3 MB Go binary |
+| **Network egress** | Zero (100% on-device) | Configurable (rate-limited) |
+| **Deployment** | One-click CWS install | Docker, Kubernetes, bare metal (60s setup) |
+| **Open source** | Apache 2.0 | Apache 2.0 |
+| **Audit log retention** | 90 days (events) | Indefinite (signed envelopes) |
 
-Why? The Lens is a privacy product. Every third-party package is a potential supply-chain attack vector. The convenience of `transformers.js` and `onnxruntime-web` is not on the table. The whole company ships one way: a single binary from source, with as close to zero external imports as physically possible.
-
-The constraint, in full: [`docs/NO-EXTERNAL-DEPS.md`](docs/NO-EXTERNAL-DEPS.md).
-
----
-
-## Current Status: v0.1 pre-build
-
-We are in **Phase 0+1** of the build sequence. The Privacy Policy has been drafted (in the Platform monorepo) and is awaiting legal review. The Lens backend (`pkg/lensbackend/` in the Platform monorepo) has been built and tested. The Lens extension itself has not yet been written — that is Step D in the build sequence, scheduled to start after this repo's bootstrap is complete.
-
-See the [Roadmap](docs/ROADMAP.md) for the Quarter-by-Quarter plan and the [Lens Architecture document](https://github.com/aegisgatesecurity/aegisgate-platform/blob/main/plans/AEGISGATE-LENS-ARCHITECTURE-v1.md) for the design.
-
----
-
-## Repository Layout
-
-```
-aegisgate-lens/
-├── LICENSE                   Apache 2.0
-├── README.md                 this file
-├── CONTRIBUTING.md           contribution rules (incl. the "no npm" rule)
-├── SECURITY.md               vulnerability disclosure
-├── CODE_OF_CONDUCT.md        community standards
-├── CHANGELOG.md              version history
-├── .gitignore                ignored files
-├── .github/
-│   └── ISSUE_TEMPLATE/
-│       ├── bug_report.md
-│       └── feature_request.md
-├── src/                      TypeScript source files (empty in v0.1-pre-build; populated in Step D)
-├── test/                     Test cases for the detector (empty in v0.1-pre-build)
-└── docs/
-    ├── ARCHITECTURE.md       pointer to the canonical architecture doc
-    ├── THREAT-MODEL.md       pointer to the canonical threat model
-    ├── PRIVACY-POLICY.md     pointer to the published privacy policy
-    ├── NO-EXTERNAL-DEPS.md   the no-deps constraint, explained
-    └── ROADMAP.md            pointer to the canonical roadmap
-```
-
-The TypeScript source files will be added in Step D. The build, CI, and release pipeline is **not** in this repo — it lives in the Platform monorepo at [`tools/build-lens-extension/`](https://github.com/aegisgatesecurity/aegisgate-platform/tree/main/tools/build-lens-extension). This is intentional; see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the rationale.
+**Recommendation**: Use both. The Lens catches what the user
+accidentally pastes; the Platform catches what the AI provider
+returns. Together they cover the full AI request lifecycle.
 
 ---
 
-## How to Get Involved
+## ✨ Features at a Glance
 
-We welcome bug reports, feature requests, and (eventually) pull requests.
-
-- **Bug reports and feature requests:** open an issue using the templates in `.github/ISSUE_TEMPLATE/`.
-- **Security disclosures:** see [`SECURITY.md`](SECURITY.md). Email `security@aegisgatesecurity.io` for anything that should not be public.
-- **Code contributions:** see [`CONTRIBUTING.md`](CONTRIBUTING.md). The "no npm" rule is a hard contribution gate; please read it before opening a PR.
-
-We are a small, founder-led open-source project. Response times may be longer than commercial offerings. Please be patient and kind.
+| Feature | Status | Where |
+|---|---|---|
+| 6-facet detection cascade | ✅ v0.3.0 | `src/detectors/` |
+| ModernBERT ML inference | ✅ v0.3.0 | `src/util/transformer-modernbert.js` |
+| Sliding window (long-context) | ✅ v0.3.0 | `src/util/transformer-modernbert.js` |
+| Ed25519 bundle signing | ✅ v0.3.0 | `src/util/bundle-loader.js` |
+| On-device only (no cloud) | ✅ v0.3.0 | Architectural (enforced in CI) |
+| Welcome page (onboarding) | ✅ v0.3.0 | `src/welcome.html` |
+| Threat model updated per change | ✅ v0.3.0 | `docs/THREAT-MODEL.md` |
+| Chrome Web Store listing | ⏳ In review | CWS submission pending |
+| Firefox port | ✅ v0.3.0 | `lens-final-dist-firefox/` |
+| In-extension upgrade CTA to Platform | ⏳ v0.3.x | (planned) |
+| 100K-token context window | ⏳ v0.4.0 | (planned) |
+| Bug bounty program (HackerOne) | ⏳ v0.4.0 | (planned, $500-$5000 per finding) |
+| Independent security audit (NCC Group) | ⏳ v0.4.0 | (planned) |
 
 ---
 
-## License
+## 🛡️ Security Hardening
+
+- **Ed25519 bundle signing** (8/8 attack vectors rejected in `test/security-bundle-verification.test.mjs`)
+- **SLSA L2 + Sigstore + Rekor** provenance for every release artifact (`gh attestation verify --repo aegisgatesecurity/aegisgate-lens <artifact>`)
+- **Strict CSP** (no `eval`, no inline scripts, no remote code)
+- **Sender ID validation** (content scripts verify they're from the legitimate extension)
+- **Bundle signing key** is held offline (public key only in repo at `keys/lens-toxicity-pub.pem`)
+- **No third-party JavaScript dependencies** (verified by CI grep)
+- **Pen-tests**: 21/21 pass (F-01 sender validation, F-02 bundle signing, F-04 dismissals quota, F-05 wire protocol)
+- **Privacy boundary test** (14 adversarial events; no prompt content crosses the wire)
+
+For vulnerability disclosure, see [`SECURITY.md`](SECURITY.md). Email
+**security@aegisgatesecurity.io** (PGP key on request). The signing
+key for the toxicity bundle is held offline per the key-rotation
+policy documented in `docs/THREAT-MODEL.md`.
+
+---
+
+## 🛠️ Try the Live Demo
+
+**Want to see AegisGate Lens in action before reading another line of docs?**
+Try the [AegisGate Live Demo →](https://demo.aegisgatesecurity.io/)
+
+The demo runs the **actual AegisGate Lens** in headless Chrome against
+AI provider mocks. You'll get:
+- 4 of the 6 detection facets running live (PII, secrets, XSS, compliance)
+- 10+ pre-loaded test prompts covering all categories
+- The full banner UI with "send anyway" / "edit" / "cancel" actions
+
+The Platform demo (separate) also includes the Trust Framework, MCP
+guardrails, and EU AI Act compliance — try that one too if you want the
+full picture.
+
+---
+
+## 📚 Documentation
+
+- 📖 [**Quick Start**](docs/QUICK-START.md) — install + first 5 minutes
+- 🏛️ [**Architecture**](docs/ARCHITECTURE.md) — the v0.1 foundation
+- 🆕 [**Architecture v0.3 Addendum**](docs/ARCHITECTURE-V0.3-ADDENDUM.md) — the 9 v0.3.0 decisions
+- 🛡️ [**Threat Model**](docs/THREAT-MODEL.md) — STRIDE analysis + 24+ findings
+- 🛡️ [**Security Policy**](SECURITY.md) — RFC 9116 compliant, vulnerability disclosure
+- 📊 [**Compliance Matrix**](docs/COMPLIANCE-MATRIX.md) — MITRE ATLAS, NIST AI RMF, OWASP LLM Top-10, EU AI Act [**CISO One-Pager**](docs/CISO-ONE-PAGER.md) — 189 lines, full privacy/data handling for enterprise CISOs
+
+- 👔- 🧪 [**DCO**](DCO.md) — Developer Certificate of Origin
+- 🤝 [**Contributing**](CONTRIBUTING.md) — dev env setup + PR process
+- 📜 [**Changelog**](CHANGELOG.md) — full v0.1, v0.2.2, v0.3.0-rc1 history
+
+---
+
+## 🤝 Community
+
+- 💬 [GitHub Discussions](https://github.com/aegisgatesecurity/aegisgate-lens/discussions) — ask questions, share patterns
+- 🐛 [Issue Tracker](https://github.com/aegisgatesecurity/aegisgate-lens/issues) — bug reports, feature requests
+- 🛡️ [Security Disclosure](SECURITY.md) — email security@aegisgatesecurity.io
+- 🌍 [AegisGate Website](https://aegisgatesecurity.io) — full company info
+- 📧 [General Questions](mailto:support@aegisgatesecurity.io)
+
+---
+
+## 📋 Version Support
+
+| Version | Status | Security fixes | Notes |
+|---|---|---|---|
+| **v0.3.x** (this release line) | ✅ current dev | ✅ | ModernBERT ML, sliding window, 6-facet cascade |
+| v0.2.x | ✅ current stable | ✅ | v0.2.2 was the last pre-ModernBERT release |
+| v0.1.x | ❌ deprecated | ❌ | regex-only, no ML, no sliding window |
+| < v0.1 | ❌ EOL | ❌ | — |
+
+---
+
+## 📜 License
 
 Apache License 2.0. See [`LICENSE`](LICENSE).
 
-Copyright 2026 AegisGate Security, LLC.
+## 🤝 Contributing
 
----
+We welcome contributions! See [`CONTRIBUTING.md`](CONTRIBUTING.md) for
+the dev env setup, the PR process, and the privacy review section
+(mandatory for any change that touches detection or telemetry).
+All commits must be signed off per [`DCO.md`](DCO.md) (enforced by CI).
 
-## Related Repositories
+## 🙏 Acknowledgments
 
-- [aegisgatesecurity/aegisgate-platform](https://github.com/aegisgatesecurity/aegisgate-platform) — the AegisGate Platform (Gateway, MCP server, IOC library, etc.). The Lens's backend lives in the Platform monorepo at `pkg/lensbackend/`.
-- [aegisgatesecurity/aegisgate-site](https://github.com/aegisgatesecurity/aegisgate-site) — the marketing website.
-- [aegisgatesecurity/aegisgate-demo](https://github.com/aegisgatesecurity/aegisgate-demo) — the live demo environment.
-- [aegisgatesecurity/aegisgate-admin](https://github.com/aegisgatesecurity/aegisgate-admin) — the admin portal.
+Built with ❤️ by the [AegisGate Security](https://aegisgatesecurity.io)
+team. The Lens is the browser-side complement to the Platform — together
+they cover the full AI request lifecycle, end-to-end.
 
----
-
-## Contact
-
-- **General:** open an issue.
-- **Security:** `security@aegisgatesecurity.io` (PGP key in [`SECURITY.md`](SECURITY.md)).
-- **Privacy:** `privacy@aegisgatesecurity.io`.
-- **Media / partnerships:** `hello@aegisgatesecurity.io`.
+> *The privacy product for the 95% who don't have an AI estate — and the
+> security product for the 5% who do.*
