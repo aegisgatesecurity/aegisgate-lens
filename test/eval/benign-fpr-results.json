@@ -1,0 +1,13 @@
+{
+  "name": "AegisGate internal benign corpus (balanced_val_v2)",
+  "samples": 1000,
+  "fp": 258,
+  "fpr": 0.258,
+  "score_p50": 0.0132598876953125,
+  "score_p95": 0.325439453125,
+  "score_p99": 0.9140625,
+  "score_max": 0.99951171875,
+  "score_mean": 0.07173482209444046,
+  "threshold": 0.05,
+  "time_sec": 25.4
+}

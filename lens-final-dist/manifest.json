@@ -1,10 +1,9 @@
 {
   "manifest_version": 3,
   "name": "AegisGate Lens",
-  "version": "0.1.0",
-  "description": "Privacy-first sensitive-data detection for AI prompts. No prompt content ever leaves your browser. Apache 2.0. https://aegisgatesecurity.io/lens",
+  "version": "0.2.0",
+  "description": "TEST BUILD for pen-testing. References only files that exist in this dist. NOT for production.",
   "author": "AegisGate Security, LLC",
-  "homepage_url": "https://aegisgatesecurity.io/lens",
   "icons": {
     "16": "icons/icon-16.png",
     "32": "icons/icon-32.png",
@@ -13,7 +12,7 @@
   },
   "action": {
     "default_popup": "popup.html",
-    "default_title": "AegisGate Lens",
+    "default_title": "AegisGate Lens (TEST)",
     "default_icon": {
       "16": "icons/icon-16.png",
       "32": "icons/icon-32.png"
@@ -31,19 +30,76 @@
         "https://claude.ai/*",
         "https://gemini.google.com/*",
         "https://copilot.microsoft.com/*",
+        "https://duck.ai/*",
         "https://duckduckgo.com/*",
-        "https://duck.ai/*"
+        "https://perplexity.ai/*",
+        "https://grok.com/*",
+        "https://x.com/*"
       ],
-      "js": ["content.js"],
+      "js": [
+        "util/logger.js",
+        "util/opt-in.js",
+        "util/telemetry-queue.js",
+        "util/banner-ui.js",
+        "util/model-loader.js",
+        "util/transformer-modernbert.js",
+        "util/transformer-toxicity.js",
+        "util/webgpu-detect.js",
+        "util/license-checker.js",
+        "util/bundle-loader.js",
+        "util/bundle-registry.js",
+        "detectors/regex.js",
+        "detectors/regex_v2.js",
+        "detectors/luhn.js",
+        "detectors/from_platform.js",
+        "detectors/index.js",
+        "privacy/domain_hash.js",
+        "privacy/schema.js",
+        "storage.js",
+        "api/client.js",
+        "content.js"
+      ],
       "run_at": "document_idle",
       "all_frames": false
     }
   ],
   "permissions": [
-    "storage"
+    "storage",
+    "alarms"
   ],
   "host_permissions": [
     "https://lens.aegisgatesecurity.io/*"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "icons/icon-16.png",
+        "icons/icon-32.png",
+        "icons/icon-48.png",
+        "icons/icon-128.png",
+        "welcome.html",
+        "welcome.js",
+        "vendor/onnxruntime/ort.min.js",
+        "vendor/onnxruntime/ort-wasm-simd-threaded.mjs",
+        "vendor/onnxruntime/ort-wasm-simd-threaded.wasm",
+        "vendor/onnxruntime/ort-wasm-simd-threaded.jsep.mjs",
+        "vendor/bundles/aegisgate-lens-prompt-injection-int8-v0.2.0.bundle",
+        "vendor/bundles/aegisgate-lens-prompt-injection-v0.2.0.bundle",
+        "vendor/bundles/aegisgate-lens-toxicity-v0.2.0.bundle"
+      ],
+      "matches": [
+        "https://chat.openai.com/*",
+        "https://chatgpt.com/*",
+        "https://claude.ai/*",
+        "https://gemini.google.com/*",
+        "https://copilot.microsoft.com/*",
+        "https://duck.ai/*",
+        "https://duckduckgo.com/*",
+        "https://perplexity.ai/*",
+        "https://grok.com/*",
+        "https://x.com/*"
+      ]
+    }
   ],
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'"
