@@ -1,0 +1,77 @@
+{
+  "timestamp": "2026-07-01T00:33:54.269Z",
+  "passed": 17,
+  "failed": 0,
+  "total": 17,
+  "results": [
+    {
+      "name": "1. build synthetic signed bundle",
+      "status": "PASS"
+    },
+    {
+      "name": "2. bundle-loader parses synthetic bundle and exposes rawFiles",
+      "status": "PASS"
+    },
+    {
+      "name": "3. bundle-loader rejects tampered bundle (signature fails)",
+      "status": "PASS"
+    },
+    {
+      "name": "4. modelLoader surface exposes ensureSession + inMemoryCache",
+      "status": "PASS"
+    },
+    {
+      "name": "5. ensureSession rejects unknown facet",
+      "status": "PASS"
+    },
+    {
+      "name": "6. ensureSession rejects Elastic 2.0 license",
+      "status": "PASS"
+    },
+    {
+      "name": "7. license checker accepts Apache-2.0",
+      "status": "PASS"
+    },
+    {
+      "name": "8. license checker accepts MIT",
+      "status": "PASS"
+    },
+    {
+      "name": "9. bundleRegistry exposes prompt-injection facet entry",
+      "status": "PASS"
+    },
+    {
+      "name": "10. webgpu-detect exposes execution provider detection",
+      "status": "PASS"
+    },
+    {
+      "name": "11. transformerModernBert module loads alongside modelLoader",
+      "status": "PASS"
+    },
+    {
+      "name": "12. transformerModernBert prewarm uses modelLoader when no inject",
+      "status": "PASS"
+    },
+    {
+      "name": "13. createSession prefers model_int8.onnx over model.onnx",
+      "status": "PASS"
+    },
+    {
+      "name": "14. createSession falls back to model.onnx when no int8 present",
+      "status": "PASS"
+    },
+    {
+      "name": "15. createSession uses model_int8.onnx when only int8 present",
+      "status": "PASS"
+    },
+    {
+      "name": "16. verifyBundle accepts bundle with only model_int8.onnx",
+      "status": "PASS"
+    },
+    {
+      "name": "17. bundleRegistry exposes toxicity entry with model_size_bytes",
+      "status": "PASS"
+    }
+  ],
+  "failures": []
+}

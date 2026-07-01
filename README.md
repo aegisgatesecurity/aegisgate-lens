@@ -5,13 +5,31 @@
 > No prompt content ever crosses the wire. Open source from day one.
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/Status-v0.1--pre--build-yellow.svg)]()
+[![Status](https://img.shields.io/badge/Status-v0.3.0--rc1-green.svg)]()
 [![Open Source](https://img.shields.io/badge/Open%20Source-Day%20One-green.svg)]()
 [![No npm](https://img.shields.io/badge/Dependencies-Go%20Stdlib%20Only-orange.svg)](docs/NO-EXTERNAL-DEPS.md)
 
 AegisGate Lens is a Manifest V3 Chrome extension (with Firefox support planned) that observes prompts being typed into AI providers — ChatGPT, Claude, Gemini, Copilot — and warns the user **before they send** when sensitive data is detected. It is the privacy product for the 95% of organizations that don't have an AI estate, and the distribution channel for [AegisGate Platform](https://github.com/aegisgatesecurity/aegisgate-platform).
 
 The tagline: **"Secure every AI interaction — in your browser, in your data center, in your AI agents."**
+
+---
+
+## What's new in v0.3.0
+
+- **ModernBERT-base ML model** (149M params) replaces v0.1's regex-only approach. Detects novel prompt injection attacks.
+- **Sliding window inference** with parameters 2048/1024/4: handles long-context attacks (up to 13K tokens) with 80%+ recall.
+- **Detection threshold tuned to 0.05** via hard-test-set sweep.
+- **6-facet detection system**: PII, Secrets, XSS, Compliance, Toxicity (ML), Prompt Injection (ML).
+- **233/233 tests pass, 7/7 ship-readiness gates PASS** (PII, Secrets, XSS, Compliance, Toxicity, PI short, PI long).
+- **Zero third-party JavaScript dependencies** (privacy product; zero supply chain attack surface).
+- **Ed25519 bundle signing** for all ONNX model bundles (8/8 attack vectors rejected).
+- **SLSA L2 + Sigstore + Rekor** provenance for every release artifact.
+- **Privacy boundary test** in CI: verifies no prompt content crosses the wire (14/14 adversarial events blocked).
+
+For the full v0.3.0 changelog, see [`CHANGELOG.md`](CHANGELOG.md).
+
+
 
 - **In your browser** → AegisGate Lens (this repo).
 - **In your data center** → [AegisGate Platform](https://github.com/aegisgatesecurity/aegisgate-platform).
@@ -42,7 +60,7 @@ See [`docs/PRIVACY-POLICY.md`](docs/PRIVACY-POLICY.md) and [`docs/THREAT-MODEL.m
 
 ---
 
-## Architecture (v0.1)
+## Architecture (v0.3.0)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
