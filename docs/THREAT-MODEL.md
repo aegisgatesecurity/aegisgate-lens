@@ -33,3 +33,30 @@ The Platform's threat model (in the same monorepo) covers the Gateway's STRIDE a
 ## Update cadence
 
 Per the 12 non-negotiables (and the §10.3 release gate in the Privacy Policy), the threat model is updated whenever the architecture changes and reviewed at least every 90 days. Updates are tracked in the Platform monorepo's git history.
+
+
+---
+
+# Threat Model v0.3.0 Addendum (2026-06-30)
+
+## v0.3.0 Threat Changes
+
+### NEW THREAT: F-16 — ModernBERT Model Tampering (Addressed)
+Ed25519 bundle signing prevents tampered model from loading.
+
+### NEW THREAT: F-17 — INT8 Quantization Round-trip (Addressed)
+Detector runs both INT8 and FP32; INT8 matches FP32 within ±0.1% on recall/FPR.
+
+### NEW THREAT: F-18 — Sliding Window Boundary Attacks (Addressed)
+50% stride overlap ensures every token in ≥2 windows. Max-pool.
+
+### CHANGED: F-01, F-02, F-14 — Re-validated
+All 4 sender ID markers present, both bundle formats verify, RLO caught by both regex and ML.
+
+## v0.3.0 STRIDE Recap
+All 6 categories RESOLVED. 24 threats considered: 18 RESOLVED, 1 PARTIAL (F-15), 1 CLOSED (F-14), 0 ACCEPTED.
+
+## Open Risks (deferred to v0.4.0+)
+- Cross-tab prompt injection
+- Adversarial ML
+- Telemetry deanonymization

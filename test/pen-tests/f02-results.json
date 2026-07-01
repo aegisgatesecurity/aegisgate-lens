@@ -1,0 +1,46 @@
+{
+  "timestamp": "2026-06-28",
+  "suite": "F-02",
+  "results": [
+    {
+      "name": "1. Valid bundle parses",
+      "passed": true,
+      "detail": "verified OK"
+    },
+    {
+      "name": "2. Payload byte flip → rejected",
+      "passed": true,
+      "detail": "Bundle signature verification FAILED - bundle may be tampered"
+    },
+    {
+      "name": "3. Signature byte flip → rejected",
+      "passed": true,
+      "detail": "Bundle signature verification FAILED - bundle may be tampered"
+    },
+    {
+      "name": "4. Wrong signature → rejected",
+      "passed": true,
+      "detail": "Bundle signature verification FAILED - bundle may be tampered"
+    },
+    {
+      "name": "5. Header mutation → rejected",
+      "passed": true,
+      "detail": "Bundle signature verification FAILED - bundle may be tampered"
+    },
+    {
+      "name": "6. Truncated bundle → rejected",
+      "passed": true,
+      "detail": "Bundle signature verification FAILED - bundle may be tampered"
+    },
+    {
+      "name": "7. Garbage-appended bundle → rejected",
+      "passed": true,
+      "detail": "Bundle signature verification FAILED - bundle may be tampered"
+    },
+    {
+      "name": "8. Key substitution → rejected",
+      "passed": true,
+      "detail": "Bundle signature verification FAILED - bundle may be tampered"
+    }
+  ]
+}

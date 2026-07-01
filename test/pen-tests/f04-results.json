@@ -1,0 +1,18 @@
+{
+  "timestamp": "2026-06-28",
+  "suite": "F-04",
+  "results": [
+    {
+      "name": "1. 100k expired + 1 storeDismissal → ≤2 entries (prune)",
+      "passed": true
+    },
+    {
+      "name": "2. 100k live + 1 storeDismissal → 1000 entries (cap)",
+      "passed": true
+    },
+    {
+      "name": "3. Mixed 100k expired + 1000 live + 1 storeDismissal → ≤1001",
+      "passed": true
+    }
+  ]
+}

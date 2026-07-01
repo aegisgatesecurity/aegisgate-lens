@@ -1,10 +1,9 @@
 {
   "manifest_version": 3,
   "name": "AegisGate Lens",
-  "version": "0.2.2",
-  "description": "Real-time prompt injection detection for AI chat platforms. 3-tier on-device cascade. No prompt content ever leaves your browser. Apache 2.0. https://aegisgatesecurity.io/lens",
+  "version": "0.3.0",
+  "description": "Privacy-first Chrome extension that detects prompt injection, PII, secrets, and toxic content before they reach AI tools. 6-facet detection system with on-device ModernBERT ML + sliding window. No prompt content ever crosses the wire. Apache 2.0.",
   "author": "AegisGate Security, LLC",
-  "homepage_url": "https://aegisgatesecurity.io/lens",
   "icons": {
     "16": "icons/icon-16.png",
     "32": "icons/icon-32.png",
@@ -12,15 +11,16 @@
     "128": "icons/icon-128.png"
   },
   "action": {
-    "default_popup": "popup.html",
-    "default_title": "AegisGate Lens",
+    "default_popup": "welcome.html",
+    "default_title": "AegisGate Lens (TEST)",
     "default_icon": {
       "16": "icons/icon-16.png",
       "32": "icons/icon-32.png"
     }
   },
   "background": {
-    "service_worker": "service-worker.js"
+    "service_worker": "service-worker.js",
+    "type": "module"
   },
   "content_scripts": [
     {
@@ -31,11 +31,24 @@
         "https://gemini.google.com/*",
         "https://copilot.microsoft.com/*",
         "https://duck.ai/*",
-        "https://duckduckgo.com/*"
+        "https://duckduckgo.com/*",
+        "https://perplexity.ai/*",
+        "https://grok.com/*",
+        "https://x.com/*"
       ],
       "js": [
         "util/logger.js",
+        "util/opt-in.js",
+        "util/telemetry-queue.js",
+        "util/banner-ui.js",
+        "util/model-loader.js",
+        "util/transformer-modernbert.js",
+        "util/webgpu-detect.js",
+        "util/license-checker.js",
+        "util/bundle-loader.js",
+        "util/bundle-registry.js",
         "detectors/regex.js",
+        "detectors/regex_v2.js",
         "detectors/luhn.js",
         "detectors/from_platform.js",
         "detectors/index.js",
@@ -43,9 +56,6 @@
         "privacy/schema.js",
         "storage.js",
         "api/client.js",
-        "util/bundle-loader.js",
-        "util/lens-ml.js",
-        "util/transformer-engine.js",
         "content.js"
       ],
       "run_at": "document_idle",
@@ -53,7 +63,8 @@
     }
   ],
   "permissions": [
-    "storage"
+    "storage",
+    "alarms"
   ],
   "host_permissions": [
     "https://lens.aegisgatesecurity.io/*"
@@ -61,15 +72,18 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "aegisgate-lens-v0.1.0.bundle",
-        "aegisgate-lens-transformer-v0.2.0.bundle",
-        "ml_model/*.json",
         "icons/icon-16.png",
         "icons/icon-32.png",
         "icons/icon-48.png",
         "icons/icon-128.png",
-        "logo.png",
-        "welcome.html"
+        "welcome.html",
+        "welcome.js",
+        "vendor/onnxruntime/ort.min.js",
+        "vendor/onnxruntime/ort-wasm-simd-threaded.mjs",
+        "vendor/onnxruntime/ort-wasm-simd-threaded.wasm",
+        "vendor/onnxruntime/ort-wasm-simd-threaded.jsep.mjs",
+        "vendor/bundles/aegisgate-lens-prompt-injection-int8-v0.2.0.bundle",
+        "vendor/bundles/aegisgate-lens-prompt-injection-v0.2.0.bundle"
       ],
       "matches": [
         "https://chat.openai.com/*",
@@ -78,12 +92,16 @@
         "https://gemini.google.com/*",
         "https://copilot.microsoft.com/*",
         "https://duck.ai/*",
-        "https://duckduckgo.com/*"
+        "https://duckduckgo.com/*",
+        "https://perplexity.ai/*",
+        "https://grok.com/*",
+        "https://x.com/*"
       ]
     }
   ],
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'"
   },
-  "minimum_chrome_version": "116"
+  "minimum_chrome_version": "116",
+  "homepage_url": "https://aegisgatesecurity.io/lens"
 }

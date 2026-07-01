@@ -1,0 +1,23 @@
+{
+  "name": "AegisGate internal CLEAN benign corpus (verified-clean sources)",
+  "samples": 81,
+  "fp": 15,
+  "fpr_at_0.05": 0.1852,
+  "score_p50": 0.0084228515625,
+  "score_p95": 0.1251220703125,
+  "score_p99": 0.96728515625,
+  "score_max": 0.96728515625,
+  "score_mean": 0.037344137827555336,
+  "threshold": 0.05,
+  "sources": [
+    "ollama_benign/business_benign",
+    "ollama_benign/code_technical",
+    "ollama_benign/german_benign",
+    "ollama_benign/previous_normal",
+    "ollama_benign/tell_about",
+    "ollama_benign/write_benign",
+    "wildchat-en",
+    "wildchat-multilingual"
+  ],
+  "time_sec": 2.5
+}
