@@ -1,124 +1,295 @@
-<!doctype html>
+<!DOCTYPE html>
+<!--
+  AegisGate Lens - Welcome Page (v0.3.0)
+
+  Shown on first install (and on opt-in state change). Lets the user:
+    1. Learn what AegisGate Lens does
+    2. See the 12 non-negotiables (privacy commitments)
+    3. Choose whether to enable telemetry (default OFF)
+    4. Choose between Tier 1 (anonymized metadata) and Tier 2 (full event details)
+
+  Plain HTML/CSS/JS, no dependencies.
+-->
 <html lang="en">
 <head>
-  <meta charset="utf-8">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Welcome to AegisGate Lens</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(180deg, #0a0c10 0%, #1e293b 100%);
+      color: #f8fafc;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .container {
+      max-width: 720px;
+      width: 100%;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      border-radius: 12px;
+      padding: 32px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 24px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid rgba(56, 189, 248, 0.15);
+    }
+    .header img {
+      width: 48px;
+      height: 48px;
+    }
+    .header h1 {
+      font-size: 24px;
+      font-weight: 600;
+      color: #f8fafc;
+      letter-spacing: -0.01em;
+    }
+    .header .version {
+      font-size: 12px;
+      color: #94a3b8;
+      font-family: ui-monospace, monospace;
+    }
+    h2 {
       font-size: 16px;
-      color: #1f2937;
-      max-width: 640px;
-      margin: 40px auto;
-      padding: 0 24px;
-      line-height: 1.5;
+      font-weight: 600;
+      color: #38bdf8;
+      margin-top: 20px;
+      margin-bottom: 12px;
     }
-    h1 {
-      color: #1e40af;
+    p, li {
+      font-size: 14px;
+      line-height: 1.55;
+      color: #cbd5e1;
+      margin-bottom: 8px;
     }
-    .lead {
-      font-size: 18px;
-      color: #4b5563;
+    ul {
+      list-style: none;
+      padding-left: 0;
     }
-    .principle {
-      border-left: 4px solid #f59e0b;
-      padding: 8px 16px;
-      margin: 16px 0;
-      background: #fef3c7;
+    ul li {
+      padding-left: 24px;
+      position: relative;
+      margin-bottom: 4px;
     }
-    .toggle {
-      display: inline-block;
-      padding: 12px 24px;
-      background: #1e40af;
-      color: white;
-      text-decoration: none;
-      border-radius: 4px;
-      font-weight: 500;
-      cursor: pointer;
-      border: none;
-      font-size: 16px;
+    ul li::before {
+      content: "✓";
+      position: absolute;
+      left: 0;
+      color: #10b981;
+      font-weight: 700;
     }
-    .toggle:hover {
-      background: #1d4ed8;
+    .tier {
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(56, 189, 248, 0.2);
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 16px;
     }
-    .small {
+    .tier h3 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #f8fafc;
+      margin-bottom: 8px;
+    }
+    .tier .description {
       font-size: 13px;
-      color: #6b7280;
+      color: #94a3b8;
+      margin-bottom: 12px;
+    }
+    .tier .data-list {
+      font-size: 12px;
+      font-family: ui-monospace, monospace;
+      color: #cbd5e1;
+      background: rgba(10, 12, 16, 0.6);
+      border-radius: 4px;
+      padding: 10px;
+      margin-bottom: 12px;
+    }
+    .tier .data-list div {
+      margin-bottom: 2px;
+    }
+    .tier .data-list div:last-child {
+      margin-bottom: 0;
+    }
+    .tier .not-sent {
+      color: #f43f5e;
+    }
+    .actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 28px;
+      flex-wrap: wrap;
+    }
+    .actions button {
+      flex: 1;
+      min-width: 200px;
+      padding: 12px 20px;
+      border: 0;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 120ms ease;
+    }
+    .actions button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .btn-primary {
+      background: #38bdf8;
+      color: #0a0c10;
+    }
+    .btn-primary:hover:not(:disabled) {
+      background: #0ea5e9;
+    }
+    .btn-secondary {
+      background: transparent;
+      color: #cbd5e1;
+      border: 1px solid rgba(148, 163, 184, 0.4);
+    }
+    .btn-secondary:hover:not(:disabled) {
+      background: rgba(148, 163, 184, 0.1);
+    }
+    .btn-link {
+      background: transparent;
+      color: #94a3b8;
+      text-decoration: underline;
+      font-weight: 400;
+    }
+    .promise {
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin: 16px 0;
+    }
+    .promise-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #10b981;
+      margin-bottom: 4px;
+    }
+    .promise-body {
+      font-size: 12px;
+      color: #94a3b8;
+    }
+    .privacy-link {
+      color: #38bdf8;
+      text-decoration: underline;
     }
   </style>
 </head>
 <body>
-  <h1>🛡️ Welcome to AegisGate Lens</h1>
-  <p class="lead">
-    The privacy-first browser extension that protects your prompts
-    from leaking sensitive data to AI providers.
-  </p>
+  <div class="container">
+    <div class="header">
+      <img src="icons/icon-48.png" alt="AegisGate Lens" width="48" height="48">
+      <div>
+        <h1>AegisGate Lens</h1>
+        <div class="version">v<span id="version">0.0.0</span></div>
+      </div>
+    </div>
 
-  <h2>The 5 promises</h2>
+    <p>
+      AegisGate Lens protects you from accidentally pasting sensitive data
+      (API keys, passwords, personal info) into AI chat tools like ChatGPT,
+      Claude, and Gemini. It detects prompt injection attacks before they
+      reach the AI. Detection runs <strong>entirely in your browser</strong>.
+    </p>
 
-  <div class="principle">
-    <strong>1. No prompt content ever leaves your browser.</strong>
-    The Lens's privacy boundary is structural: the content script
-    is the only module that sees your prompt text, and it never
-    sends it anywhere.
+    <h2>Privacy first. Default OFF. Your call.</h2>
+    <p>
+      AegisGate Lens works without sending any data anywhere. But if you
+      opt in, your anonymized detection metadata helps us improve protection
+      for everyone.
+    </p>
+
+    <div class="promise">
+      <div class="promise-title">We NEVER send:</div>
+      <div class="promise-body">
+        Your prompt text · URLs · Page content · User IDs · Session cookies
+      </div>
+    </div>
+
+    <h2>Choose your level of help</h2>
+
+    <div class="tier" id="tier-detect">
+      <h3>Detect-only (no telemetry)</h3>
+      <div class="description">
+        AegisGate Lens protects you locally. No data leaves your browser.
+        Recommended for maximum privacy.
+      </div>
+      <button class="btn-secondary" id="btn-detect-only">
+        Use detect-only mode
+      </button>
+    </div>
+
+    <div class="tier" id="tier-1">
+      <h3>Tier 1: Help improve detection (anonymized metadata)</h3>
+      <div class="description">
+        Send anonymized detection metadata to AegisGate Security. We use
+        this to identify new attack patterns and improve our detection.
+        Recommended for most users.
+      </div>
+      <div class="data-list">
+        <div>✓ domain_hash (first 16 chars of SHA-256)</div>
+        <div>✓ category (pii_ssn, secret_jwt, prompt_injection, etc.)</div>
+        <div>✓ severity (low/medium/high/critical)</div>
+        <div>✓ user_action (send_anyway/edit/cancel/dismiss)</div>
+        <div>✓ timestamp + model version</div>
+        <div class="not-sent">✗ NO prompt text</div>
+        <div class="not-sent">✗ NO URLs</div>
+        <div class="not-sent">✗ NO page content</div>
+        <div class="not-sent">✗ NO personal identifiers</div>
+      </div>
+      <button class="btn-primary" id="btn-tier1">
+        Help improve detection
+      </button>
+    </div>
+
+    <div class="tier" id="tier-2">
+      <h3>Tier 2: Full event details (power users)</h3>
+      <div class="description">
+        Send richer event metadata for advanced threat intelligence.
+        Still no prompt content or URLs. Includes detection timing,
+        model consensus, and pattern IDs. <strong>Requires Tier 1</strong>.
+      </div>
+      <div class="data-list">
+        <div>✓ Everything in Tier 1, plus:</div>
+        <div>✓ detection timing (window index)</div>
+        <div>✓ model consensus (0-1)</div>
+        <div>✓ pattern fingerprint (NOT text)</div>
+        <div>✓ 30-day rolling count (anonymized)</div>
+        <div class="not-sent">✗ NO prompt text</div>
+        <div class="not-sent">✗ NO URLs</div>
+      </div>
+      <button class="btn-secondary" id="btn-tier2">
+        Enable Tier 2 (full events)
+      </button>
+    </div>
+
+    <p style="margin-top: 24px; font-size: 12px;">
+      Read our full
+      <a href="https://aegisgatesecurity.io/lens/privacy" target="_blank" class="privacy-link">Privacy Policy</a>
+      to see exactly what we send and why.
+    </p>
+
+    <div class="actions">
+      <button class="btn-link" id="btn-later">Decide later (close)</button>
+    </div>
   </div>
 
-  <div class="principle">
-    <strong>2. Telemetry is opt-in. Default is OFF.</strong>
-    By default, the Lens detects locally only and shows you a
-    warning. It sends nothing to any server. To contribute
-    anonymized detection metadata (which improves detection for
-    everyone), toggle the opt-in.
-  </div>
-
-  <div class="principle">
-    <strong>3. The 9 fields, and only the 9 fields.</strong>
-    When you opt in, the only data sent is:
-    domain_hash, category, severity, user_action, timestamp,
-    model_version, lens_version, confidence, and an optional
-    client-side ID for dedup. No URL, no prompt, no page
-    content, no user ID.
-  </div>
-
-  <div class="principle">
-    <strong>4. Each device is independent.</strong>
-    We do <em>not</em> sync your bearer token across the
-    devices you sign into Chrome with. If you sign into Chrome
-    on a new device, you'll need to opt in there too. This is
-    deliberate: a synced token would be a quasi-identifier
-    that lets us correlate your device fleet, and a token
-    leaked from one device could impersonate your other
-    devices. Per-device tokens eliminate both risks. Your
-    opt-in preference (on/off) <em>is</em> synced — it's just
-    a boolean, no secret, no identifier.
-  </div>
-
-  <div class="principle">
-    <strong>5. You can delete everything, anytime.</strong>
-    The local audit log is in your browser. The backend
-    purges raw events after 90 days, and "send anyway"
-    events after 24 hours. Email privacy@aegisgatesecurity.io
-    to request deletion.
-  </div>
-
-  <h2>Get started</h2>
-  <p>
-    The Lens is now active on supported AI providers
-    (chat.openai.com, chatgpt.com, claude.ai, gemini.google.com,
-    copilot.microsoft.com). Try typing an email address into a
-    prompt and see the warning.
-  </p>
-  <p>
-    <button class="toggle" id="opt-in-btn">Opt in to anonymized telemetry</button>
-  </p>
-  <p class="small">
-    Read the full
-    <a href="https://aegisgatesecurity.io/lens/privacy" target="_blank" rel="noopener noreferrer">privacy policy</a>
-    before opting in. You can change your mind at any time
-    from the popup.
-  </p>
-
-  <script type="module" src="welcome.js"></script>
+  <script src="util/opt-in.js"></script>
+  <script src="welcome.js"></script>
 </body>
 </html>

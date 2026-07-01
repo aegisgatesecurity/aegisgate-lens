@@ -1,0 +1,33 @@
+{
+  "timestamp": "2026-06-29T13:12:36.711Z",
+  "results": {
+    "detector_tests": {
+      "passed": 34,
+      "total": 34,
+      "percent": 100
+    },
+    "gap_analysis": {
+      "passed": 44,
+      "total": 44,
+      "percent": 100
+    },
+    "transformer_modernbert": {
+      "passed": 24,
+      "failed": 0
+    },
+    "model_loader": {
+      "passed": 12,
+      "failed": 0
+    },
+    "rc_integrity": {
+      "ok": 10,
+      "fail": 0
+    },
+    "rc_permissions": true,
+    "corpus_integrity": {
+      "ok": 19,
+      "fail": 0
+    }
+  },
+  "all_ok": true
+}
