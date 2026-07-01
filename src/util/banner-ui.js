@@ -229,9 +229,24 @@
         ? (d.match || '').slice(0, 4) + '\u2026' + (d.match || '').slice(-4)
         : (d.match || '');
       let label = describeCategory(d.category) + ' (' + d.severity + ') \u2014 match: "' + masked + '"';
-      if (d.category === 'prompt_injection_ml' && d.mlScore !== undefined) {
-        label += ' [ML score: ' + d.mlScore.toFixed(3) +
-                 ', threshold: ' + (d.mlThreshold || 0.05).toFixed(2) + ']';
+      // v0.3.0+ note: the LI textContent must remain in the
+      // v0.1 format (the Platform's test wrapper parses it with a
+      // strict regex: /^(.+?) \(([^)]+)\) — match: "(.+)"$/).
+      // The ML metadata (d.mlScore, d.mlThreshold, d.facet) is
+      // preserved in the detection data structure and exposed via
+      // the LI's aria-label / title attributes (for accessibility
+      // and debug tools), but NOT in the textContent.
+      if (d.mlScore !== undefined || d.facet !== undefined) {
+        let ariaExtra = '';
+        if (d.mlScore !== undefined) {
+          ariaExtra += 'ML score: ' + d.mlScore.toFixed(3) +
+                       ', threshold: ' + (d.mlThreshold || 0.05).toFixed(2) + '. ';
+        }
+        if (d.facet !== undefined) {
+          ariaExtra += 'Facet: ' + d.facet + '.';
+        }
+        li.setAttribute('aria-label', label + ' ' + ariaExtra);
+        li.setAttribute('title', label + ' ' + ariaExtra);
       }
       li.textContent = label;
       list.appendChild(li);
