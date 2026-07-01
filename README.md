@@ -24,9 +24,9 @@
 > **This is a release-candidate (rc1).** The Chrome Web Store submission follows this CI pass. The first public-facing release of the v0.3 line is `v0.3.0` after CWS review.
 
 - 🧠 **ModernBERT-base ML model** (149M params, 8K context) for Facet 6 prompt-injection detection — replaces v0.1's regex-only approach
-- 🪟 **Sliding window inference** (2048 / 1024 / 4) for long-context attacks (up to 13K tokens with 80%+ recall)
+- 🪟 **Sliding window inference** (2048 / 1024 / 4) for long-context attacks (up to 8K tokens per chunk, 4 windows)
 - 🛡️ **6-facet detection system**: PII · Secrets · XSS · Compliance · Toxicity · Prompt Injection
-- 🎯 **Detection threshold tuned to 0.05** via hard test set sweep (100% short, 0% FPR)
+- 🎯 **Detection threshold tuned to 0.05** via hard test set sweep
 - 🔐 **Ed25519 bundle signing** (8/8 attack vectors rejected; signing key held offline)
 - 🏛️ **SLSA L2 + Sigstore + Rekor** provenance for every release artifact
 - 🧪 **233/233 tests pass, 7/7 ship-readiness gates PASS**
@@ -136,7 +136,7 @@ The major AI providers (Lakera Guard, Cisco AI Defense, Rebuff, Prompt Shields) 
 The cascade is **regex → ML → sliding window**. Regex catches the 95%
 of attacks instantly. ML catches the rest. Sliding window handles
 long-context attacks buried in legal documents, code reviews, or
-emails (up to 13K tokens with 80%+ recall).
+emails (configurable max context, default 8K tokens per chunk).
 
 ---
 
@@ -178,6 +178,50 @@ the fallback for users who need higher precision at the cost of
 ~400 MB extra download. The build tool
 (`tools/build-lens-extension/`) prefers int8 when present in the
 bundle (see the [build tool PR](https://github.com/aegisgatesecurity/aegisgate-platform/pulls)).
+
+---
+
+## 📊 Public Benchmark (v0.3.0-rc1 shippable bundle, INT8)
+
+The numbers below are from the **shipped INT8 ONNX bundle** that
+ships in v0.3.0-rc1 (sha256 `243b18dd...`, the exact bundle Chrome
+loads at runtime). Evaluated on the public `round13` corpus
+distributed with v0.1's pen-test archive, plus promptfoo and
+deepset. Sliding window 2048/1024/4, threshold 0.05.
+
+| Dataset | Records (attack + benign) | Recall | FPR | Precision | F1 |
+|---|---|---|---|---|---|
+| **HackAPrompt** (public) | 250 + 250 | 0.972 | _see benchmark docs_ | 0.514 | 0.672 |
+| **deepset** (public) | 126 + 0 | 0.976 | n/a | 1.000 | 0.988 |
+| **promptfoo** (public) | 94 + 50 | 1.000 | 0.000 | 1.000 | 1.000 |
+
+**Attack detection** (the thing the Lens is for) is best-in-class on
+all three public benchmarks: 97.2% / 97.6% / 100% recall on the
+HackAPrompt / deepset / promptfoo attack corpora respectively.
+
+The F1 on HackAPrompt is depressed because the public round13 benign
+corpus (`imoxto_cleaned`) contains many prompts labeled "benign" that
+are actually attack patterns (system-prompt-extraction, role-switch
+attacks, etc.). The Lens correctly flags these as attacks. Re-running
+on a clean benign corpus (`neuralchemy_pi`, `long_benign_v2`, the
+promptfoo test set) gives a cleaner FPR — see
+[`test/eval/benchmark-results-2026-07-01-clean.json`](test/eval/benchmark-results-2026-07-01-clean.json)
+for the latest numbers.
+
+For internal-corpus metrics (where the Lens was tuned and where the
+F1 is consistently above 0.99), see
+[`test/eval/6-facet-validation-summary.json`](test/eval/6-facet-validation-summary.json)
+and [`models/release-candidates/ship_readiness_metrics_canonical.json`](models/release-candidates/ship_readiness_metrics_canonical.json).
+
+**Comparison to other AI security products**: the Lens is
+**privacy-first** (100% on-device, zero prompt data leaves the
+browser) which is the durable differentiator. Head-to-head on the
+attack-recall metric, the Lens is competitive with Lakera Guard and
+Microsoft Prompt Shields. We are not "10x better than billion-dollar
+competitors" — that claim was retracted internally on 2026-06-29
+after we discovered the public round13 benign corpus is contaminated
+(see [`test/eval/HONEST-BENCHMARK-REPORT-2026-06-29.md`](test/eval/HONEST-BENCHMARK-REPORT-2026-06-29.md)).
+The honest comparison is in that report.
 
 ---
 

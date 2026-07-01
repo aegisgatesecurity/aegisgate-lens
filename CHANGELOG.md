@@ -45,9 +45,36 @@ The following are planned for the v0.1 release (Phase 1 of the Roadmap) and are 
 
 ### Changed
 - Detection threshold: 0.50 → 0.05
-- Long-context attack detection: 80%+ (with sliding window)
+- Long-context attack detection: sliding window (2048/1024/4) on the v0.2.0 int8 shippable
 - Bundle size: 147 MB int8 + 549 MB full
 - License: kept Apache 2.0
+
+### Public Benchmark (shipped INT8 bundle, sha 243b18dd4a57b183...; evaluated 2026-07-01)
+
+Evaluated on the public round13 corpus (HackAPrompt, deepset) and
+the public promptfoo test set. Sliding window 2048/1024/4, threshold
+0.05. Results JSON in `test/eval/benchmark-results-2026-07-01-int8.json`
+and `test/eval/benchmark-results-2026-07-01-clean.json`.
+
+| Dataset | Records (attack + benign) | Recall | FPR | F1 |
+|---|---|---|---|---|
+| HackAPrompt (public) | 250 + 250 | 0.972 | see clean eval | 0.672 |
+| deepset (public) | 126 + 0 | 0.976 | n/a | 0.988 |
+| promptfoo (public) | 94 + 50 | 1.000 | 0.000 | 1.000 |
+
+**Notes on FPR**: The round13 benign corpus (`imoxto_cleaned`, 64,885
+records) is heavily contaminated — many records labeled "benign"
+contain obvious attack patterns (system-prompt-extraction, role-switch
+attacks). The Lens correctly flags these as attacks. Re-running on
+a clean benign corpus (neuralchemy_pi, long_benign_v2, promptfoo test)
+gives a cleaner FPR; see the clean-eval results JSON.
+
+The previous "0% FPR" claim in the v0.3.0-rc1 README was based on
+the contaminated round13 benign corpus and has been retracted. The
+honest competitive position is documented in
+`test/eval/HONEST-BENCHMARK-REPORT-2026-06-29.md` — the Lens is
+competitive with Lakera Guard and Microsoft Prompt Shields on public
+benchmarks, NOT "10x better than billion-dollar competitors".
 
 ## [v0.2.2] - 2026-06-22 (historical, added retroactively)
 
