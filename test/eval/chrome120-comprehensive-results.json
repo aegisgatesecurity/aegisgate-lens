@@ -1,0 +1,39 @@
+{
+  "timestamp": "2026-06-28",
+  "tests": {
+    "T1_determinism": {
+      "result": "{\"error\":\"module not loaded in this context (SW does not include util)\"}"
+    },
+    "T2_threshold": {
+      "result": "{\"error\":\"module not loaded\"}"
+    },
+    "T3_bundle_signing": {
+      "loader": {
+        "error": "Uncaught"
+      },
+      "primitives": {
+        "error": "Uncaught"
+      }
+    },
+    "T4_sender_id": {
+      "source": "{\"url\":\"chrome-extension://nmmakohhlichiagociipmfhgcdnnkigj/service-worker.js\",\"size\":15996,\"hasSenderId\":true,\"hasOwnExtensionId\":true,\"hasIsForeignSender\":true,\"hasSenderValidation\":true}"
+    },
+    "T5_dismissals": {
+      "source": "{\"url\":\"chrome-extension://nmmakohhlichiagociipmfhgcdnnkigj/storage.js\",\"size\":8066,\"hasStoreDismissal\":false,\"hasPruning\":false,\"hasCap\":false,\"hasTTL\":false}"
+    },
+    "T6_detectors": {
+      "files": "{\"detectorFiles\":[{\"name\":\"detectors/regex.js\",\"exists\":true},{\"name\":\"detectors/regex_v2.js\",\"exists\":true},{\"name\":\"detectors/luhn.js\",\"exists\":true},{\"name\":\"detectors/from_platform.js\",\"exists\":true},{\"name\":\"detectors/index.js\",\"exists\":true}]}",
+      "node_tests": {
+        "stdout_tail": "\n=== Detector Test Results ===\nPassed: 34/34 (100.0%)\n",
+        "stderr_tail": "",
+        "exit_code": 0
+      }
+    },
+    "T7_sliding_window": {
+      "result": "{\"error\":\"no module\"}"
+    },
+    "T8_csp": {
+      "result": "{\"csp\":{\"extension_pages\":\"script-src 'self'; object-src 'self'\"},\"permissions\":[\"storage\",\"alarms\"],\"host_permissions\":[\"https://lens.aegisgatesecurity.io/*\"],\"web_accessible_resources\":[\"icons/icon-16.png\",\"icons/icon-32.png\",\"icons/icon-48.png\",\"icons/icon-128.png\",\"welcome.html\",\"welcome.js\",\"vendor/onnxruntime/ort.min.js\",\"vendor/onnxruntime/ort-wasm-simd-threaded.mjs\",\"vendor/onnxruntime/ort-wasm-simd-threaded.wasm\",\"vendor/onnxruntime/ort-wasm-simd-threaded.jsep.mjs\",\"vendor/bundles/aegisgate-lens-prompt-injection-int8-v0.2.0.bundle\",\"vendor/bundles/aegisgate-lens-prompt-injection-v0.2.0.bundle\",\"vendor/bundles/aegisgate-lens-toxicity-v0.2.0.bundle\"]}"
+    }
+  }
+}

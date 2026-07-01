@@ -92,3 +92,119 @@ By contributing, you agree that your contributions will be licensed under the Ap
 ## Code of Conduct
 
 This project adheres to the Contributor Covenant. See [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md). Be kind. Be patient. We are all here to build something good.
+
+
+---
+
+## Development environment setup
+
+This section explains how to set up a local development environment to run the Lens tests, build the extension, and submit a PR.
+
+### Prerequisites
+
+- **Node.js 20 LTS** (matches what the extension stores target). Use `nvm` or `fnm` to manage Node versions.
+- **Git** for version control.
+- **Google Chrome 120+** for manual testing of the extension.
+- A Unix-like shell (bash, zsh). Windows users: use WSL2.
+- A text editor with JavaScript syntax highlighting. VSCode with the `vscode-eslint` and `vscode-jest` extensions is recommended.
+
+No `npm install` is required. The Lens has **zero third-party JavaScript dependencies** (see `SECURITY.md` and `docs/NO-EXTERNAL-DEPS.md`).
+
+### Clone the repository
+
+```bash
+git clone https://github.com/aegisgatesecurity/aegisgate-lens.git
+cd aegisgatesecurity-aegisgate-lens
+git checkout v0.3.0-rc1  # or main for the latest dev
+```
+
+### Run the test suite
+
+```bash
+# All test suites
+for t in test/*.test.mjs; do node "$t"; done
+```
+
+Test counts (as of v0.3.0-rc1): 233/233 passing across 21 suites. Each suite prints its own PASS/FAIL summary.
+
+### Run a single test
+
+```bash
+node test/model-loader.test.mjs
+```
+
+### Real-browser end-to-end test
+
+The real-browser E2E test requires Chrome 120 (Chrome-for-Testing). To run:
+
+```bash
+# Download Chrome-for-Testing 120 to a gitignored location (NOT /tmp/)
+mkdir -p .chrome120
+cd .chrome120
+wget -q https://storage.googleapis.com/chrome-for-testing-public/120.0.6046.0/linux64/chrome-linux64.zip
+unzip -q chrome-linux64.zip
+cd ..
+
+# Start Chrome 120 on Xvfb display :88
+bash test/scripts/launch-chrome120.sh 9720
+
+# In a separate terminal, run the Python E2E test
+.venv-v02/bin/python test/scripts/chrome120-comprehensive-test.py
+```
+
+### Build the production extension ZIP
+
+```bash
+# The build tool is a Go program in the Platform monorepo
+cd ../aegisgate-platform
+go run tools/build-lens-extension/ --src ../aegisgatesecurity-aegisgate-lens/
+```
+
+### Project structure (v0.3.0)
+
+```
+.
+├── src/                          # Extension source (vanilla JavaScript, IIFE pattern)
+│   ├── manifest.json            # MV3 manifest
+│   ├── content.js                # Content script (the only code that sees prompt text)
+│   ├── service-worker.js         # MV3 service worker (router)
+│   ├── popup.js                  # Popup UI
+│   ├── storage.js                # chrome.storage wrapper
+│   ├── api/client.js             # Telemetry client (with privacy boundary)
+│   ├── detectors/                # 5-facet regex cascade
+│   ├── privacy/                  # domain_hash, schema
+│   └── util/                     # logger, opt-in, model-loader, bundle-loader, etc.
+├── test/                         # 21 test suites, 233/233 passing
+├── docs/                         # ARCHITECTURE, THREAT-MODEL, COMPLIANCE-MATRIX, etc.
+├── pen-test/                     # Security pen-tests (F-01 to F-15)
+├── harness/                      # Manual test harnesses
+├── .github/                      # CI workflows, issue/PR templates, CODEOWNERS
+├── plans/                        # Internal planning docs (gitignored)
+├── lens-final-dist/              # The built extension (shipped artifact)
+└── lens-final-dist-firefox/      # Firefox port
+```
+
+### Code style
+
+- Vanilla JavaScript, ES2020+ features. No TypeScript, no transpilation.
+- IIFE pattern for modules. No global namespace pollution. See `src/util/logger.js` for an example.
+- JSDoc comments on all public functions. Use `node --check` for syntax validation.
+- No `eval`, no `Function(`, no `innerHTML` (CSP-enforced in the extension).
+- No third-party libraries. No `package.json`. (See `docs/NO-EXTERNAL-DEPS.md` for the full rationale.)
+
+### Submitting a PR
+
+1. Fork the repo.
+2. Create a feature branch: `git checkout -b feature/your-change`
+3. Make your changes.
+4. Run the test suite (above). All 233 tests must pass.
+5. Sign off your commits: `git commit -s` (DCO, see `DCO.md`).
+6. Push the branch and open a PR using the `PULL_REQUEST_TEMPLATE.md`.
+7. The CI will run the 21 test suites.
+
+### Common pitfalls
+
+- **Do not add `package.json` or `node_modules/`.** The CI grep check will fail the build.
+- **Do not commit secrets or PII to test fixtures.**
+- **Do not modify the Ed25519 signing keys in `keys/`** without coordinating with the maintainer.
+
