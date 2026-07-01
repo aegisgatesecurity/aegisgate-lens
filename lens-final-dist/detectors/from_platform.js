@@ -847,13 +847,13 @@
       category: 'owasp_insecure_output',
       name: 'owasp_LLM02-001',
       severity: 'high',
-      // codeql[js/bad-tag-filter] False positive: this
-      // regex is the Lens's DETECTION pattern for HTML injection in LLM
-      // output, not a sanitizer. The Lens detects and warns; the user
-      // decides. Source: pkg/compliance/owasp.go LLM02-001 in Platform.
-      // TODO Day 19+: add `//nolint:gosec` to the Go source so the
-      // generator picks up the suppression comment.
-      regex: new RegExp('<\\s*(script\\b[^>]*>[^<]*</\\s*script\\s*>|iframe\\s+[^>]*src\\s*=|object\\s+[^>]*data\\s*=|embed\\s+[^>]*src\\s*=|meta\\s+http-equiv\\s*=\\s*["\']?refresh|form\\s+[^>]*action\\s*=\\s*["\']?\\s*javascript|on(load|error|click|mouseover)\\s*=\\s*["\'][^"\']*["\'])', 'gi'),
+      // codeql[js/bad-tag-filter] False positive: this regex is the
+      // Lens's DETECTION pattern for HTML injection in LLM output, not a
+      // sanitizer. The Lens detects and warns; the user decides. Source:
+      // pkg/compliance/owasp.go LLM02-001 in Platform. CodeQL suppression
+      // directive is repeated as a trailing comment on the next line so the
+      // scanner picks it up regardless of comment-position changes.
+      regex: new RegExp('<\\s*(script\\b[^>]*>[^<]*</\\s*script\\s*>|iframe\\s+[^>]*src\\s*=|object\\s+[^>]*data\\s*=|embed\\s+[^>]*src\\s*=|meta\\s+http-equiv\\s*=\\s*["\']?refresh|form\\s+[^>]*action\\s*=\\s*["\']?\\s*javascript|on(load|error|click|mouseover)\\s*=\\s*["\'][^"\']*["\'])', 'gi'), // codeql[js/bad-tag-filter]
       description: 'Potential HTML injection in LLM output',
       compliance: Object.freeze(['OWASP-LLM']),
     }),
