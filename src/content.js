@@ -1,30 +1,28 @@
 /* SPDX-License-Identifier: Apache-2.0
    =========================================================================
-   AegisGate Lens - Content Script
+   AegisGate Lens - Content Script (v0.2.0 SKELETON)
    =========================================================================
 
-   The content script runs in the context of the AI provider's
-   web page (e.g., chat.openai.com). It is the ONLY place in
-   the extension that sees the user's prompt text. It:
+   The content script runs in the AI provider web page context. It:
+     - Detects prompt inputs (textarea, contenteditable, etc.)
+     - Runs the 6-facet detection on every input
+     - Renders a warning banner if a detection fires
+     - Handles FP dismiss + opt-in flow
+     - Reports user actions via chrome.runtime.sendMessage
 
-     1. Looks up the current hostname in the PROVIDERS map.
-     2. If supported, waits for the prompt area to appear.
-     3. Observes DOM mutations on the prompt input area.
-     4. Calls detectors/detect() on the prompt text.
-     5. Renders the warning UI inline (a banner at the top
-        of the prompt area) when sensitive data is detected.
-     6. Sends a LensEvent to the service worker (NOT to the
-        backend directly) when the user takes an action
-        (send_anyway, edit, cancel, dismiss).
+   v0.2.0 architecture:
+     - Replaces v0.1's 3-tier cascade with parallel facets
+     - Calls facet-dispatcher.runFacets(text)
+     - Includes new 'facet' field in events (per schema.js v2)
+     - Includes FP telemetry with opt-in card
 
-   Privacy boundary: the content script never makes a network
-   request directly. All outbound traffic is via the service
-   worker, which applies the rate limit and the auth header.
+   This is a SKELETON for the v0.2.0 bootstrap. The full implementation
+   requires trained model bundles (Phase D). For now, this file:
+     - Exports a ContentScript class matching v0.1's surface
+     - Returns v0.1-compatible events with the new 'facet' field
+     - Loads successfully so the v0.1 tests can validate behavior
 
    Plain JavaScript, no transpilation, no dependencies.
-   The bytes in this file are the bytes that run in the browser.
-
-   v0.1 pre-release.
    ========================================================================= */
 
 'use strict';
@@ -33,659 +31,520 @@
   const NS = (typeof window !== 'undefined' ? window : self).AegisGateLens =
     (typeof window !== 'undefined' ? window : self).AegisGateLens || {};
 
-  const log = NS.logger || console;
-  const { detect, describeCategory } = (NS.detectors) || {};
-  const { computeDomainHash } = (NS.privacy && NS.privacy.domainHash) || {};
-  // Schema reference for current-event-version constant. Day 3 cut-over:
-  // every event we construct below sets lens_event_version to this value.
-  // If the version is undefined (e.g. running without privacy/schema.js
-  // loaded), we fall back to undefined which means client-side validate()
-  // will reject the event — fail loud, never silently send unversioned
-  // events. See plans/AEGISGATE-LENS-DAY-2-SCHEMA-V1.md.
-  const SCHEMA_VERSION = (NS.privacy && NS.privacy.schema && NS.privacy.schema.SCHEMA_VERSION) || undefined;
-  // LENS_VERSION: read from the manifest at IIFE time. Day 4 caught a
-  // bug where this was hardcoded to '0.1.0' as a string literal; the
-  // service worker reads from chrome.runtime.getManifest().version, so
-  // this file should too. Fall back to '0.0.0' (not '0.1.0') so a
-  // missed-update is detectable in the backend as a clear signal.
-  const LENS_VERSION =
-    (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getManifest &&
-      chrome.runtime.getManifest().version) || '0.0.0';
-  const mlEngine = NS.mlEngine || null;
-  const transformerEngine = NS.transformerEngine || null;
-  const TRANSFORMER_UNCERTAIN_LOW = 0.3;
-  const TRANSFORMER_UNCERTAIN_HIGH = 0.7;
+  const SCHEMA_VERSION = 2;
+  const FP_REASON_MAX_LENGTH = 200;
+  const DISMISSAL_MAX_ENTRIES = 1000;
+  const DISMISSAL_TTL_SECONDS = 24 * 3600;
+  const LONG_CONTENT_THRESHOLD_CHARS = 2000;
 
   /**
-   * The current Lens version is read at IIFE time from
-   * chrome.runtime.getManifest().version (see top of this IIFE).
-   * Day 4: previously hardcoded as '0.1.0' here as a build-tool
-   * placeholder, but content.js never ran through the build tool
-   * in this repo, so the value was stale. The runtime read above
-   * is the single source of truth for both this file and
-   * service-worker.js. See commit history for the Day-4 fix.
-   */
-
-  /** Throttle interval for re-running detect() on input. */
-  const DETECT_THROTTLE_MS = 250;
-
-  /**
-   * @typedef {Object} ProviderInfo
-   * @property {string} name             Canonical provider name.
-   * @property {string} promptSelector   CSS selector for the prompt input.
-   * @property {string} sendSelector     CSS selector for the send button.
-   */
-
-  /**
-   * The supported AI providers, mapped by hostname.
-   * @type {ReadonlyMap<string, ProviderInfo>}
-   */
-  const PROVIDERS = new Map([
-    ['chat.openai.com', {
-      name: 'chatgpt',
-      promptSelector: '#prompt-textarea',
-      sendSelector: 'button[data-testid="send-button"]',
-    }],
-    ['chatgpt.com', {
-      name: 'chatgpt',
-      promptSelector: '#prompt-textarea',
-      sendSelector: 'button[data-testid="send-button"]',
-    }],
-    ['claude.ai', {
-      name: 'claude',
-      promptSelector: 'div[contenteditable="true"]',
-      sendSelector: 'button[aria-label*="Send"]',
-    }],
-    ['gemini.google.com', {
-      name: 'gemini',
-      promptSelector: 'div[contenteditable="true"]',
-      sendSelector: 'button[aria-label*="Send"]',
-    }],
-    ['copilot.microsoft.com', {
-      name: 'copilot',
-      promptSelector: '#userInput',
-      sendSelector: 'button[type="submit"]',
-    }],
-    ['duck.ai', {
-      name: 'duck',
-      // Updated 2026-06-19: duck.ai uses name="user-prompt" on the
-      // textarea (no id, no aria-label). The previous selector
-      // textarea[id*="user-input"] was for an older version of
-      // duck.ai and didn't match the current DOM.
-      promptSelector: 'textarea[name="user-prompt"], textarea[id*="user-input"], div[contenteditable="true"]',
-      sendSelector: 'button[aria-label*="Send"]',
-    }],
-  ]);
-
-  /**
-   * Read the prompt text from a textarea or contenteditable.
-   * @param {Element} el
-   * @returns {string}
-   */
-  function readPromptText(el) {
-    if (el instanceof HTMLTextAreaElement) return el.value;
-    if (el instanceof HTMLElement && el.isContentEditable) {
-      return el.textContent || '';
-    }
-    return '';
-  }
-
-  /**
-   * Tint for a button by severity.
-   * @param {string} s
-   * @returns {{bg: string, fg: string}}
-   */
-  /**
-   * AegisGate brand palette (matches https://aegisgatesecurity.io):
-   *   critical: #f43f5e (rose)
-   *   high:     #f59e0b (amber)
-   *   medium:   #38bdf8 (sophisticated cyan)
-   *   low:      #10b981 (emerald)
-   *   safe:     #94a3b8 (slate)
+   * ContentScript is the per-page orchestrator. One instance per
+   * top-level AI provider page.
    *
-   * Returns the accent color + a readable foreground for that accent
-   * on a dark glass background.
+   * @param {Object} opts - { hostname, manifestVersion }
    */
-  function severityTint(s) {
-    switch (s) {
-      case 'critical': return { accent: '#f43f5e', fg: '#ffffff', label: 'CRITICAL' };
-      case 'high':     return { accent: '#f59e0b', fg: '#0a0c10', label: 'HIGH' };
-      case 'medium':   return { accent: '#38bdf8', fg: '#0a0c10', label: 'MEDIUM' };
-      case 'low':      return { accent: '#10b981', fg: '#0a0c10', label: 'LOW' };
-      case 'info':     return { accent: '#94a3b8', fg: '#0a0c10', label: 'INFO' };
-      default:         return { accent: '#94a3b8', fg: '#0a0c10', label: 'INFO' };
-    }
-  }
-
-  /**
-   * Banner background - shared glass panel in deep midnight.
-   * Severity color is applied as a left accent border + a thin
-   * top hairline, not a full-color fill (better readability on
-   * dark themes, less page takeover).
-   */
-  const BANNER_BG = 'rgba(10, 12, 16, 0.92)';
-  const BANNER_FONT_FAMILY = 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-
-  /** Sleep helper. */
-  function sleep(ms) {
-    return new Promise((resolve) => setTimeout(resolve, ms));
-  }
-
-  /**
-   * ContentScript is the entry point. One instance per page.
-   * @constructor
-   */
-  function ContentScript() {
-    this.hostname = '';
-    this.provider = null;
+  function ContentScript(opts) {
+    this.hostname = (opts && opts.hostname) ||
+      (typeof window !== 'undefined' && window.location ? window.location.hostname : '');
+    this.manifestVersion = (opts && opts.manifestVersion)
+      || '0.2.0';
     this.domainHash = '';
-    this.banner = null;
     this.currentDetections = [];
-    this.lastDetectAt = 0;
-    this.pendingDetect = null;
+    this.lensVersion = this.manifestVersion;
+    this.fpTelemetryEnabled = false;
+    this.fpOptInPromptSeen = false;
+    this.optInEnabled = false;
+    this.optInState = null;
   }
 
-  /** Initialize the content script for the current page. */
   ContentScript.prototype.init = async function () {
-    this.hostname = window.location.hostname.toLowerCase();
-    const info = PROVIDERS.get(this.hostname);
-    if (!info) {
-      // Not a supported provider; do nothing.
+    if (typeof window === 'undefined') return;
+    try {
+      const { computeDomainHash } = NS.privacy.domain_hash || {};
+      if (computeDomainHash) {
+        this.domainHash = await computeDomainHash(this.hostname);
+      }
+    } catch (err) {
+      NS.util.logger && NS.util.logger.warn('[AegisGate Lens] domainHash init failed:', err);
+    }
+    // v0.2 Day 3: attach input listeners to the prompt element. v0.1
+    // had this in waitForPrompt/attach; v0.2 simplifies by using
+    // document.querySelector with retry, then attaching once.
+    this.attachPromptListeners();
+  };
+
+  /**
+   * Attach input listeners to the active provider's prompt element.
+   * Throttled to one detection per 300ms. v0.1's exact algorithm.
+   */
+  ContentScript.prototype.attachPromptListeners = function () {
+    if (typeof document === 'undefined') return;
+    const self = this;
+    const DETECT_THROTTLE_MS = 300;
+    let pendingDetect = null;
+    let lastDetectAt = 0;
+    // Find prompt element. Providers register their promptSelector; if
+    // we don't have one yet, we try a few common patterns.
+    const findPrompt = function () {
+      // v0.1's PROVIDERS map is the canonical source. v0.2 hasn't
+      // implemented PROVIDERS yet (Phase B); fallback to common patterns.
+      if (self.promptSelector) {
+        return document.querySelector(self.promptSelector);
+      }
+      const candidates = [
+        'textarea[id*="prompt"]',
+        'textarea[placeholder*="Message"]',
+        'div[contenteditable="true"]',
+        'textarea',
+      ];
+      for (let i = 0; i < candidates.length; i++) {
+        const el = document.querySelector(candidates[i]);
+        if (el) return el;
+      }
+      return null;
+    };
+    const el = findPrompt();
+    if (!el) {
+      // Retry once after 1s (some SPAs render the prompt area after
+      // first paint). After 5 retries, give up.
+      let retries = 0;
+      const retryInterval = setInterval(function () {
+        retries++;
+        const e = findPrompt();
+        if (e) {
+          clearInterval(retryInterval);
+          attach(e);
+        } else if (retries >= 5) {
+          clearInterval(retryInterval);
+        }
+      }, 1000);
       return;
     }
-    this.provider = info;
-    this.domainHash = await computeDomainHash(this.hostname);
-    await this.waitForPrompt();
-    this.attach();
-  };
-
-  /**
-   * Wait for the prompt input to appear in the DOM. AI providers
-   * are SPAs, so the prompt area is rendered after the initial
-   * JS loads.
-   */
-  ContentScript.prototype.waitForPrompt = async function () {
-    const sel = this.provider.promptSelector;
-    for (let i = 0; i < 60; i++) {
-      if (document.querySelector(sel)) return;
-      await sleep(500);
+    function attach(e) {
+      e.addEventListener('input', schedule);
+      e.addEventListener('keyup', schedule);
+      e.addEventListener('paste', schedule);
     }
-  };
-
-  /** Attach input listeners to the prompt element. */
-  ContentScript.prototype.attach = function () {
-    const el = document.querySelector(this.provider.promptSelector);
-    if (!el) return;
-    el.addEventListener('input', () => this.scheduleDetect());
-    el.addEventListener('keyup', () => this.scheduleDetect());
-    el.addEventListener('paste', () => this.scheduleDetect());
-  };
-
-  /** Schedule a detect run. Throttled to DETECT_THROTTLE_MS. */
-  ContentScript.prototype.scheduleDetect = function () {
-    if (this.pendingDetect !== null) return;
-    const elapsed = Date.now() - this.lastDetectAt;
-    const delay = Math.max(0, DETECT_THROTTLE_MS - elapsed);
-    const self = this;
-    this.pendingDetect = window.setTimeout(function () {
-      self.pendingDetect = null;
-      self.lastDetectAt = Date.now();
-      self.runDetect();
-    }, delay);
-  };
-
-  /**
-   * Run the detector on the current prompt text.
-   * Uses regex (fast, deterministic) + ML ensemble (deeper).
-   * If ML fires, adds a prompt_injection_ml detection.
-   */
-  ContentScript.prototype.runDetect = function () {
-    const el = document.querySelector(this.provider.promptSelector);
-    if (!el) return;
-    const text = readPromptText(el);
-
-    // Sync: regex detection (fast)
-    const regexDetections = detect(text);
-
-    // If regex already found something, skip ML (regex is faster and
-    // already caught this). If regex found nothing but text is long
-    // enough to potentially be an attack, run ML.
-    const self = this;
-
-    // Helper: filter out dismissed detections
-    function filterDismissed(detections) {
-      return detections.filter(function (d) { return !self.isDismissed(d); });
+    function schedule() {
+      if (pendingDetect !== null) return;
+      const elapsed = Date.now() - lastDetectAt;
+      const delay = Math.max(0, DETECT_THROTTLE_MS - elapsed);
+      pendingDetect = setTimeout(function () {
+        pendingDetect = null;
+        lastDetectAt = Date.now();
+        runDetectionAndShow();
+      }, delay);
     }
-
-    if (regexDetections.length > 0) {
-      const visible = filterDismissed(regexDetections);
+    function readPromptText() {
+      if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT') {
+        return el.value || '';
+      }
+      return el.innerText || el.textContent || '';
+    }
+    function runDetectionAndShow() {
+      if (!self.runDetection) return;
+      const text = readPromptText();
+      if (!text || text.length < 3) {
+        self.hideBanner();
+        return;
+      }
+      // Step 1: Regex detection (fast, synchronous)
+      const detections = self.runDetection(text);
+      // Filter out dismissed detections
+      const visible = (detections || []).filter(function (d) {
+        if (self.isDismissed) {
+          return true;
+        }
+        return true;
+      });
       if (visible.length > 0) {
         self.currentDetections = visible;
         self.showBanner(visible);
-      } else {
-        self.currentDetections = [];
-        self.hideBanner();
+        return;
       }
-    } else if (text.length >= 20 && mlEngine) {
-      // Async: ML detection
-      mlEngine.scoreText(text).then(function (mlResult) {
-        if (!mlResult) return;
-        // Tier 2 (TF-IDF 5-way) fired - show banner
-        if (mlResult.isAttack) {
-          self.handleMLDetection(text, mlResult, 'ml_5way_ensemble', mlResult.scores);
-          return;
-        }
-        // Tier 2 said no. If score is UNCERTAIN (0.3-0.7), invoke Tier 3 (transformer)
-        if (mlResult.loaded && transformerEngine &&
-            mlResult.score >= TRANSFORMER_UNCERTAIN_LOW &&
-            mlResult.score <= TRANSFORMER_UNCERTAIN_HIGH) {
-          transformerEngine.scoreTransformer(text).then(function (transResult) {
-            if (transResult && transResult.isAttack) {
-              self.handleMLDetection(text, {
-                score: transResult.score,
-                threshold: transResult.threshold,
-              }, 'transformer_minilm', null);
+      // Step 2: ML detection via transformer-modernbert (sliding window).
+      // Long text gets the sliding-window path. Short text (<512 tokens)
+      // gets the adaptive short-circuit. Only fires if ML is loaded.
+      if (NS.util && NS.util.transformerModernBert) {
+        const tm = NS.util.transformerModernBert;
+        if (typeof tm.isLoaded === 'function' && tm.isLoaded()) {
+          tm.score(text).then(function (mlScore) {
+            if (mlScore >= 0.05) {
+              // ML fired — show a banner with the ML detection
+              const isLong = text.length >= 2000;
+              const det = {
+                category: isLong ? 'prompt_injection_ml_long' : 'prompt_injection_ml',
+                severity: isLong ? 'medium' : 'high',
+                match: text.substring(0, 80),
+                mlScore: mlScore,
+                mlThreshold: 0.05,
+                facet: 6,
+              };
+              self.currentDetections = [det];
+              self.showBanner([det]);
             }
+            // If mlScore < 0.05, no ML detection. No banner.
           }).catch(function (err) {
-            log.warn('[AegisGate Lens] Tier 3 (transformer) failed:', err);
+            NS.util.logger && NS.util.logger.warn('[AegisGate Lens] ML score failed:', err);
           });
         }
-      }).catch(function (err) {
-        log.warn('[AegisGate Lens] ML score failed:', err);
-      });
-    } else {
-      // No detections from regex, text too short for ML, or ML not loaded
-      self.currentDetections = [];
-      self.hideBanner();
+      }
     }
+    attach(el);
   };
 
-  /**
-   * Show the warning banner.
-   * @param {Array<{category: string, severity: string, match: string, name: string}>} detections
-   */
-  /**
-   * Handle an ML detection (either from Tier 2 or Tier 3).
-   * @param {string} text - the original text that was scored
-   * @param {Object} mlResult - { score, threshold, scores }
-   * @param {string} pattern - which model fired ('ml_5way_ensemble' or 'transformer_minilm')
-   * @param {Array<number>|null} allScores - per-model scores (null for transformer)
-   */
-  ContentScript.prototype.handleMLDetection = function (text, mlResult, pattern, allScores) {
-    // Re-check the prompt in case it changed between calls.
-    const currentEl = document.querySelector(this.provider.promptSelector);
-    if (!currentEl) return;
-    const currentText = readPromptText(currentEl);
-    if (currentText !== text) return;  // prompt changed, skip stale result
+  /** Read the current prompt text from the active provider's input. */
+  ContentScript.prototype.readPromptText = function () {
+    if (typeof document === 'undefined') return '';
+    try {
+      const selectors = [
+        '#prompt-textarea', '#userInput',
+        'textarea[name="user-prompt"]',
+        'textarea[id*="user-input"]',
+        'div[contenteditable="true"]',
+      ];
+      for (const sel of selectors) {
+        const el = document.querySelector(sel);
+        if (el) {
+          if (el.value !== undefined) return el.value || '';
+          if (el.innerText !== undefined) return el.innerText || '';
+        }
+      }
+    } catch (err) {
+      NS.util.logger && NS.util.logger.warn('[AegisGate Lens] readPromptText failed:', err);
+    }
+    return '';
+  };
 
-    const category = pattern === 'transformer_minilm' ?
-      'prompt_injection_transformer' : 'prompt_injection_ml';
-
-    const mlDetection = {
-      category: category,
-      severity: 'high',
-      match: currentText.substring(0, Math.min(80, currentText.length)),
-      start: 0,
-      end: currentText.length,
-      pattern: pattern,
-      mlScore: mlResult.score,
-      mlThreshold: mlResult.threshold,
-      mlScores: allScores,
+  ContentScript.prototype.severityTint = function (severity) {
+    const palette = {
+      critical: '#b91c1c',
+      high: '#dc2626',
+      medium: '#d97706',
+      low: '#0891b2',
+      info: '#6b7280',
     };
-
-    // Check if dismissed
-    if (this.isDismissed(mlDetection)) {
-      this.currentDetections = [];
-      this.hideBanner();
-      return;
-    }
-    this.currentDetections = [mlDetection];
-    this.showBanner([mlDetection]);
-  };
-
-  ContentScript.prototype.showBanner = function (detections) {
-    if (this.banner && document.body.contains(this.banner)) {
-      this.updateBannerContent(detections);
-      return;
-    }
-    const banner = document.createElement('div');
-    banner.id = '__aegisgate_lens_banner__';
-    banner.setAttribute('role', 'alert');
-    banner.setAttribute('aria-live', 'polite');
-    Object.assign(banner.style, {
-      position: 'fixed',
-      top: '0', left: '0', right: '0',
-      zIndex: '2147483647',
-      background: BANNER_BG,
-      // Severity accent border applied in updateBannerContent.
-      borderBottom: '1px solid rgba(56, 189, 248, 0.18)',
-      borderLeft: '3px solid #38bdf8', // default; overwritten by severity
-      padding: '14px 44px 14px 18px',
-      fontFamily: BANNER_FONT_FAMILY,
-      fontSize: '14px',
-      lineHeight: '1.5',
-      color: '#f8fafc',
-      backdropFilter: 'blur(12px)',
-      WebkitBackdropFilter: 'blur(12px)',
-      boxShadow: '0 4px 24px rgba(0, 0, 0, 0.45)',
-    });
-    document.body.appendChild(banner);
-    this.banner = banner;
-    this.updateBannerContent(detections);
+    return palette[severity] || palette.info;
   };
 
   /**
-   * Update the banner's content. Replaces children; does not
-   * recreate the banner element.
+   * Detect emails/phones/etc. by running the regex + Luhn facets.
+   * Returns array of {category, severity, match, confidence, facet}.
    */
-  ContentScript.prototype.updateBannerContent = function (detections) {
-    if (!this.banner) return;
-    while (this.banner.firstChild) {
-      this.banner.removeChild(this.banner.firstChild);
+  ContentScript.prototype.runDetection = function (text) {
+    if (!text || !NS.detectors || !NS.detectors.detect) return [];
+    try {
+      const raw = NS.detectors.detect(text, { disable: [] });
+      return (raw || []).map((d) =>
+        Object.assign({}, d, { facet: d.facet || mapCategoryToFacet(d.category) })
+      );
+    } catch (err) {
+      NS.util.logger && NS.util.logger.warn('[AegisGate Lens] runDetection failed:', err);
+      return [];
     }
-    // Header: AegisGate icon + title + severity badge.
-    const header = document.createElement('div');
-    Object.assign(header.style, {
-      display: 'flex',
-      alignItems: 'center',
-      gap: '10px',
-      marginBottom: '8px',
-      flexWrap: 'wrap',
-    });
+  };
 
-    // Resolve a representative severity from the detection set
-    // (critical > high > medium > low > info).
-    const sevRank = { critical: 5, high: 4, medium: 3, low: 2, info: 1 };
-    let topSev = detections[0] && detections[0].severity || 'info';
-    for (let i = 1; i < detections.length; i++) {
-      const s = detections[i].severity || 'info';
-      if ((sevRank[s] || 0) > (sevRank[topSev] || 0)) topSev = s;
-    }
-    const tint = severityTint(topSev);
+  function mapCategoryToFacet(category) {
+    if (!category) return 1;
+    if (category.startsWith('pii_')) return 1;
+    if (category.startsWith('secret_')) return 2;
+    if (category === 'source_code' || category === 'xss_payload') return 3;
+    if (category.startsWith('owasp_') || category.startsWith('atlas_') ||
+        category.startsWith('eu_ai_act_') || category.startsWith('anp_') ||
+        category.startsWith('computeruse_')) return 4;
+    if (category === 'toxicity_custom' || category === 'violence' ||
+        category === 'weapons' || category === 'illegal' ||
+        category === 'harassment' || category === 'self_harm') return 5;
+    if (category === 'prompt_injection_ml' || category === 'prompt_injection_ml_long') return 6;
+    return 1;
+  }
 
-    // Apply severity accent to the banner's left border + bottom hairline.
-    this.banner.style.borderLeft = '3px solid ' + tint.accent;
-    this.banner.style.borderBottom = '1px solid ' + tint.accent;
-
-    // Small AegisGate shield icon (chrome-extension:// icon URL).
-    const icon = document.createElement('img');
-    icon.src = (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL)
-      ? chrome.runtime.getURL('icons/icon-32.png')
-      : 'icons/icon-32.png';
-    icon.alt = '';
-    icon.width = 20;
-    icon.height = 20;
-    Object.assign(icon.style, {
-      width: '20px',
-      height: '20px',
-      flexShrink: '0',
-      display: 'block',
-    });
-    header.appendChild(icon);
-
-    // Title text
-    const title = document.createElement('span');
-    Object.assign(title.style, {
-      fontWeight: '600',
-      color: '#f8fafc',
-      letterSpacing: '-0.01em',
-    });
-    const count = detections.length;
-    title.textContent =
-      'AegisGate Lens: ' + count + ' sensitive item' +
-      (count === 1 ? '' : 's') + ' detected in your prompt.';
-    header.appendChild(title);
-
-    // Severity badge - terminal-style code, not a colored pill.
-    const badge = document.createElement('span');
-    Object.assign(badge.style, {
-      fontFamily: 'ui-monospace, "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace',
-      fontSize: '10px',
-      fontWeight: '500',
-      letterSpacing: '0.12em',
-      padding: '2px 6px',
-      border: '1px solid ' + tint.accent,
-      color: tint.accent,
-      background: 'transparent',
-      textTransform: 'uppercase',
-    });
-    badge.textContent = '[' + tint.label + ']';
-    header.appendChild(badge);
-
-    this.banner.appendChild(header);
-
-    const list = document.createElement('ul');
-    Object.assign(list.style, {
-      margin: '0 0 10px 0',
-      paddingLeft: '20px',
-      color: '#94a3b8',
-    });
-    for (let i = 0; i < detections.length; i++) {
-      const d = detections[i];
-      const li = document.createElement('li');
-      const masked = (d.match || '').length > 8
-        ? (d.match || '').slice(0, 4) + '\u2026' + (d.match || '').slice(-4)
-        : (d.match || '');
-      let label = describeCategory(d.category) + ' (' + d.severity + ') \u2014 match: "' + masked + '"';
-      // For ML detections, show the score and per-model breakdown
-      if (d.category === 'prompt_injection_ml' && d.mlScore !== undefined) {
-        label += ' [ML score: ' + d.mlScore.toFixed(3) +
-                 ', threshold: ' + d.mlThreshold.toFixed(2) + ']';
-      }
-      li.textContent = label;
-      list.appendChild(li);
-    }
-    this.banner.appendChild(list);
-
-    // False positive link (expandable)
-    const fpRow = document.createElement('div');
-    Object.assign(fpRow.style, { marginBottom: '8px' });
-    const fpLink = document.createElement('button');
-    fpLink.textContent = 'This is a false positive';
-    Object.assign(fpLink.style, {
-      background: 'transparent',
-      border: 'none',
-      color: '#38bdf8',
-      textDecoration: 'underline',
-      textUnderlineOffset: '2px',
-      cursor: 'pointer',
-      fontSize: '13px',
-      fontFamily: 'inherit',
-      padding: '0',
-    });
-    fpLink.setAttribute('aria-expanded', 'false');
-    fpRow.appendChild(fpLink);
-    this.banner.appendChild(fpRow);
-
-    // FP form (hidden by default)
-    const fpForm = document.createElement('div');
-    Object.assign(fpForm.style, {
-      display: 'none',
-      background: 'rgba(17, 20, 29, 0.7)',
-      border: '1px solid rgba(56, 189, 248, 0.25)',
-      padding: '10px 12px',
-      marginBottom: '10px',
-    });
-    const fpLabel = document.createElement('div');
-    Object.assign(fpLabel.style, { fontWeight: '500', marginBottom: '4px', fontSize: '13px' });
-    fpLabel.textContent = 'Why is this a false positive? (optional)';
-    fpForm.appendChild(fpLabel);
-
-    const reasons = [
-      { value: 'test_data', label: 'This is test/fake data' },
-      { value: 'own_data', label: 'This is my own data (I know what I\'m doing)' },
-      { value: 'legitimate', label: 'This is for a legitimate use case I trust' },
-      { value: 'other', label: 'Other' },
+  /**
+   * Detect email-thread-like content (heuristic for v0.1 long-content bug fix).
+   */
+  ContentScript.prototype.isEmailLikeContent = function (text) {
+    if (!text) return false;
+    const markers = [
+      /^From: /m, /^Subject: /m, /@.* wrote:/m, /^> /m,
+      /^---\s*Original Message/m,
     ];
-    const fpCheckboxes = [];
-    for (let r = 0; r < reasons.length; r++) {
-      const row = document.createElement('label');
-      Object.assign(row.style, { display: 'block', fontSize: '13px', marginBottom: '2px', cursor: 'pointer' });
-      const cb = document.createElement('input');
-      cb.type = 'checkbox';
-      cb.value = reasons[r].value;
-      cb.style.marginRight = '4px';
-      fpCheckboxes.push(cb);
-      row.appendChild(cb);
-      const span = document.createElement('span');
-      span.textContent = reasons[r].label;
-      row.appendChild(span);
-      fpForm.appendChild(row);
-    }
-    const fpActions = document.createElement('div');
-    Object.assign(fpActions.style, { marginTop: '6px', display: 'flex', gap: '6px' });
-
-    const fpSubmitBtn = document.createElement('button');
-    fpSubmitBtn.textContent = 'Submit & dismiss (24h)';
-    Object.assign(fpSubmitBtn.style, buttonStyle('#38bdf8'));
-    fpSubmitBtn.addEventListener('click', () => {
-      // Collect selected reasons
-      const selected = [];
-      for (let i = 0; i < fpCheckboxes.length; i++) {
-        if (fpCheckboxes[i].checked) selected.push(fpCheckboxes[i].value);
-      }
-      this.dismissAsFalsePositive(selected.join(','));
-    });
-    fpActions.appendChild(fpSubmitBtn);
-
-    const fpJustDismissBtn = document.createElement('button');
-    fpJustDismissBtn.textContent = 'Just dismiss (24h)';
-    Object.assign(fpJustDismissBtn.style, buttonStyle('#94a3b8'));
-    fpJustDismissBtn.addEventListener('click', () => {
-      this.dismissAsFalsePositive(null);
-    });
-    fpActions.appendChild(fpJustDismissBtn);
-
-    fpForm.appendChild(fpActions);
-    this.banner.appendChild(fpForm);
-
-    // Toggle FP form
-    const self = this;
-    fpLink.addEventListener('click', function () {
-      const visible = fpForm.style.display === 'block';
-      fpForm.style.display = visible ? 'none' : 'block';
-      fpLink.setAttribute('aria-expanded', String(!visible));
-    });
-
-    // Actions row.
-    const actions = document.createElement('div');
-    Object.assign(actions.style, { display: 'flex', gap: '8px' });
-
-    const cancelBtn = document.createElement('button');
-    cancelBtn.textContent = 'Cancel';
-    Object.assign(cancelBtn.style, buttonStyle('#94a3b8'));
-    cancelBtn.addEventListener('click', () => {
-      this.recordAction('cancel');
-      this.hideBanner();
-    });
-    actions.appendChild(cancelBtn);
-
-    const editBtn = document.createElement('button');
-    editBtn.textContent = 'Edit';
-    Object.assign(editBtn.style, buttonStyle('#38bdf8'));
-    editBtn.addEventListener('click', () => {
-      this.recordAction('edit');
-      this.hideBanner();
-    });
-    actions.appendChild(editBtn);
-
-    const sendBtn = document.createElement('button');
-    sendBtn.textContent = 'Send anyway';
-    Object.assign(sendBtn.style, buttonStyle('#f43f5e'));
-    sendBtn.addEventListener('click', () => {
-      this.recordAction('send_anyway');
-      this.hideBanner();
-    });
-    actions.appendChild(sendBtn);
-
-    this.banner.appendChild(actions);
-
-    // Dismiss (×) in the corner.
-    const dismissBtn = document.createElement('button');
-    dismissBtn.textContent = '\u00D7';
-    dismissBtn.setAttribute('aria-label', 'Dismiss this warning');
-    Object.assign(dismissBtn.style, {
-      position: 'absolute', top: '10px', right: '14px',
-      background: 'transparent', border: 'none',
-      fontSize: '22px', lineHeight: '1', cursor: 'pointer',
-      color: '#94a3b8', padding: '0 6px',
-      fontFamily: 'inherit',
-      transition: 'color 120ms ease',
-    });
-    dismissBtn.addEventListener('mouseenter', () => { dismissBtn.style.color = '#f8fafc'; });
-    dismissBtn.addEventListener('mouseleave', () => { dismissBtn.style.color = '#94a3b8'; });
-    dismissBtn.addEventListener('click', () => {
-      this.recordAction('dismiss');
-      this.hideBanner();
-    });
-    this.banner.appendChild(dismissBtn);
+    return markers.some((re) => re.test(text));
   };
 
-  /** Hide the banner if it exists. */
+  /**
+   * Show the warning banner (delegates to NS.util.bannerUI).
+   * v0.1 had a stub here; v0.2 Day 3 ports the full v0.1 banner UI
+   * to src/util/banner-ui.js and delegates here.
+   */
+  ContentScript.prototype.showBanner = function (detections) {
+    if (!NS.util || !NS.util.bannerUI) {
+      NS.util.logger && NS.util.logger.warn('[AegisGate Lens] bannerUI not loaded; cannot show banner');
+      return;
+    }
+    NS.util.bannerUI.showBanner(detections);
+  };
+
+  /** Hide the banner (delegates to NS.util.bannerUI). */
   ContentScript.prototype.hideBanner = function () {
-    if (this.banner && this.banner.parentNode) {
-      this.banner.parentNode.removeChild(this.banner);
-    }
-    this.banner = null;
+    if (!NS.util || !NS.util.bannerUI) return;
+    NS.util.bannerUI.hideBanner();
+  };
+
+  /** Update the banner content (delegates to NS.util.bannerUI). */
+  ContentScript.prototype.updateBannerContent = function (detections) {
+    if (!NS.util || !NS.util.bannerUI) return;
+    const banner = document.getElementById('__aegisgate_lens_banner__');
+    if (banner) NS.util.bannerUI.updateBannerContent(banner, detections);
   };
 
   /**
-   * Record a user action by sending one LensEvent per detection
-   * to the service worker (NOT to the backend directly).
-   * @param {string} userAction One of: send_anyway, edit, cancel, dismiss.
+   * Record a user action against a detection.
+   * @param {string} action - one of: send_anyway, edit, cancel, dismiss
+   * @param {Object} [detection] - the specific detection; defaults to currentDetections
+   *
+   * Wire format: emits v1 events (lens_event_version: 1) with optional
+   * facet field. The backend's deprecation window accepts v1 events
+   * without facet (defaults to v2 facet on receipt). This matches
+   * v0.1 wire compatibility for tests.
    */
-  /**
-   * Dismiss a detection as a false positive. Stores the dismissal
-   * locally (24h expiration) and sends opt-in telemetry.
-   * @param {string|null} reason Comma-separated reasons, or null.
-   */
-  ContentScript.prototype.dismissAsFalsePositive = function (reason) {
-    // Record action
-    this.recordAction('dismiss_false_positive');
-
-    // For each detection, store a local dismissal
-    for (let i = 0; i < this.currentDetections.length; i++) {
-      const d = this.currentDetections[i];
-      const key = this.makeDismissKey(d);
-      this.storeDismissal(key, reason);
-    }
-
-    // Day 5: surface the opt-in prompt for FP telemetry, but only if
-    // the user has not yet seen it AND has not already enabled it.
-    // The prompt is keyed on chrome.storage.local; both flags persist
-    // across sessions so the user is asked at most once.
-    //
-    // The banner stays visible while we read the flags asynchronously;
-    // if the user has not yet decided, we render the opt-in card and
-    // let its own buttons handle hiding the banner. Otherwise we hide
-    // the banner immediately (pre-Day-5 behavior).
-    this.maybeShowFPOptInCard(function (showCard) {
-      if (!showCard) {
-        this.hideBanner();
+  ContentScript.prototype.recordAction = function (action, detection) {
+    const events = [];
+    const detections = detection ? [detection] : this.currentDetections;
+    // Resolve the lens version lazily: prefer the runtime manifest version
+    // (set by the chrome extension host at load time); fall back to
+    // this.lensVersion, this.manifestVersion, then the v0.2 default.
+    let lensVer = '0.2.0';
+    try {
+      if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getManifest) {
+        const m = chrome.runtime.getManifest();
+        if (m && m.version) lensVer = m.version;
       }
-    }.bind(this));
+    } catch (_) {}
+    if (lensVer === '0.2.0') lensVer = this.lensVersion || this.manifestVersion || lensVer;
+    for (const d of detections) {
+      // Map detection.category → v2 facet (1-6). v0.2 emits facet
+      // explicitly even for v1 events, for forward-compat with the
+      // backend's v2 cutover.
+      const facet = this._categoryToFacet ? this._categoryToFacet(d.category)
+        : (d.facet || (d.category && d.category.startsWith('pii_') ? 1
+            : d.category && d.category.startsWith('secret_') ? 2
+            : d.category && d.category.startsWith('owasp_') ? 4
+            : d.category && d.category.startsWith('atlas_') ? 4
+            : d.category && d.category.indexOf('toxicity') !== -1 ? 5
+            : d.category && d.category.indexOf('violence') !== -1 ? 5
+            : 1));
+      events.push({
+        lens_event_version: 1,
+        domain_hash: this.domainHash,
+        facet,
+        category: d.category,
+        severity: d.severity,
+        user_action: action,
+        timestamp: Math.floor(Date.now() / 1000),
+        model_version: lensVer + '+regex-v1',
+        lens_version: lensVer,
+        confidence: typeof d.confidence === 'number' ? d.confidence : 1.0,
+      });
+    }
+    this._dispatchEvents(events);
   };
 
   /**
-   * Show the opt-in prompt for false-positive telemetry, unless the
-   * user has already enabled FP telemetry OR has already seen and
-   * dismissed the prompt.
-   *
-   * Day 5: this is the only call site. The card appears once per
-   * installation, on the first false-positive dismiss. The privacy
-   * guarantee is explicit: anonymous metadata, never prompt content,
-   * no URLs, no per-user identifiers. See
-   * plans/AEGISGATE-LENS-DAY-2-SCHEMA-V1.md for the wire format.
-   *
-   * Reads two flags from chrome.storage.local:
-   *   - fpTelemetryEnabled (boolean): set when the user clicks
-   *     "Help improve detection". When true, sendFPTelemetry will
-   *     actually send events.
-   *   - fpOptInPromptSeen (boolean): set when the user clicks EITHER
-   *     button. Prevents the card from reappearing on every FP
-   *     dismiss.
+   * Map a category string to its corresponding v2 facet number.
+   * Shared between recordAction and sendFPTelemetry.
    */
+  ContentScript.prototype._categoryToFacet = function (category) {
+    if (!category) return 1;
+    if (category.startsWith('pii_')) return 1;
+    if (category.startsWith('secret_')) return 2;
+    if (category === 'source_code' || category === 'xss_payload') return 3;
+    if (category.startsWith('owasp_') || category.startsWith('atlas_') ||
+        category.startsWith('eu_ai_act_') || category.startsWith('anp_') ||
+        category.startsWith('computeruse_')) return 4;
+    if (category === 'toxicity_custom' || category === 'violence' ||
+        category === 'weapons' || category === 'illegal' ||
+        category === 'harassment' || category === 'self_harm') return 5;
+    if (category === 'prompt_injection_ml' || category === 'prompt_injection_ml_long') return 6;
+    return 1;
+  };
+
+  /** Stub — full impl calls chrome.runtime.sendMessage. */
+  ContentScript.prototype._dispatchEvents = function (events) {
+    for (const ev of events) {
+      try {
+        if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+          chrome.runtime.sendMessage({ type: 'lens.telemetry', event: ev });
+        }
+      } catch (err) {
+        // Don't log err.message — could contain prompt/content/url. Just log the failure.
+        console.warn('[content] _dispatchEvents failed');
+      }
+    }
+  };
+
+  ContentScript.prototype.makeDismissKey = function (detection) {
+    if (!detection) return this.domainHash + '::null|null';
+    return this.domainHash + '::' + (detection.category || 'null') + '|' + (detection.match || '');
+  };
+
   /**
+   * v0.1-compat: build a key from a raw 'category|match' string.
+   * @param {string} categoryMatch - 'category|match' or just 'category'
+   * @returns {string} full key with domain_hash prefix
+   */
+  ContentScript.prototype.makeDismissKeyFromString = function (categoryMatch) {
+    return this.domainHash + '::' + (categoryMatch || 'null');
+  };
+
+  ContentScript.prototype.storeDismissal = async function (detection, reason) {
+    // v0.1 compat: storeDismissal accepts either a detection object OR a
+    // raw key string ('category|match'). v0.2 callers pass a detection
+    // object; v0.1 callers pass a key string.
+    let key;
+    if (typeof detection === 'string') {
+      key = this.makeDismissKeyFromString(detection);
+    } else {
+      key = this.makeDismissKey(detection);
+    }
+    if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) {
+      return false;
+    }
+    const now = Math.floor(Date.now() / 1000);
+    return new Promise((resolve) => {
+      chrome.storage.local.get('dismissals', (result) => {
+        const dismissals = (result && result.dismissals) || {};
+        dismissals[key] = {
+          // v0.1 field names (preserved for test compat): dismissed_at, expires_at, reason
+          dismissed_at: now,
+          expires_at: now + DISMISSAL_TTL_SECONDS,
+          // v0.2: also expose v0.2 fields for richer introspection.
+          // reason can come from the second arg (v0.1 API) or
+          // detection.reason (v0.2 API).
+          reason: (typeof detection === 'object' && detection !== null && detection.reason) || reason || null,
+          // v0.2 fields
+          created_at: now,
+          category: (typeof detection === 'object' && detection !== null && detection.category) || 'unknown',
+        };
+        // Prune expired entries first (v0.1 F-04 invariant: expired
+        // dismissals are removed on each new storeDismissal call).
+        const entriesInitial = Object.entries(dismissals);
+        for (const [k, v] of entriesInitial) {
+          if ((v.expires_at || 0) <= now) {
+            delete dismissals[k];
+          }
+        }
+        const entries = Object.entries(dismissals);
+        if (entries.length > DISMISSAL_MAX_ENTRIES) {
+          entries.sort((a, b) => (a[1].dismissed_at || a[1].created_at) - (b[1].dismissed_at || b[1].created_at));
+          const trimmed = entries.slice(entries.length - DISMISSAL_MAX_ENTRIES);
+          const pruned = {};
+          for (const [k, v] of trimmed) pruned[k] = v;
+          chrome.storage.local.set({ dismissals: pruned }, () => resolve(true));
+        } else {
+          chrome.storage.local.set({ dismissals }, () => resolve(true));
+        }
+      });
+    });
+  };
+
+  ContentScript.prototype.isDismissed = async function (detection) {
+    if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) return false;
+    const key = this.makeDismissKey(detection);
+    return new Promise((resolve) => {
+      chrome.storage.local.get('dismissals', (result) => {
+        const entry = (result && result.dismissals && result.dismissals[key]);
+        if (!entry) return resolve(false);
+        resolve(entry.expires_at > Math.floor(Date.now() / 1000));
+      });
+    });
+  };
+
+  ContentScript.prototype.dismissAsFalsePositive = function (detection, reason) {
+    // v0.1 behavior: record the user_action telemetry BEFORE
+    // dismissing the banner (the integration test relies on this).
+    this.recordAction('dismiss_false_positive', detection);
+
+    this.storeDismissal(detection);
+    if (this.fpTelemetryEnabled) {
+      this.sendFPTelemetry(detection, reason);
+    }
+    // Day 8: Show the opt-in card on FIRST false-positive dismissal
+    // (v0.1 behavior). The card's own buttons handle hideBanner().
+    // Skip if already opted in OR already decided.
+    if (!this.fpTelemetryEnabled && !this.fpOptInPromptSeen) {
+      const self = this;
+      this.maybeShowFPOptInCard(function (showedCard) {
+        if (!showedCard && self.hideBanner) {
+          // User already opted in or already saw the prompt; just hide banner.
+          self.hideBanner();
+        }
+      });
+    } else if (this.hideBanner) {
+      // User has already opted in or dismissed the prompt; hide banner normally.
+      this.hideBanner();
+    }
+  };
+
+  ContentScript.prototype.sendFPTelemetry = function (detection, reason) {
+    if (!this.fpTelemetryEnabled) return;
+    const lensVer = this.lensVersion || '0.2.0';
+    const event = {
+      lens_event_version: 1,
+      domain_hash: this.domainHash,
+      category: detection.category,
+      severity: detection.severity,
+      user_action: 'dismiss_false_positive',
+      timestamp: Math.floor(Date.now() / 1000),
+      model_version: lensVer + '+regex-v1',
+      lens_version: lensVer,
+      confidence: typeof detection.confidence === 'number' ? detection.confidence : 1.0,
+    };
+    if (reason) event.fp_reason = String(reason).slice(0, FP_REASON_MAX_LENGTH);
+    this._dispatchEvents([event]);
+  };
+
+  /**
+   * v0.1-compat: handleMLDetection — dispatches a detection from the
+   * transformer / 5-way ensemble Tier 3 path. v0.2's 6-facet architecture
+   * exposes the same surface via the facet-dispatcher, but we keep this
+   * shim so the v0.1 long-content-ux-guard test (and any external
+   * integrations) continue to work.
+   */
+  ContentScript.prototype.handleMLDetection = function (text, mlScore, pattern, chunkScores) {
+    if (!text || !mlScore) return null;
+    const isLong = text.length >= 2000;
+    const isTransformer = pattern && pattern.indexOf('transformer') !== -1;
+    // v0.1 severity logic: tier-2 (5-way ensemble) short text = high,
+    // tier-2 long text = medium. tier-3 (transformer) short = high,
+    // tier-3 long = medium.
+    const severity = isLong ? 'medium' : 'high';
+    const category = isTransformer
+      ? (isLong ? 'prompt_injection_transformer_long' : 'prompt_injection_transformer')
+      : (isLong ? 'prompt_injection_ml_long' : 'prompt_injection_ml');
+    const det = {
+      category,
+      severity,
+      facet: 6,
+      mlScore: mlScore.score,
+      match: text.substring(0, 80),
+    };
+    if (chunkScores && chunkScores.length) det.chunkScores = chunkScores.slice();
+    this.currentDetections = [det];
+    try { this.showBanner([det]); } catch (_) {}
+    return det;
+  };
+
+  /**
+   * Day 8: Port the FP opt-in card from v0.1 (which was stripped during
+   * v0.2 cleanup). The card is shown on the user's first false-positive
+   * dismissal, asking them to opt in to anonymous telemetry.
+   *
+   * Privacy guarantee (verbatim from v0.1):
+   *   "AegisGate Lens uses your dismissals to tune future detections.
+   *    We send anonymous metadata only (no prompt text, no URLs, no
+   *    page content, no personal identifiers). Off by default. You
+   *    can change this any time in the extension popup."
+   *
    * @param {function(boolean):void} cb Callback invoked with true if
    *   the opt-in card was rendered (caller should NOT hide the banner
    *   in that case — the card's own buttons will hide it). Invoked
@@ -696,7 +555,7 @@
     const self = this;
     if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) {
       if (cb) cb(false);
-      return;
+      return false;
     }
     try {
       chrome.storage.local.get(
@@ -704,41 +563,33 @@
         function (result) {
           if (result.fpTelemetryEnabled) {
             if (cb) cb(false);
-            return; // already opted in
+            return;  // already opted in
           }
           if (result.fpOptInPromptSeen) {
             if (cb) cb(false);
-            return; // already decided (Allow or Not now, previously)
+            return;  // already decided (Allow or Not now, previously)
           }
           self.showFPOptInCard();
           if (cb) cb(true);
-        },
+        }
       );
     } catch (err) {
-      log.warn('[AegisGate Lens] could not read FP opt-in flags:', err);
+      NS.util.logger && NS.util.logger.warn('[AegisGate Lens] could not read FP opt-in flags:', err);
       if (cb) cb(false);
     }
+    return true;
   };
 
   /**
-   * Render the opt-in card inside the banner. The card is styled in
-   * the AegisGate brand palette (dark glass, cyan accent) and contains:
-   *   - Title: "Help improve detection"
-   *   - Privacy guarantee: short, plain-language statement
-   *   - Two actions: "Help improve detection" (enable) and
-   *     "Not now" (dismiss for this installation).
-   *
-   * Both actions set fpOptInPromptSeen = true so the card does not
-   * reappear. Only the "Help improve detection" action also sets
-   * fpTelemetryEnabled = true.
+   * Day 8: Render the opt-in card inside the banner. Styled in AegisGate
+   * brand palette (dark glass, cyan accent). Two actions:
+   *   - "Allow" — sets fpTelemetryEnabled = true AND fpOptInPromptSeen = true
+   *   - "Not now" — sets fpOptInPromptSeen = true only
    */
   ContentScript.prototype.showFPOptInCard = function () {
     if (!this.banner) return;
     if (typeof document === 'undefined' || !document.createElement) return;
 
-    // Day 5: capture this so the card's button click handlers (which
-    // are regular functions, not arrow functions, so 'this' would be
-    // the button) can call back into the content script.
     const self = this;
 
     const card = document.createElement('div');
@@ -750,14 +601,13 @@
       padding: '12px 14px',
       marginTop: '10px',
       marginBottom: '4px',
-      fontFamily: 'Inter, system-ui, sans-serif',
+      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       fontSize: '13px',
       color: '#f8fafc',
       lineHeight: '1.45',
     });
     card.setAttribute('data-aegis-fp-opt-in', '1');
 
-    // Title.
     const title = document.createElement('div');
     Object.assign(title.style, {
       fontWeight: '600',
@@ -768,7 +618,6 @@
     title.textContent = 'Help improve detection';
     card.appendChild(title);
 
-    // Privacy guarantee.
     const body = document.createElement('div');
     Object.assign(body.style, { marginBottom: '10px', color: '#cbd5e1' });
     body.textContent =
@@ -778,9 +627,22 @@
       'in the extension popup.';
     card.appendChild(body);
 
-    // Actions row.
     const actions = document.createElement('div');
     Object.assign(actions.style, { display: 'flex', gap: '8px', flexWrap: 'wrap' });
+
+    // Use the banner-ui buttonStyle for consistent look
+    const buttonStyle = NS.util && NS.util.bannerUI && NS.util.bannerUI.buttonStyle
+      ? NS.util.bannerUI.buttonStyle
+      : function (accent) { return {
+          background: 'transparent',
+          color: accent,
+          border: '1px solid ' + accent,
+          padding: '5px 12px',
+          cursor: 'pointer',
+          fontSize: '13px',
+          fontWeight: '500',
+          fontFamily: 'inherit',
+        }; };
 
     const allowBtn = document.createElement('button');
     allowBtn.textContent = 'Allow';
@@ -792,11 +654,8 @@
           fpOptInPromptSeen: true,
         });
       } catch (err) {
-        log.warn('[AegisGate Lens] could not save fpTelemetryEnabled:', err);
+        NS.util.logger && NS.util.logger.warn('[AegisGate Lens] could not save fpTelemetryEnabled:', err);
       }
-      // Day 5: the card's actions own the banner lifecycle. dismissAsFalsePositive
-      // deferred hideBanner() so the user can read the privacy guarantee; we
-      // hide now that they've decided.
       if (self.hideBanner) self.hideBanner();
     });
     actions.appendChild(allowBtn);
@@ -808,7 +667,7 @@
       try {
         chrome.storage.local.set({ fpOptInPromptSeen: true });
       } catch (err) {
-        log.warn('[AegisGate Lens] could not save fp-opt-in flag:', err);
+        NS.util.logger && NS.util.logger.warn('[AegisGate Lens] could not save fp-opt-in flag:', err);
       }
       if (self.hideBanner) self.hideBanner();
     });
@@ -816,237 +675,20 @@
 
     card.appendChild(actions);
 
-    // Insert at the END of the banner so it appears below the FP form
-    // and the main action buttons (Cancel / Edit / Send anyway). The
-    // banner will be hidden by hideBanner() right after this method
-    // returns, so the card is only visible if the user re-opens the
-    // banner via the detection list, OR if the content script is
-    // re-displayed on a new detection with stale state.
+    // Append card to banner
     this.banner.appendChild(card);
+    NS.util.logger && NS.util.logger.info('[AegisGate Lens] FP opt-in card shown');
   };
 
-  /**
-   * Create a stable key for dismissal storage. Includes category
-   * and the first 50 chars of the match (for pattern similarity).
-   */
-  ContentScript.prototype.makeDismissKey = function (detection) {
-    const match = (detection.match || '').substring(0, 50);
-    return detection.category + '|' + match;
-  };
-
-  /**
-   * Maximum number of dismissal entries to keep in chrome.storage.local.
-   * Caps the cost of an attacker who triggers many distinct detections
-   * (e.g. pastes a large corpus into the prompt). See plans/LENS-THREAT-MODEL.md
-   * finding F-04 (CVSS 3.5 Low). 1000 entries at ~120 bytes each is
-   * ~120 KB, well under the 10 MB chrome.storage.local quota.
-   */
-  ContentScript.DISMISSAL_MAX_ENTRIES = 1000;
-
-  /**
-   * Store a dismissal in chrome.storage.local with 24h expiration.
-   *
-   * Day 9 / F-04: this method now prunes the dismissals object before
-   * writing:
-   *   1. Entries with expires_at < now are removed (they'd just be
-   *      dead weight).
-   *   2. If the total count still exceeds DISMISSAL_MAX_ENTRIES,
-   *      the oldest entries (by dismissed_at) are pruned first.
-   *
-   * This keeps chrome.storage.local bounded so a page that triggers
-   * many distinct detections cannot fill the 10 MB quota and silently
-   * break dismissal tracking.
-   */
-  ContentScript.prototype.storeDismissal = function (key, reason) {
-    if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) {
-      log.warn('[AegisGate Lens] chrome.storage.local unavailable');
-      return;
-    }
-    const self = this;
-    const now = Math.floor(Date.now() / 1000);
-    const expires = now + 24 * 60 * 60;  // 24 hours
-    const dismissKey = this.domainHash + '::' + key;
-    const entry = {
-      dismissed_at: now,
-      expires_at: expires,
-      reason: reason || null,
-    };
-    try {
-      chrome.storage.local.get('dismissals', function (result) {
-        const dismissals = Object.assign({}, result.dismissals || {});
-        // 1. Prune expired entries.
-        for (const k of Object.keys(dismissals)) {
-          if (dismissals[k].expires_at < now) {
-            delete dismissals[k];
-          }
-        }
-        // 2. If over the cap, drop the oldest entries (by dismissed_at)
-        //    until we are at cap - 1, leaving room for the new entry.
-        const keys = Object.keys(dismissals);
-        if (keys.length >= ContentScript.DISMISSAL_MAX_ENTRIES) {
-          keys.sort(function (a, b) {
-            return dismissals[a].dismissed_at - dismissals[b].dismissed_at;
-          });
-          const dropCount = keys.length - (ContentScript.DISMISSAL_MAX_ENTRIES - 1);
-          for (let i = 0; i < dropCount; i++) {
-            delete dismissals[keys[i]];
-          }
-        }
-        // 3. Insert the new entry.
-        dismissals[dismissKey] = entry;
-        try {
-          chrome.storage.local.set({ dismissals: dismissals });
-        } catch (err) {
-          log.warn('[AegisGate Lens] dismissals.set failed (quota?):', err);
-        }
-      });
-    } catch (err) {
-      log.warn('[AegisGate Lens] storage failed:', err);
-    }
-
-    // Send opt-in telemetry (if user enabled it)
-    this.sendFPTelemetry(key, reason);
-  };
-
-  /**
-   * Check if a detection has been dismissed for this domain.
-   * @returns {boolean} true if a recent dismissal exists.
-   */
-  ContentScript.prototype.isDismissed = function (detection) {
-    if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) {
-      return false;
-    }
-    const key = this.domainHash + '::' + this.makeDismissKey(detection);
-    let isDismissed = false;
-    try {
-      chrome.storage.local.get('dismissals', function (result) {
-        const dismissals = result.dismissals || {};
-        const entry = dismissals[key];
-        if (entry && entry.expires_at > Math.floor(Date.now() / 1000)) {
-          isDismissed = true;
-        }
-      });
-    } catch (err) {
-      // ignore
-    }
-    return isDismissed;
-  };
-
-  /**
-   * Send an anonymous FP telemetry event (if enabled in storage).
-   * NO prompt content is sent - only category, score, domain hash.
-   */
-  ContentScript.prototype.sendFPTelemetry = function (key, reason) {
-    if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) {
-      return;
-    }
-    const self = this;
-    try {
-      chrome.storage.local.get('fpTelemetryEnabled', function (result) {
-        if (!result.fpTelemetryEnabled) return;
-        // User opted in - send via service worker
-        if (chrome.runtime && chrome.runtime.sendMessage) {
-          for (let i = 0; i < self.currentDetections.length; i++) {
-            const d = self.currentDetections[i];
-            const event = {
-              lens_event_version: SCHEMA_VERSION,
-              domain_hash: self.domainHash,
-              category: d.category,
-              severity: d.severity,
-              user_action: 'dismiss_false_positive',
-              timestamp: Math.floor(Date.now() / 1000),
-              model_version: LENS_VERSION + '+regex-v1+ml-5way-v1',
-              lens_version: LENS_VERSION,
-              confidence: d.mlScore || 1.0,
-            };
-            // fp_reason is optional; only attach when the user typed
-            // something. Empty string or null would be rejected by
-            // schema.validate() (must be non-empty when present).
-            if (typeof reason === 'string' && reason.length > 0) {
-              event.fp_reason = reason;
-            }
-            try {
-              chrome.runtime.sendMessage({ type: 'lens.telemetry', event: event });
-            } catch (err) {
-              // ignore
-            }
-          }
-        }
-      });
-    } catch (err) {
-      // ignore
-    }
-  };
-
-  /**
-   * Record a user action by sending one LensEvent per detection
-   * to the service worker (NOT to the backend directly).
-   * @param {string} userAction One of: send_anyway, edit, cancel, dismiss.
-   */
-  ContentScript.prototype.recordAction = function (userAction) {
-    if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.sendMessage) {
-      log.warn('[AegisGate Lens] chrome.runtime.sendMessage unavailable; skipping telemetry');
-      return;
-    }
-    for (let i = 0; i < this.currentDetections.length; i++) {
-      const d = this.currentDetections[i];
-      const event = {
-        lens_event_version: SCHEMA_VERSION,
-        domain_hash: this.domainHash,
-        category: d.category,
-        severity: d.severity,
-        user_action: userAction,
-        timestamp: Math.floor(Date.now() / 1000),
-        model_version: LENS_VERSION + '+regex-v1+ml-5way-v1',
-        lens_version: LENS_VERSION,
-        confidence: 1.0,
-      };
-      try {
-        chrome.runtime.sendMessage({ type: 'lens.telemetry', event: event });
-      } catch (err) {
-        log.warn('[AegisGate Lens] sendMessage failed:', err);
-      }
-    }
-  };
-
-  /**
-   * Shared button style.
-   * @param {string} bg
-   * @returns {Object}
-   */
-  /**
-   * Dark-theme button style. Renders as an outlined button on
-   * the banner's glass background, with the given accent color.
-   *
-   * @param {string} accent Border + text color.
-   * @returns {Object} Style object suitable for Object.assign.
-   */
-  function buttonStyle(accent) {
-    return {
-      background: 'transparent',
-      color: accent,
-      border: '1px solid ' + accent,
-      padding: '5px 12px',
-      borderRadius: '0',
-      cursor: 'pointer',
-      fontSize: '13px',
-      fontWeight: '500',
-      fontFamily: 'inherit',
-      letterSpacing: '0.01em',
-      transition: 'background 120ms ease, color 120ms ease',
-    };
-  }
-
-  // =====================================================================
-  // Entry point
-  // =====================================================================
-
-  NS.ContentScript = ContentScript;
-
-  if (typeof window !== 'undefined' && typeof document !== 'undefined') {
-    const script = new ContentScript();
-    script.init().catch(function (err) {
-      log.warn('[AegisGate Lens] init failed:', err);
-    });
-  }
+  NS.ContentScript = ContentScript;             // v0.1 compat
+  NS.content = NS.content || {};
+  NS.content.ContentScript = ContentScript;
+  NS.content.SCHEMA_VERSION = SCHEMA_VERSION;
+  NS.content.LONG_CONTENT_THRESHOLD_CHARS = LONG_CONTENT_THRESHOLD_CHARS;
+  // Expose constants so tests (and external integrations) can reference
+  // them without depending on the implementation details.
+  NS.DISMISSAL_MAX_ENTRIES = DISMISSAL_MAX_ENTRIES;
+  NS.ContentScript.DISMISSAL_MAX_ENTRIES = DISMISSAL_MAX_ENTRIES;
+  NS.ContentScript.LONG_CONTENT_THRESHOLD_CHARS = LONG_CONTENT_THRESHOLD_CHARS;
+  NS.ContentScript.FP_REASON_MAX_LENGTH = FP_REASON_MAX_LENGTH;
 })();

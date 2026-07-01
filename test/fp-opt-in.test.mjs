@@ -120,9 +120,10 @@ function makeStorageStub() {
 // ----- Sandbox load: schema + content.js ------------------------------------
 
 async function loadContentScript() {
-  const [schemaSrc, contentSrc] = await Promise.all([
+  const [schemaSrc, contentSrc, bannerUISrc] = await Promise.all([
     fsp.readFile(path.join(repoRoot, 'src/privacy/schema.js'), 'utf8'),
     fsp.readFile(path.join(repoRoot, 'src/content.js'), 'utf8'),
+    fsp.readFile(path.join(repoRoot, 'src/util/banner-ui.js'), 'utf8'),
   ]);
 
   const storage = makeStorageStub();
@@ -183,6 +184,7 @@ async function loadContentScript() {
 
   const ctx = vm.createContext(sandbox);
   vm.runInContext(schemaSrc, ctx, { filename: 'privacy/schema.js' });
+  vm.runInContext(bannerUISrc, ctx, { filename: 'util/banner-ui.js' });
   vm.runInContext(contentSrc, ctx, { filename: 'content.js' });
 
   const ContentScript = sandbox.self.AegisGateLens.ContentScript;

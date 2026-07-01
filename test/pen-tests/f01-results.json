@@ -1,0 +1,11 @@
+{
+  "timestamp": "2026-06-28",
+  "suite": "F-01",
+  "pass": 3,
+  "total": 3,
+  "results": {
+    "1. sender.id validation in service-worker.js": {"passed": true},
+    "2. isForeignSender logic (6 cases)": {"passed": true, "passes": 6, "fails": 0},
+    "3. Browser isolation (chrome.runtime scope)": {"passed": true}
+  }
+}
