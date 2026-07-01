@@ -56,7 +56,7 @@ time.sleep(2)
 
 # Fixture server on 8765
 try:
-    s = socket.socket(); s.bind(('', 8765)); s.close()
+    s = socket.socket(); s.bind(('127.0.0.1', 8765)); s.close()
 except OSError:
     subprocess.run(['pkill', '-9', '-f', 'serve.py'], capture_output=True)
     time.sleep(1)

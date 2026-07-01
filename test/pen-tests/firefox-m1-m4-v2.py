@@ -60,7 +60,7 @@ else:
 print('\n=== Step 2: Starting fixture HTTP server on :8765 ===')
 # Make sure port 8765 is free
 try:
-    s = socket.socket(); s.bind(('', 8765)); s.close()
+    s = socket.socket(); s.bind(('127.0.0.1', 8765)); s.close()
 except OSError:
     print('  Port 8765 in use; killing old server')
     subprocess.run(['pkill', '-9', '-f', 'serve.py'], capture_output=True)

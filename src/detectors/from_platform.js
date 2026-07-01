@@ -847,7 +847,7 @@
       category: 'owasp_insecure_output',
       name: 'owasp_LLM02-001',
       severity: 'high',
-      // linter-disable-next-line js/bad-tag-filter False positive: this
+      // codeql[js/bad-tag-filter] False positive: this
       // regex is the Lens's DETECTION pattern for HTML injection in LLM
       // output, not a sanitizer. The Lens detects and warns; the user
       // decides. Source: pkg/compliance/owasp.go LLM02-001 in Platform.
