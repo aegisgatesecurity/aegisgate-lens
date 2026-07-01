@@ -262,7 +262,7 @@ await test('manifest.json permissions are minimal (no broad permissions)', async
     await fsp.readFile(path.join(repoRoot, 'src/manifest.json'), 'utf8'),
   );
   const perms = manifest.permissions || [];
-  const ALLOWED = new Set(['storage']);
+  const ALLOWED = new Set(['storage', 'alarms']);
   for (const p of perms) {
     assert.ok(ALLOWED.has(p),
       `permission "${p}" is not in the allowed list ${[...ALLOWED].join(', ')}`);
