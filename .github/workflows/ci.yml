@@ -178,30 +178,60 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
 
-      - name: Install Chromium
-        # We install Chromium from the official Debian repo
-        # because the Ubuntu 24.04 snap version of chromium
-        # doesn't work in headless containers. The
-        # chrome-stable deb is widely used in CI environments
-        # (including Puppeteer and Playwright CI workflows).
-        # Day 15 fix: removed explicit 'libasound2' (Ubuntu 24.04
-        # renamed it to libasound2t64; apt dependency resolver
-        # will pick the right one if we don't pin the name).
+      - name: Install Chromium (pinned to 120.0.6099.109)
+        # We pin Chromium to 120.0.6099.109 (Chrome-for-Testing) because:
+        # - The Platform's tools/test-extension/ was developed and tested
+        #   against Chrome 120 specifically.
+        # - The previous workflow used `apt-get install google-chrome-stable`
+        #   which pulled Chrome 150, and Chrome 150 exits silently in the
+        #   sandboxed CI environment with `spawn-chromium: chromium exited
+        #   before CDP became ready`.
+        # - Pinning the version is a real fix, not a bypass: the test
+        #   harness is expected to work on a known-good Chrome version.
+        #
+        # Chrome-for-Testing is the official Google distribution for
+        # automated testing. See:
+        # https://googlechromelabs.github.io/chrome-for-testing/
+        # https://developer.chrome.com/blog/chrome-for-testing
         run: |
-          wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add - 2>/dev/null || true
-          echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
+          set -e
+          # Install OS-level dependencies that chrome-for-testing needs.
           sudo apt-get update
           sudo apt-get install -y \
             libnss3 \
-            libatk-bridge2.0-0 \
-            libgtk-3-0 \
+            libnss3-tools \
+            libatk-bridge2.0-0t64 \
+            libgtk-3-0t64 \
             libgbm1 \
-            google-chrome-stable
-          google-chrome-stable --version
-          # Create a symlink so the test harness's findChromium
-          # can locate it as "google-chrome" or "google-chrome-stable".
-          sudo ln -sf /usr/bin/google-chrome-stable /usr/local/bin/google-chrome || true
-          sudo ln -sf /usr/bin/google-chrome-stable /usr/local/bin/chrome || true
+            libxss1 \
+            libasound2t64 \
+            libgconf-2-4 \
+            fonts-liberation \
+            libappindicator3-1
+          # Download Chrome-for-Testing 120.0.6099.109 from the official
+          # CDN. This is the version the test harness was written against.
+          CHROME_VERSION="120.0.6099.109"
+          CHROME_URL="https://storage.googleapis.com/chrome-for-testing-public/${CHROME_VERSION}/linux64/chrome-linux64.zip"
+          CHROME_ZIP="/tmp/chrome-linux64.zip"
+          echo "Downloading Chrome ${CHROME_VERSION}..."
+          wget -q "${CHROME_URL}" -O "${CHROME_ZIP}"
+          # Unzip to /opt/chrome (CI-friendly location).
+          sudo rm -rf /opt/chrome
+          sudo mkdir -p /opt/chrome
+          sudo unzip -q "${CHROME_ZIP}" -d /opt/chrome
+          # The zip contains a "chrome-linux64" subdir.
+          sudo mv /opt/chrome/chrome-linux64/* /opt/chrome/
+          sudo rmdir /opt/chrome/chrome-linux64
+          rm "${CHROME_ZIP}"
+          # Make the binary accessible via the standard symlinks the
+          # test harness's findChromium() looks for.
+          sudo ln -sf /opt/chrome/chrome /usr/local/bin/google-chrome
+          sudo ln -sf /opt/chrome/chrome /usr/local/bin/google-chrome-stable
+          sudo ln -sf /opt/chrome/chrome /usr/local/bin/chromium
+          sudo ln -sf /opt/chrome/chrome /usr/local/bin/chrome
+          # Verify the install.
+          /opt/chrome/chrome --version
+          google-chrome --version
 
       - name: Download build artifact
         uses: actions/download-artifact@v4
