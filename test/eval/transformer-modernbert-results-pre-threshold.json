@@ -1,0 +1,105 @@
+{
+  "timestamp": "2026-06-29T00:39:57.010Z",
+  "passed": 24,
+  "failed": 0,
+  "total": 24,
+  "results": [
+    {
+      "name": "1. module loads without errors",
+      "status": "PASS"
+    },
+    {
+      "name": "2. public API surface is complete",
+      "status": "PASS"
+    },
+    {
+      "name": "3. constants match the sizing experiment",
+      "status": "PASS"
+    },
+    {
+      "name": "4. isLoaded() returns false before prewarm",
+      "status": "PASS"
+    },
+    {
+      "name": "5. score() raises error when not prewarmed",
+      "status": "PASS"
+    },
+    {
+      "name": "6. score() on empty text returns 0 (no tokens)",
+      "status": "PASS"
+    },
+    {
+      "name": "7. prewarm accepts injected session/tokenizer (test mode)",
+      "status": "PASS"
+    },
+    {
+      "name": "8. tokenize produces stable token IDs for known text",
+      "status": "PASS"
+    },
+    {
+      "name": "9. window extraction: short text → 1 short-circuit window",
+      "status": "PASS"
+    },
+    {
+      "name": "10. window extraction: text just above threshold → 2 windows",
+      "status": "PASS"
+    },
+    {
+      "name": "11. window extraction: text spanning multiple windows → MAX_WINDOWS",
+      "status": "PASS"
+    },
+    {
+      "name": "12. window dimensions are correct (SLIDING_WINDOW tokens each)",
+      "status": "PASS"
+    },
+    {
+      "name": "13. CLS at start, SEP at end, PAD padding correct",
+      "status": "PASS"
+    },
+    {
+      "name": "14. attention mask matches non-padded positions",
+      "status": "PASS"
+    },
+    {
+      "name": "15. max-pool aggregation picks highest P(attack)",
+      "status": "PASS"
+    },
+    {
+      "name": "16. classify() returns correct attack boolean at threshold=0.05",
+      "status": "PASS"
+    },
+    {
+      "name": "17. stats tracking: count, latency, sliding vs short-circuit",
+      "status": "PASS"
+    },
+    {
+      "name": "18. prewarm de-dupes concurrent calls",
+      "status": "PASS"
+    },
+    {
+      "name": "19. getConfig returns current settings",
+      "status": "PASS"
+    },
+    {
+      "name": "20. _reset clears state for next test",
+      "status": "PASS"
+    },
+    {
+      "name": "21. snapshot model produces benign score on benign prompt",
+      "status": "PASS"
+    },
+    {
+      "name": "22. snapshot model produces attack score on injection prompt",
+      "status": "PASS"
+    },
+    {
+      "name": "23. snapshot model with sliding window catches long-context attack",
+      "status": "PASS"
+    },
+    {
+      "name": "24. integration: end-to-end score on snapshot model",
+      "status": "PASS"
+    }
+  ],
+  "failures": []
+}

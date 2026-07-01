@@ -1,3 +1,8 @@
+# AegisGate Lens v0.2 — .gitignore (cherry-picked from v0.1)
+#
+# Key policy: this repo has ZERO third-party dependencies (npm or otherwise).
+# See docs/NO-EXTERNAL-DEPS.md.
+
 # Build outputs
 dist/
 build/
@@ -21,8 +26,7 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
-*.swo
-*~
+*.swp
 *.bak
 
 # Logs / temp
@@ -41,38 +45,56 @@ coverage/
 NOTES.md
 TODO-local.md
 
-# ML model files (build artifacts, regenerated from ml-artifacts/dist_5way/)
-src/ml_model/
-lens_ml_build/
+# ML model files (build artifacts, regenerated from training scripts).
+# v0.2 specific: ModernBERT FP32 + INT8 bundles are CI test fixtures
+# (needed for security-bundle-verification.test.mjs).
+lens-final-dist/vendor/bundles/
 
-# Allow the v0.1.1 bundle as a CI test fixture (used by security-bundle-verification.test.mjs).
-# This bundle is the signed v0.1.1 release artifact. The test verifies Ed25519
-# signature + SHA-256 chain. The 8.4 MB size is acceptable for a signed-release fixture.
+# Allow the v0.1.1 bundle as a CI test fixture (used by security-bundle-verification.test.mjs)
 !lens_ml_build/aegisgate-lens-v0.1.1.bundle
 
 # Local testing servers and outputs
 /tmp/lens_*
-ml-artifacts/models/minilm_l12_tier3/model.safetensors
-ml-artifacts/models/minilm_l12_tier3_v2/model.safetensors
-ml-artifacts/models/minilm_l12_tier3_v2/checkpoint-*/
-ml-artifacts/models/minilm_l12_tier3_v3/model.safetensors
-ml-artifacts/models/minilm_l12_tier3_v3/checkpoint-*/
-ml-artifacts/dist_tier3_v2/model.onnx
-ml-artifacts/dist_tier3_v2/model.onnx.data
-ml-artifacts/dist_tier3_v2/model_fp32.onnx
-ml-artifacts/dist_tier3_v2/model__int8.onnx
-ml-artifacts/dist_tier3_v2/minilm_model_fp32.onnx.data
-ml-artifacts/dist_tier3_v2/bundle_*.bundle
-ml-artifacts/dist_*_bundle.bundle
+.venv/
+venv/
+*.venv/
 
-# Day 2 test harness - mock-backend JSONL stream (regenerated on every run).
-# Don't ship the local debugging output; the source-of-truth is the
-# telemetry endpoint, not the test fixture.
+# Test scratch space (ephemeral, created and deleted within a single
+# test run by test/extension-e2e.test.mjs). Per Standing Rule "NO /tmp/".
+.test-scratch/
+
+# Chrome 120 (Chrome-for-Testing 120.0.6046.0) — required for
+# real-browser E2E testing because Chrome 130+ silently drops unpacked
+# MV3 extensions in this environment (see test/scripts/launch-chrome120.sh
+# and plans/AEGISGATE-LENS-V02-DAY-8-2026-06-29.md). Downloaded 2026-06-30
+# from https://storage.googleapis.com/chrome-for-testing-public/120.0.6046.0/linux64/
+.chrome120/
+
+# Python bytecode (no Python in v0.2, but defensive)
+**/__pycache__/
+*.pyc
+# Backup of legacy v0.1 test runner files (see .v0.1-mirror-backup/README.md)
+.v0.1-mirror-backup/
+
+# v0.3.0 additional ignores — model bundles and Firefox port are build
+# artifacts, not source code. They are CI test fixtures that get
+# downloaded separately.
+test/bundles/
+test/firefox/
+test/eval/*.jsonl
+test/eval/*.jsonl.*
 test/mock-output/
+__pycache__/
+*.pyc
 
-# Python bytecode from the Go-adjacent harness directory.
-harness/__pycache__/
-
-pen-test/evidence/
-
-pen-test/__pycache__/
+# Signing keys — NEVER commit private keys to the public repo.
+# The toxicity-bundle signing key is held offline in
+# lens-repo-bootstrap-v02/.v0.3-keys-offline/ (gitignored).
+# The public key is fine to commit; the private key is NOT.
+keys/*.priv.pem
+keys/lens-toxicity-priv.pem
+keys/*-priv.pem
+keys/*-private.pem
+keys/*-private.key
+keys/id_rsa
+keys/id_rsa.pub

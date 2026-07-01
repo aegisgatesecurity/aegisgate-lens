@@ -1,0 +1,126 @@
+{
+  "timestamp": "2026-06-28",
+  "snapshot_path": "/home/chaos/Desktop/AegisGate/lens-repo-bootstrap-v02/models/snapshots/pre-retrain-2026-06-28T14-25-00Z/checkpoint-7012",
+  "threshold": 0.5,
+  "seed": 42,
+  "num_attack_sources": 6,
+  "num_benign_sources": 6,
+  "attack_per_source": [
+    {
+      "source": "round8_code_reviews",
+      "size": 50,
+      "tp": 50,
+      "fn": 0,
+      "recall": 1.0,
+      "mean_p": 0.9999941301345825
+    },
+    {
+      "source": "round8_emails",
+      "size": 50,
+      "tp": 50,
+      "fn": 0,
+      "recall": 1.0,
+      "mean_p": 0.9999844408035279
+    },
+    {
+      "source": "round8_legal",
+      "size": 50,
+      "tp": 50,
+      "fn": 0,
+      "recall": 1.0,
+      "mean_p": 0.9998972773551941
+    },
+    {
+      "source": "round8_technical_docs",
+      "size": 50,
+      "tp": 50,
+      "fn": 0,
+      "recall": 1.0,
+      "mean_p": 0.9999915933609009
+    },
+    {
+      "source": "r8_holdout_v0.2",
+      "size": 50,
+      "tp": 50,
+      "fn": 0,
+      "recall": 1.0,
+      "mean_p": 0.9999860882759094
+    },
+    {
+      "source": "r8_attack_long_context",
+      "size": 50,
+      "tp": 17,
+      "fn": 33,
+      "recall": 0.34,
+      "mean_p": 0.39050441298633815
+    }
+  ],
+  "benign_per_source": [
+    {
+      "source": "round7_code_reviews",
+      "size": 50,
+      "fp": 0,
+      "tn": 50,
+      "fpr": 0.0,
+      "mean_p": 6.479088172454794e-05
+    },
+    {
+      "source": "round7_emails",
+      "size": 44,
+      "fp": 0,
+      "tn": 44,
+      "fpr": 0.0,
+      "mean_p": 1.9827282885258185e-05
+    },
+    {
+      "source": "round7_legal",
+      "size": 50,
+      "fp": 0,
+      "tn": 50,
+      "fpr": 0.0,
+      "mean_p": 0.0010685367861879057
+    },
+    {
+      "source": "round7_technical_docs",
+      "size": 44,
+      "fp": 0,
+      "tn": 44,
+      "fpr": 0.0,
+      "mean_p": 3.980759896455249e-05
+    },
+    {
+      "source": "r7_holdout_v0.2",
+      "size": 50,
+      "fp": 0,
+      "tn": 50,
+      "fpr": 0.0,
+      "mean_p": 0.0003454750611081181
+    },
+    {
+      "source": "long_benign_v2",
+      "size": 50,
+      "fp": 0,
+      "tn": 50,
+      "fpr": 0.0,
+      "mean_p": 2.0435218656622565e-06
+    }
+  ],
+  "overall_recall": 0.89,
+  "overall_fpr": 0.0,
+  "worst_attack_source": {
+    "source": "r8_attack_long_context",
+    "size": 50,
+    "tp": 17,
+    "fn": 33,
+    "recall": 0.34,
+    "mean_p": 0.39050441298633815
+  },
+  "worst_benign_source": {
+    "source": "round7_code_reviews",
+    "size": 50,
+    "fp": 0,
+    "tn": 50,
+    "fpr": 0.0,
+    "mean_p": 6.479088172454794e-05
+  }
+}

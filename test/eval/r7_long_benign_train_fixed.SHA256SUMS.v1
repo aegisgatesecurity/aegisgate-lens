@@ -1,0 +1,6 @@
+# AegisGate Lens v0.2 — Fixed corpus lockfile
+# Generated 2026-06-28 from r7_long_benign_train.jsonl
+# Original SHA256: 9600f358b2ec0c8180954d9a130d8198d4345aa41ff1c864acaed1f02aac8552
+# Records reclassified (label 0 -> 1): 197
+# Reason: long_context_v7 source was known-mislabeled (Nuclear Burndown 2026-06-28)
+1c46c909a00b36270f7127fa5bda835e78279de97963d3ec3ff22c1b22e85c4f  r7_long_benign_train_fixed.jsonl
