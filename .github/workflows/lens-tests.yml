@@ -62,50 +62,50 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Test: schema
+      - name: Test - schema
         run: node test/schema.test.mjs
 
-      - name: Test: telemetry smoke
+      - name: Test - telemetry smoke
         run: node test/telemetry.smoke.mjs
 
-      - name: Test: event construction
+      - name: Test - event construction
         run: node test/event-construction.test.mjs
 
-      - name: Test: integration
+      - name: Test - integration
         run: node test/integration.test.mjs
 
-      - name: Test: FP opt-in
+      - name: Test - FP opt-in
         run: node test/fp-opt-in.test.mjs
 
-      - name: Test: security sender validation (F-01)
+      - name: Test - security sender validation (F-01)
         run: node test/security-sender-validation.test.mjs
 
-      - name: Test: security bundle verification (F-02)
+      - name: Test - security bundle verification (F-02)
         run: node test/security-bundle-verification.test.mjs
 
-      - name: Test: dismissals pruning (F-04)
+      - name: Test - dismissals pruning (F-04)
         run: node test/dismissals-pruning.test.mjs
 
-      - name: Test: wire protocol (F-05)
+      - name: Test - wire protocol (F-05)
         run: node test/wire-protocol.test.mjs
 
-      - name: Test: security CSP (F-06)
+      - name: Test - security CSP (F-06)
         run: node test/security-csp.test.mjs
 
-      - name: Test: transformer-modernbert (v0.2 ML)
+      - name: Test - transformer-modernbert (v0.2 ML)
         run: node test/transformer-modernbert.test.mjs
 
-      - name: Test: model-loader (v0.2 bundle)
+      - name: Test - model-loader (v0.2 bundle)
         run: node test/model-loader.test.mjs
 
-      - name: Test: banner-ui (Day 3 port)
+      - name: Test - banner-ui (Day 3 port)
         run: node test/banner-ui.test.mjs
 
-      - name: Test: sliding-window (Day 4 algorithm)
+      - name: Test - sliding-window (Day 4 algorithm)
         run: node test/sliding-window.test.mjs
 
-      - name: Test: long-content-ux-guard (v0.1 compat)
+      - name: Test - long-content-ux-guard (v0.1 compat)
         run: node test/long-content-ux-guard.test.mjs
 
-      - name: Test: webgpu-detect (capability)
+      - name: Test - webgpu-detect (capability)
         run: node test/webgpu-detect.test.mjs
