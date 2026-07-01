@@ -367,7 +367,7 @@ All commits must be signed off per [`DCO.md`](DCO.md) (enforced by CI).
 
 ## 🙏 Acknowledgments
 
-Built with ❤️ by the [AegisGate Security](https://aegisgatesecurity.io)
+Built with 🖤 by the [AegisGate Security](https://aegisgatesecurity.io)
 team. The Lens is the browser-side complement to the Platform — together
 they cover the full AI request lifecycle, end-to-end.
 
