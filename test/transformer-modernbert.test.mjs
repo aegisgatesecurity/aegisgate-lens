@@ -533,7 +533,56 @@ function runPython(scriptText, args = []) {
   return result.stdout;
 }
 
+// ----- Snapshot-availability gate (CI portability, v0.3.0) -----------------
+//
+// Tests 21-24 score text against the SHIPPED v0.2.0-rc1 model weights
+// (1.7 GB, gitignored) using the local .venv-v02 Python venv (also
+// gitignored). Neither exists in the GitHub Actions CI environment,
+// where only Node 20 is installed and no Python venv is created.
+//
+// d500f39 fixed the path-walk so runPython() finds the venv when present,
+// but it can't make the venv exist in CI. Without a gate here, CI fails
+// with "Python script failed (exit null): null" on all four tests.
+//
+// The fix: detect whether the venv AND the snapshot are present; if not,
+// log a SKIP message and return early (test passes, no failure recorded).
+// Local runs continue to execute the snapshot tests and verify the model.
+
+const SNAPSHOT_DIR = '/home/chaos/Desktop/AegisGate/lens-repo-bootstrap-v02/models/release-candidates/prompt-injection-v0.2.0-rc1';
+const SNAPSHOTS_AVAILABLE = (() => {
+  // Walk up to 4 levels looking for .venv-v02/bin/python (same logic as
+  // runPython). Snapshot must also exist on disk.
+  let d = repoRoot;
+  for (let i = 0; i < 4; i++) {
+    const candidate = path.join(d, '.venv-v02', 'bin', 'python');
+    if (fs.existsSync(candidate)) {
+      return fs.existsSync(SNAPSHOT_DIR);
+    }
+    const parent = path.dirname(d);
+    if (parent === d) break;
+    d = parent;
+  }
+  return false;
+})();
+
+if (SNAPSHOTS_AVAILABLE) {
+  console.log('  [info] Snapshot tests 21-24 will run (venv + model present)');
+} else {
+  console.log('  [info] Snapshot tests 21-24 will SKIP (no .venv-v02 or model snapshot — CI environment)');
+}
+
+/**
+ * If snapshot tests cannot run (no venv / no model), log a SKIP message
+ * and return true so the caller can `return` early.
+ */
+function skipIfNoSnapshot() {
+  if (SNAPSHOTS_AVAILABLE) return false;
+  console.log('    SKIP: snapshot tests require local .venv-v02 + models/release-candidates/prompt-injection-v0.2.0-rc1. CI runs only mocked-ort tests 1-20.');
+  return true;
+}
+
 await test('21. snapshot model produces benign score on benign prompt', async () => {
+  if (skipIfNoSnapshot()) return;
   // Use Python to score "hello world how are you today" against the
   // snapshot model. P(attack) should be very low (<0.1).
   const out = runPython(`
@@ -558,6 +607,7 @@ print(json.dumps({'text': text, 'p_attack': p_attack}))
 });
 
 await test('22. snapshot model produces attack score on injection prompt', async () => {
+  if (skipIfNoSnapshot()) return;
   const out = runPython(`
 import sys
 sys.path.insert(0, '/home/chaos/Desktop/AegisGate/lens-repo-bootstrap-v02')
@@ -580,6 +630,7 @@ print(json.dumps({'text': text, 'p_attack': p_attack}))
 });
 
 await test('23. snapshot model with sliding window catches long-context attack', async () => {
+  if (skipIfNoSnapshot()) return;
   // Use the REAL r8_attack_long_context corpus to verify sliding window
   // helps in the long-context regime. Single-window at 2048 truncates
   // the document before the injection; sliding window captures it.
@@ -668,6 +719,7 @@ print(json.dumps({
 });
 
 await test('24. integration: end-to-end score on snapshot model', async () => {
+  if (skipIfNoSnapshot()) return;
   // Verify that scoring "ignore all previous instructions" through the
   // JS module (with mock ort returning deterministic scores) and through
   // Python (real model) produce same classification decision.
