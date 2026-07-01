@@ -1,0 +1,49 @@
+{
+  "timestamp": "2026-07-01T00:34:42.820Z",
+  "passed": 10,
+  "failed": 0,
+  "total": 10,
+  "results": [
+    {
+      "name": "1. src bundle-loader parses v0.1.1 fixture (lens_ml_build)",
+      "status": "PASS"
+    },
+    {
+      "name": "2. src bundle-loader parses shipped PI int8 bundle",
+      "status": "PASS"
+    },
+    {
+      "name": "3. dist bundle-loader parses shipped PI int8 bundle (multi-key)",
+      "status": "PASS"
+    },
+    {
+      "name": "4. dist bundle-loader parses shipped PI fp32 bundle (multi-key)",
+      "status": "PASS"
+    },
+    {
+      "name": "5. dist bundle-loader parses shipped toxicity bundle (the bug)",
+      "status": "PASS"
+    },
+    {
+      "name": "6. shipped bundle SHAs match bundle-registry",
+      "status": "PASS"
+    },
+    {
+      "name": "7. toxicity bundle contains int8 model with correct size",
+      "status": "PASS"
+    },
+    {
+      "name": "8. model-loader createSession picks int8 from real toxicity bundle",
+      "status": "PASS"
+    },
+    {
+      "name": "9. every file declared in toxicity header is accessible at correct offset",
+      "status": "PASS"
+    },
+    {
+      "name": "10. flipping a byte in the toxicity bundle fails signature",
+      "status": "PASS"
+    }
+  ],
+  "failures": []
+}

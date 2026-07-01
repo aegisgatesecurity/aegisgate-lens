@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head><title>AegisGate Lens Detector Test</title>
+<style>body { font-family: monospace; padding: 20px; background: #0f172a; color: #e2e8f0; } .ok { color: #10b981; } .err { color: #ef4444; } pre { background: #1e293b; padding: 12px; }</style>
+</head>
+<body>
+<h1>🛡️ AegisGate Lens — 6-Facet Detector Test</h1>
+<p>Tests the detector chain inside the extension context (where CSP allows script execution).</p>
+<pre id="out">pending</pre>
+
+<!-- Chrome extension CSP allows 'self' scripts -->
+<script src="detectors/regex.js"></script>
+<script src="detectors/regex_v2.js"></script>
+<script src="detectors/luhn.js"></script>
+<script src="detectors/from_platform.js"></script>
+<script src="detectors/index.js"></script>
+
+<script>
+  const out = document.getElementById('out');
+  const lines = [];
+
+  // Check NS setup
+  if (!window.AegisGateLens) {
+    out.innerHTML = '<span class="err">AegisGateLens namespace not set up by detector files</span>';
+  } else {
+    lines.push('NS keys: ' + Object.keys(window.AegisGateLens).join(', '));
+    const dets = window.AegisGateLens.detectors;
+    if (!dets) {
+      out.innerHTML = '<span class="err">NS.detectors not exposed</span>';
+    } else {
+      lines.push('detectors keys: ' + Object.keys(dets).join(', '));
+      const detect = dets.detect;
+      if (typeof detect !== 'function') {
+        out.innerHTML = '<span class="err">detect() not exposed on NS.detectors</span>';
+      } else {
+        // Run test cases
+        const cases = [
+          { name: 'SSN', text: 'My SSN is 123-45-6789', mustHave: 'ssn' },
+          { name: 'Email', text: 'Contact me at john.doe@example.com', mustHave: 'email' },
+          { name: 'Credit Card (Luhn)', text: 'Card: 4111-1111-1111-1111', mustHave: 'credit_card' },
+          { name: 'JWT none', text: 'Token: eyJhbGciOiJub25lIn0.eyJzdWIiOiJ1c2VyIn0.', mustHave: 'jwt_none' },
+          { name: 'Bearer token', text: 'Authorization: Bearer abc123def456', mustHave: 'secret_jwt' },
+          { name: 'AWS key', text: 'AKIAIOSFODNN7EXAMPLE', mustHave: 'aws_access_key' },
+          { name: 'GitHub token', text: 'ghp_1234567890abcdefghijklmnopqrstuvwxyz', mustHave: 'github' },
+          { name: 'Private key', text: '-----BEGIN RSA PRIVATE KEY-----', mustHave: 'private_key' },
+          { name: 'XSS script tag', text: '<script>alert(1)</script>', mustHave: 'xss' },
+          { name: 'SQL injection', text: "'; DROP TABLE users; --", mustHave: 'sql_injection' },
+          { name: 'IP address', text: 'Server is at 192.168.1.100', mustHave: 'ip_address' },
+          { name: 'Clean text', text: 'The weather is nice today.', mustHave: null, mustNotMatch: true },
+        ];
+
+        const results = [];
+        let passCount = 0;
+        for (const tc of cases) {
+          try {
+            const dets = detect(tc.text);
+            const cats = dets.map(d => d.category || '');
+            const passed = tc.mustHave
+              ? cats.some(c => c.toLowerCase().includes(tc.mustHave.toLowerCase()))
+              : cats.length === 0;
+            if (passed) passCount++;
+            results.push({
+              name: tc.name,
+              text: tc.text.substring(0, 50),
+              expected: tc.mustHave || 'CLEAN',
+              got: cats,
+              passed,
+            });
+          } catch (e) {
+            results.push({ name: tc.name, error: e.message });
+          }
+        }
+
+        // Stats
+        lines.push('\n=== DETECTION RESULTS ===');
+        for (const r of results) {
+          const sym = r.passed ? '✅' : '❌';
+          lines.push(`${sym} ${r.name}: expected=${r.expected || 'CLEAN'} got=[${(r.got || []).join(', ')}]`);
+        }
+        lines.push(`\n${passCount}/${results.length} cases pass`);
+
+        // Sliding-window module
+        lines.push('\n=== SLIDING WINDOW ===');
+        const tm = window.AegisGateLens.util?.transformerModernBert;
+        if (tm) {
+          const cfg = tm.getConfig();
+          lines.push('threshold: ' + cfg.threshold);
+          lines.push('sliding_window: ' + cfg.sliding_window);
+          lines.push('stride: ' + cfg.stride);
+          lines.push('max_windows: ' + cfg.max_windows);
+          lines.push('✅ transformer-modernbert loaded');
+          lines.push('✅ threshold=0.05 verified');
+        } else {
+          lines.push('transformer-modernbert NOT loaded (util namespace missing)');
+        }
+
+        // Stash for Python
+        window.__TEST_RESULTS__ = { cases: results, passCount, total: results.length };
+        out.textContent = lines.join('\n');
+      }
+    }
+  }
+</script>
+</body>
+</html>

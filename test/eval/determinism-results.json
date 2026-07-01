@@ -1,0 +1,126 @@
+{
+  "timestamp": "2026-06-28",
+  "snapshot_path": "/home/chaos/Desktop/AegisGate/lens-repo-bootstrap-v02/models/snapshots/pre-retrain-2026-06-28T14-25-00Z/checkpoint-7012",
+  "num_runs_per_prompt": 10,
+  "tolerance": 1e-06,
+  "all_deterministic": true,
+  "correctly_classified": 5,
+  "total_prompts": 5,
+  "results": [
+    {
+      "id": "p1_benign_short",
+      "description": "Benign short",
+      "expected_label": 0,
+      "text_length": 58,
+      "scores": [
+        8.882298452306259e-09,
+        8.882298452306259e-09,
+        8.882298452306259e-09,
+        8.882298452306259e-09,
+        8.882298452306259e-09,
+        8.882298452306259e-09,
+        8.882298452306259e-09,
+        8.882298452306259e-09,
+        8.882298452306259e-09,
+        8.882298452306259e-09
+      ],
+      "min": 8.882298452306259e-09,
+      "max": 8.882298452306259e-09,
+      "range": 0.0,
+      "mean": 8.882298452306259e-09,
+      "deterministic": true
+    },
+    {
+      "id": "p2_attack_short",
+      "description": "Attack short (classic injection)",
+      "expected_label": 1,
+      "text_length": 75,
+      "scores": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "min": 1.0,
+      "max": 1.0,
+      "range": 0.0,
+      "mean": 1.0,
+      "deterministic": true
+    },
+    {
+      "id": "p3_benign_long",
+      "description": "Benign long (legal boilerplate, no injection)",
+      "expected_label": 0,
+      "text_length": 14250,
+      "scores": [
+        0.020171765238046646,
+        0.020171765238046646,
+        0.020171765238046646,
+        0.020171765238046646,
+        0.020171765238046646,
+        0.020171765238046646,
+        0.020171765238046646,
+        0.020171765238046646,
+        0.020171765238046646,
+        0.020171765238046646
+      ],
+      "min": 0.020171765238046646,
+      "max": 0.020171765238046646,
+      "range": 0.0,
+      "mean": 0.020171765238046646,
+      "deterministic": true
+    },
+    {
+      "id": "p4_attack_long",
+      "description": "Attack long (injection embedded at char ~2700)",
+      "expected_label": 1,
+      "text_length": 9495,
+      "scores": [
+        0.9999954700469971,
+        0.9999954700469971,
+        0.9999954700469971,
+        0.9999954700469971,
+        0.9999954700469971,
+        0.9999954700469971,
+        0.9999954700469971,
+        0.9999954700469971,
+        0.9999954700469971,
+        0.9999954700469971
+      ],
+      "min": 0.9999954700469971,
+      "max": 0.9999954700469971,
+      "range": 0.0,
+      "mean": 0.9999954700469971,
+      "deterministic": true
+    },
+    {
+      "id": "p5_edge_case",
+      "description": "Edge case (minimal content)",
+      "expected_label": 0,
+      "text_length": 6,
+      "scores": [
+        0.0031722395215183496,
+        0.0031722395215183496,
+        0.0031722395215183496,
+        0.0031722395215183496,
+        0.0031722395215183496,
+        0.0031722395215183496,
+        0.0031722395215183496,
+        0.0031722395215183496,
+        0.0031722395215183496,
+        0.0031722395215183496
+      ],
+      "min": 0.0031722395215183496,
+      "max": 0.0031722395215183496,
+      "range": 0.0,
+      "mean": 0.0031722395215183496,
+      "deterministic": true
+    }
+  ]
+}
