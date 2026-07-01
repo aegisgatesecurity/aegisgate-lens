@@ -1,5 +1,3 @@
-# AegisGate Lens
-
 <div align="center">
 
 # 🛡️ AegisGate Lens — Privacy-First AI Security for Your Browser
