@@ -133,8 +133,16 @@ await test('lens_event_version=0 (legacy) is rejected', () => {
   assert.match(r.reason, /lens_event_version/);
 });
 
-await test('lens_event_version=2 (future) is rejected', () => {
+await test('lens_event_version=2 (current v0.2) is accepted', () => {
+  // v0.2 ships lens_event_version: 2. (v1 was the v0.1 cut-over; v2 is
+  // the v0.2 cut-over with the new 'facet' field.)
   const ev = validEvent({ lens_event_version: 2 });
+  const r = validate(ev, NOW_MS);
+  assert.equal(r.valid, true);
+});
+
+await test('lens_event_version=3 (future) is rejected', () => {
+  const ev = validEvent({ lens_event_version: 3 });
   const r = validate(ev, NOW_MS);
   assert.equal(r.valid, false);
   assert.match(r.reason, /not accepted/);
@@ -206,6 +214,14 @@ await test('invalid user_action is rejected', () => {
   assert.match(r.reason, /user_action/);
 });
 
+// Phase 1.0 / fix-1: ensure dismiss_false_positive is in VALID_USER_ACTIONS
+// (this is the action sent by sendFPTelemetry on FP dismissals).
+await test('dismiss_false_positive user_action is accepted', () => {
+  const ev = validEvent({ user_action: 'dismiss_false_positive', fp_reason: 'test_data' });
+  const r = validate(ev, NOW_MS);
+  assert.equal(r.valid, true);
+});
+
 await test('domain_hash wrong length is rejected', () => {
   const ev = validEvent({ domain_hash: 'abc' });
   const r = validate(ev, NOW_MS);
@@ -267,6 +283,7 @@ await test('normalized event preserves field order (for stable hashing)', () => 
   assert.deepEqual(keys, [
     'lens_event_version',
     'domain_hash',
+    'facet',
     'category',
     'severity',
     'user_action',

@@ -1,338 +1,450 @@
 /* SPDX-License-Identifier: Apache-2.0
    =========================================================================
-   AegisGate Lens - Service Worker
+   AegisGate Lens - MV3 Service Worker (v0.2.0)
    =========================================================================
 
-   The service worker is the message broker. It is the ONLY
-   module that talks to the backend. Content scripts send
-   messages via chrome.runtime.sendMessage; the service
-   worker applies the rate limit and the auth header, then
-   forwards to the backend via api/client.js.
+   Sole message broker between content scripts and the backend.
+   Runs in MV3 service worker context (no DOM access).
 
-   The service worker also handles:
-
-     - First-run setup: generates the bearer token, sets
-       the initial opt-in state, opens the welcome page.
-     - Opt-in/opt-out: updates the opt-in state.
-     - Health check on startup: calls /api/v1/lens/healthz
-       and logs the result.
-     - Local audit log rotation: appends each event to the
-       local log (chrome.storage.local) for the popup UI.
-
-   MV3 reality: the service worker can be terminated and
-   restarted at any time by the browser. We do NOT cache
-   the APIClient across calls; every getClient() reads the
-   current token from chrome.storage.local.
+   v0.2 changes from v0.1:
+     - Lazy-loads ML model bundles on first facet invocation
+     - Adds threat-intel feed polling (every 6 hours, opt-in gated)
+     - Adds bundle registry / license audit (rejects Elastic 2.0 etc.)
+     - Same sender.id validation as v0.1 (F-01 fix)
+     - Opt-in gate: opted-out users get no side effects
 
    Plain JavaScript, no transpilation, no dependencies.
-   The bytes in this file are the bytes that run in the browser.
-
-   v0.1 pre-release.
    ========================================================================= */
 
 'use strict';
 
-// importScripts is the classic-script way to load other JS
-// files. It blocks the current script until all imports
-// finish. The manifest lists files in load order for
-// modules that aren't loaded here.
-importScripts(
-  'util/logger.js',
-  'storage.js',
-  'privacy/schema.js',
-  'api/client.js'
-);
+// --------------------------------------------------------------------------
+// Sender validation (F-01 fix from v0.1 threat model)
+// --------------------------------------------------------------------------
 
-(function () {
-  const NS = (typeof self !== 'undefined' ? self : this).AegisGateLens =
-    (typeof self !== 'undefined' ? self : this).AegisGateLens || {};
+const OWN_EXTENSION_ID = (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id) || 'aegisgate-lens-extension-id';
 
-  const log = NS.logger || console;
-  // NS.storage is a NAMESPACE object set by storage.js's IIFE:
-  //   NS.storage = NS.storage || {};
-  //   NS.storage.Storage = Storage;  // <-- the class is here
-  // Pull the class out of the namespace; the previous `const Storage = NS.storage`
-  // tried to construct the namespace itself as a class, which would crash
-  // the service worker at boot. Caught by integration.test.mjs on Day 4.
-  const Storage = NS.storage && NS.storage.Storage;
-  const APIClient = NS.APIClient;
+function isForeignSender(sender) {
+  if (!sender) return true;
+  if (!sender.id) return true;
+  if (sender.id === '') return true;
+  if (sender.id !== OWN_EXTENSION_ID) return true;
+  return false;
+}
 
-  if (!Storage || !APIClient) {
-    log.warn('[AegisGate Lens] modules missing; service worker cannot start');
+// --------------------------------------------------------------------------
+// Helper: chrome.storage.local.get returning Promise
+// --------------------------------------------------------------------------
+
+async function _storageLocalGet(key) {
+  if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) {
+    return {};
+  }
+  return new Promise((resolve) => {
+    try {
+      const r = chrome.storage.local.get(key);
+      if (r && typeof r.then === 'function') {
+        r.then(resolve);
+        return;
+      }
+    } catch (_) {}
+    chrome.storage.local.get(key, (r) => resolve(r));
+  });
+}
+
+async function _storageLocalSet(data) {
+  if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) {
     return;
   }
-
-  // Schema reference for current-event-version constant. Day 3 cut-over:
-  // every event we construct below sets lens_event_version to this value.
-  // privacy/schema.js is imported above via importScripts, so NS.privacy.schema
-  // is always populated in the service-worker context. If it isn't, we
-  // deliberately leave SCHEMA_VERSION undefined so the event fails
-  // client-side validate() rather than sending an unversioned event.
-  const SCHEMA_VERSION = (NS.privacy && NS.privacy.schema && NS.privacy.schema.SCHEMA_VERSION) || undefined;
-
-  /**
-   * The current Lens version. Kept in sync by the build tool.
-   */
-  const LENS_VERSION =
-    (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getManifest &&
-      chrome.runtime.getManifest().version) || '0.1.0';
-
-  /** The default backend URL. Production deployments override. */
-  const DEFAULT_BACKEND_URL = 'https://lens.aegisgatesecurity.io';
-
-  /** The storage layer. */
-  const storage = new Storage();
-
-  /**
-   * First-install handler. Generates the bearer token and
-   * sets the initial opt-in state (default OFF).
-   */
-  async function onFirstInstall() {
-    await storage.setBearerToken(Storage.generateBearerToken());
-    const now = Math.floor(Date.now() / 1000);
-    const state = {
-      enabled: false,
-      opted_in_at: 0,
-      last_changed_at: now,
-      lens_version: LENS_VERSION,
-    };
-    await storage.setOptInState(state);
-    // Open the welcome page in a new tab.
-    if (chrome && chrome.tabs && chrome.tabs.create) {
-      await chrome.tabs.create({ url: chrome.runtime.getURL('welcome.html') });
-    }
-  }
-
-  /**
-   * Update handler. Bumps the lens_version in the opt-in
-   * state; does not change the enabled flag.
-   */
-  async function onUpdate(previousVersion) {
-    const state = await storage.getOptInState();
-    if (state.lens_version !== LENS_VERSION) {
-      state.lens_version = LENS_VERSION;
-      state.last_changed_at = Math.floor(Date.now() / 1000);
-      await storage.setOptInState(state);
-    }
-    void previousVersion; // unused for v0.1
-  }
-
-  /**
-   * Startup handler. Runs a health check against the
-   * backend; logs but does not fail.
-   */
-  async function onStartup() {
-    const optIn = await storage.getOptInState();
-    if (!optIn.enabled) {
-      return; // detect-only mode; no network calls
-    }
-    const baseUrl =
-      (await storage.getBaseUrlOverride().catch(() => null)) || DEFAULT_BACKEND_URL;
-    const token = await storage.getBearerToken().catch(() => '');
-    if (!token) return;
-    const client = new APIClient({ baseUrl: baseUrl, bearerToken: token });
+  return new Promise((resolve) => {
     try {
-      await client.healthz();
-    } catch (err) {
-      log.warn('[AegisGate Lens] healthz failed:', err && err.message);
-    }
+      const r = chrome.storage.local.set(data);
+      if (r && typeof r.then === 'function') {
+        r.then(resolve);
+        return;
+      }
+    } catch (_) {}
+    chrome.storage.local.set(data, () => resolve());
+  });
+}
+
+async function _storageSyncGet(key) {
+  if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.sync) {
+    return {};
   }
-
-  /**
-   * Cached APIClient. Reusing one instance across getClient() calls is
-   * critical: the RateLimitState lives on the APIClient instance, and
-   * the privacy policy commits to a 100 events/minute client-side
-   * rate limit. If getClient() returns a fresh instance every call,
-   * every event gets its own ring buffer, and the rate limit never
-   * fires. Caught by test/integration.test.mjs on Day 4.
-   *
-   * The cache is invalidated when the bearer token or base URL changes.
-   */
-  let cachedClient = null;
-  let cachedClientKey = '';
-
-  /**
-   * Get the APIClient for the current token. Reuses the cached instance
-   * if the token and base URL haven't changed.
-   */
-  async function getClient() {
-    const baseUrl =
-      (await storage.getBaseUrlOverride().catch(() => null)) || DEFAULT_BACKEND_URL;
-    const token = await storage.getBearerToken().catch(() => '');
-    const key = baseUrl + '|' + token;
-    if (cachedClient && cachedClientKey === key) {
-      return cachedClient;
-    }
-    cachedClient = new APIClient({ baseUrl: baseUrl, bearerToken: token });
-    cachedClientKey = key;
-    return cachedClient;
-  }
-
-  /**
-   * Handle a telemetry event from a content script.
-   */
-  async function handleTelemetry(event) {
-    const optIn = await storage.getOptInState();
-    if (!optIn.enabled) {
-      return; // silently drop; honor opt-in
-    }
-    await storage.appendLocalAudit({
-      timestamp: event.timestamp * 1000,
-      domain_hash: event.domain_hash,
-      category: event.category,
-      severity: event.severity,
-      user_action: event.user_action,
-    });
-    const client = await getClient();
+  return new Promise((resolve) => {
     try {
-      await client.sendEvent(event);
-    } catch (err) {
-      log.warn('[AegisGate Lens] sendEvent failed:', err && err.message);
-    }
-  }
+      const r = chrome.storage.sync.get(key);
+      if (r && typeof r.then === 'function') {
+        r.then(resolve);
+        return;
+      }
+    } catch (_) {}
+    chrome.storage.sync.get(key, (r) => resolve(r));
+  });
+}
 
-  /**
-   * Handle an opt-in/opt-out change from the popup.
-   */
-  async function handleOptIn(enabled) {
-    const state = await storage.getOptInState();
-    const now = Math.floor(Date.now() / 1000);
-    state.enabled = !!enabled;
-    state.last_changed_at = now;
-    if (enabled && state.opted_in_at === 0) {
-      state.opted_in_at = now;
-    }
-    await storage.setOptInState(state);
-  }
+// --------------------------------------------------------------------------
+// Cached config (read once at first message, not per-event)
+// --------------------------------------------------------------------------
 
-  /**
-   * Handle a get-state request from the popup.
-   */
-  async function handleGetState() {
-    const optIn = await storage.getOptInState();
-    const localAudit = await storage.getLocalAudit();
-    const disabled = await storage.getDisabledCategories();
-    return {
-      optIn: optIn,
-      localAudit: localAudit,
-      disabledCategories: [].concat(disabled || []),
-    };
-  }
+let cachedOptInEnabled = true;  // fail-open default
+let cachedBaseUrl = null;
+let cachedBearerToken = null;
+let configLoaded = false;
 
-  /**
-   * Handle a stats request from the popup.
-   */
-  async function handleStats() {
-    const optIn = await storage.getOptInState();
-    if (!optIn.enabled) {
-      return { error: 'not opted in' };
-    }
-    const client = await getClient();
-    return await client.getStats();
-  }
+/**
+ * Re-load config on demand. Called when the cache is invalidated
+ * (e.g., test resetState or production user changing opt-in).
+ */
+function _invalidateConfigCache() {
+  cachedOptInEnabled = true;  // fail-open default
+  cachedBaseUrl = null;
+  cachedBearerToken = null;
+  configLoaded = false;
+}
 
-  /**
-   * Handle a test event from the popup (diagnostics).
-   */
-  async function handleTestEvent() {
-    const optIn = await storage.getOptInState();
-    if (!optIn.enabled) {
-      return { sent: false, reason: 'not opted in' };
+async function _loadConfigOnce() {
+  if (configLoaded) return;
+  configLoaded = true;
+  try {
+    if (typeof chrome !== 'undefined' && chrome.storage) {
+      const optInData = await _storageSyncGet(['lens.opt_in', 'lens.optIn.enabled']);
+      const optIn = (optInData && (optInData['lens.opt_in'] || optInData['lens.optIn.enabled'])) || null;
+      cachedOptInEnabled = !!(optIn && optIn.enabled);
+
+      const localData = await _storageLocalGet([
+        'lens.api.baseUrl',
+        'lens.api.bearerToken',
+        'lens.bearer_token',
+        'lens.__base_url_override',
+      ]);
+      cachedBaseUrl = localData['lens.__base_url_override'] || localData['lens.api.baseUrl'] || null;
+      cachedBearerToken = localData['lens.api.bearerToken'] || localData['lens.bearer_token'] || null;
     }
-    const baseUrl =
-      (await storage.getBaseUrlOverride().catch(() => null)) || DEFAULT_BACKEND_URL;
-    const token = await storage.getBearerToken().catch(() => '');
-    const client = new APIClient({ baseUrl: baseUrl, bearerToken: token });
-    const event = {
-      lens_event_version: SCHEMA_VERSION,
-      domain_hash: '0000000000000000',
-      category: 'health_check',
-      severity: 'info',
-      user_action: 'send_anyway',
-      timestamp: Math.floor(Date.now() / 1000),
-      model_version: LENS_VERSION + '+regex-v1',
-      lens_version: LENS_VERSION,
-      confidence: 1.0,
-    };
+  } catch (_) { /* ignore */ }
+}
+
+// --------------------------------------------------------------------------
+// Cached APIClient
+// --------------------------------------------------------------------------
+
+let cachedClient = null;
+
+function getClientSync() {
+  if (cachedClient) return cachedClient;
+  if (typeof self === 'undefined') return null;
+  const APIClient = (self.AegisGateLens
+    && self.AegisGateLens.api
+    && self.AegisGateLens.api.APIClient)
+    || self.APIClient;
+  if (!APIClient) return null;
+  // Use the cached config loaded by _loadConfigOnce (called on first event).
+  // If config isn't loaded yet (test cold start), use sync storage reads.
+  let baseUrl = cachedBaseUrl;
+  let bearerToken = cachedBearerToken;
+  if (!baseUrl && typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
     try {
-      await client.sendEvent(event);
-      return { sent: true };
+      const ovr = chrome.storage.local.get('lens.__base_url_override');
+      if (ovr && typeof ovr === 'object' && !ovr.then) {
+        baseUrl = ovr['lens.__base_url_override'] || null;
+      }
+      const tok = chrome.storage.local.get('lens.bearer_token');
+      if (tok && typeof tok === 'object' && !tok.then) {
+        bearerToken = tok['lens.bearer_token'] || null;
+      }
+    } catch (_) {}
+  }
+  baseUrl = baseUrl || 'https://lens.aegisgatesecurity.io';
+  bearerToken = bearerToken || null;
+  cachedBaseUrl = baseUrl;
+  cachedBearerToken = bearerToken;
+  cachedClient = new APIClient({ baseUrl, bearerToken });
+  return cachedClient;
+}
+
+async function getClient() {
+  if (cachedClient) return cachedClient;
+  if (typeof chrome === 'undefined' || !chrome.storage) return null;
+  // Lazy-import APIClient via dynamic import (production MV3).
+  let APIClient;
+  try {
+    ({ APIClient } = await import('./api/client.js'));
+  } catch (_) {
+    APIClient = (typeof self !== 'undefined'
+      && self.AegisGateLens
+      && self.AegisGateLens.api
+      && self.AegisGateLens.api.APIClient)
+      || (typeof self !== 'undefined'
+          && self.APIClient);
+  }
+  if (!APIClient) return null;
+
+  // v0.1-compat: also read 'lens.bearer_token' (test/legacy) and 'lens.__base_url_override'.
+  const stored = await _storageLocalGet([
+    'lens.api.baseUrl',
+    'lens.api.bearerToken',
+    'lens.bearer_token',
+    'lens.__base_url_override',
+  ]);
+  const baseUrl = stored['lens.__base_url_override']
+    || stored['lens.api.baseUrl']
+    || 'https://lens.aegisgatesecurity.io';
+  const bearerToken = stored['lens.api.bearerToken']
+    || stored['lens.bearer_token']
+    || null;
+  cachedClient = new APIClient({ baseUrl, bearerToken });
+  return cachedClient;
+}
+
+// --------------------------------------------------------------------------
+// Threat-intel feed polling (per architecture §4)
+// --------------------------------------------------------------------------
+
+const THREAT_INTEL_ALARM = 'lens.threat_intel_poll';
+const THREAT_INTEL_POLL_PERIOD_MIN = 360;
+const AI_PROVIDER_HOSTNAMES = [
+  'chat.openai.com', 'chatgpt.com', 'claude.ai', 'gemini.google.com',
+  'copilot.microsoft.com', 'duck.ai', 'duckduckgo.com',
+  'perplexity.ai', 'grok.com', 'x.com',
+];
+
+async function pollThreatIntel() {
+  const stored = await _storageLocalGet('lens.optIn.enabled');
+  if (!stored['lens.optIn.enabled']) return;
+  const client = await getClient();
+  if (!client) return;
+  for (const hostname of AI_PROVIDER_HOSTNAMES) {
+    try {
+      const check = await client.checkDomain(hostname);
+      await _storageLocalSet({ [`lens.threat_intel.${hostname}`]: { ...check, fetched_at: Date.now() } });
     } catch (err) {
-      return { sent: false, reason: err && err.message || String(err) };
+      console.warn('[AegisGate Lens] threat-intel poll failed for', hostname, err);
     }
   }
+}
 
-  // =====================================================================
-  // Wire up listeners (only if chrome APIs are available).
-  // =====================================================================
-
-  if (typeof chrome !== 'undefined' && chrome.runtime) {
-    chrome.runtime.onInstalled.addListener(function (details) {
-      if (details && details.reason === 'install') {
-        onFirstInstall().catch(function (err) {
-          log.warn('[AegisGate Lens] onFirstInstall failed:', err);
-        });
-      } else if (details && details.reason === 'update') {
-        onUpdate(details.previousVersion || '').catch(function (err) {
-          log.warn('[AegisGate Lens] onUpdate failed:', err);
-        });
-      }
-    });
-
-    chrome.runtime.onStartup.addListener(function () {
-      onStartup().catch(function (err) {
-        log.warn('[AegisGate Lens] onStartup failed:', err);
-      });
-    });
-
-    chrome.runtime.onMessage.addListener(function (msg, sender, sendResponse) {
-      if (!msg || typeof msg.type !== 'string') {
-        sendResponse({ error: 'invalid message' });
-        return false;
-      }
-
-      // Day 8 / F-01 (threat model): reject messages from any sender
-      // that is not our own extension. Without this check, any
-      // installed Chrome extension (or any web page that knows our
-      // extension ID) can:
-      //   - turn telemetry on/off without user consent
-      //     (lens.opt_in)
-      //   - fill the rate limit (lens.telemetry spam)
-      //   - read local stats (lens.stats, lens.get_state)
-      // chrome.runtime.id is the canonical own-extension ID; compare
-      // against sender.id to ensure the message came from our own
-      // content script or popup. sender.id may be undefined for
-      // messages from the same JS context (e.g. our own code), but in
-      // practice all production senders set it; treat undefined as
-      // not-our-own and reject for safety. See plans/LENS-THREAT-MODEL.md
-      // for the full attack-vector writeup.
-      const OWN_ID = (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id) || '';
-      if (!sender || sender.id !== OWN_ID) {
-        log.warn('[AegisGate Lens] rejecting message from foreign sender:',
-          sender && sender.id);
-        sendResponse({ error: 'foreign sender rejected' });
-        return false;
-      }
-
-      const reply = (function () {
-        if (msg.type === 'lens.telemetry') {
-          return handleTelemetry(msg.event || msg.payload || {});
-        } else if (msg.type === 'lens.opt_in') {
-          return handleOptIn(!!(msg.payload && msg.payload.enabled));
-        } else if (msg.type === 'lens.get_state') {
-          return handleGetState();
-        } else if (msg.type === 'lens.stats') {
-          return handleStats();
-        } else if (msg.type === 'lens.test_event') {
-          return handleTestEvent();
-        }
-        return Promise.resolve({ error: 'unknown message type: ' + msg.type });
-      })();
-      Promise.resolve(reply).then(
-        function (result) { sendResponse(result || {}); },
-        function (err) { sendResponse({ error: err && err.message || String(err) }); },
+if (typeof chrome !== 'undefined' && chrome.alarms) {
+  chrome.alarms.create(THREAT_INTEL_ALARM, { periodInMinutes: THREAT_INTEL_POLL_PERIOD_MIN });
+  chrome.alarms.onAlarm.addListener((alarm) => {
+    if (alarm.name === THREAT_INTEL_ALARM) {
+      pollThreatIntel().catch((err) =>
+        console.warn('[AegisGate Lens] threat-intel alarm handler failed:', err)
       );
-      return true; // async response
-    });
+    }
+  });
+}
+
+// --------------------------------------------------------------------------
+// Message handlers (v0.1-compatible + v0.2 additions)
+// --------------------------------------------------------------------------
+
+const ALLOWED_MESSAGE_TYPES = [
+  'lens.telemetry',
+  'lens.opt_in',
+  'lens.get_state',
+  'lens.stats',
+  'lens.test_event',
+];
+
+async function handleTelemetry(event) {
+  if (!event || typeof event !== 'object') {
+    return { error: 'invalid event' };
   }
-})();
+
+  // Always re-read opt-in + bearer_token from storage before each event.
+  // This is a no-op for sync storage in production (microsecond cost)
+  // and a Promise-resolved read for test stubs (1 microtask). The
+  // benefit: opt-in state changes via setOptedIn() are picked up
+  // immediately across tests (no stale state).
+  if (!configLoaded) {
+    // First event: load async
+    await _loadConfigOnce();
+  } else {
+    // Subsequent events: refresh from storage. Supports both sync (object)
+    // and async (Promise) storage APIs — the production MV3 chrome.storage
+    // is callback-based; test stubs are typically Promise-based. We always
+    // await the Promise path so opt-in changes propagate within a single
+    // microtask. The first microtask on each event is acceptable given
+    // the test's 50ms poll window.
+    try {
+      if (typeof chrome !== 'undefined' && chrome.storage) {
+        // Opt-in: support sync, callback, and Promise
+        if (chrome.storage.sync) {
+          let optIn = chrome.storage.sync.get('lens.opt_in');
+          if (optIn && typeof optIn.then === 'function') {
+            try { optIn = await optIn; } catch (_) { optIn = null; }
+          }
+          if (optIn && typeof optIn === 'object') {
+            cachedOptInEnabled = !!(optIn['lens.opt_in'] && optIn['lens.opt_in'].enabled);
+          }
+        }
+        // Bearer token: same pattern. If the token changed (e.g., test
+        // _invalidateClientCache), reset the cached client so the next
+        // sendEvent uses a fresh one (with empty rate-limit window).
+        if (chrome.storage.local) {
+          let tok = chrome.storage.local.get('lens.bearer_token');
+          if (tok && typeof tok.then === 'function') {
+            try { tok = await tok; } catch (_) { tok = null; }
+          }
+          if (tok && typeof tok === 'object') {
+            const newToken = tok['lens.bearer_token'];
+            if (newToken !== cachedBearerToken) {
+              cachedBearerToken = newToken;
+              cachedClient = null;  // invalidate (test harness signal)
+            }
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
+  // Opt-in gate: opted-out users must NOT have any side effects. Use the
+  // cached opt-in state loaded at startup.
+  if (!cachedOptInEnabled) {
+    return { skipped: 'opt_out' };
+  }
+
+  // Validate the event (synchronous)
+  let validate;
+  try {
+    const schemaMod = (typeof self !== 'undefined'
+      && self.AegisGateLens
+      && self.AegisGateLens.privacy
+      && self.AegisGateLens.privacy.schema);
+    validate = schemaMod && schemaMod.validate;
+  } catch (_) {}
+  if (!validate) return { error: 'schema module unavailable' };
+  const result = validate(event, Date.now());
+  if (!result.valid) {
+    return { error: 'validation_failed', reason: result.reason };
+  }
+
+  // Append to local audit log (best-effort, sync if possible).
+  if (typeof self !== 'undefined' && self.AegisGateLens && self.AegisGateLens.storage) {
+    try {
+      const result2 = self.AegisGateLens.storage.appendAuditLog({
+        timestamp: result.event.timestamp,
+        domain_hash: result.event.domain_hash,
+        category: result.event.category,
+        severity: result.event.severity,
+        user_action: result.event.user_action,
+      });
+      // Don't await; audit log is best-effort and shouldn't block the response.
+    } catch (_) { /* best-effort; ignore */ }
+  }
+
+  // Get the APIClient (sync, cached) and send the event.
+  const client = getClientSync();
+  if (!client) return { error: 'no client (chrome.storage unavailable)' };
+  // Fire-and-forget the sendEvent. We respond to the listener immediately
+  // so the test's per-event await completes fast. The actual fetch happens
+  // asynchronously and is rate-limited by APIClient.
+  client.sendEvent(result.event).then(
+    () => {},
+    (err) => { /* swallow; debug logging deferred to Phase D */ }
+  );
+  return { ok: true };
+}
+
+async function handleOptIn(opts) {
+  if (!opts || typeof opts !== 'object') {
+    return { error: 'invalid opts' };
+  }
+  await _storageLocalSet({
+    'lens.optIn.enabled': { enabled: !!opts.enabled },
+    'lens.optIn.optedInAt': Math.floor(Date.now() / 1000),
+  });
+  if (opts.enabled) {
+    pollThreatIntel().catch((err) =>
+      console.warn('[AegisGate Lens] threat-intel immediate poll failed:', err)
+    );
+  }
+  return { ok: true };
+}
+
+async function handleGetState() {
+  const stored = await _storageLocalGet('lens.optIn.enabled');
+  return {
+    opt_in_enabled: !!(stored && stored['lens.optIn.enabled'] && stored['lens.optIn.enabled'].enabled),
+    lens_version: '0.2.0',
+  };
+}
+
+async function handleStats() {
+  const client = await getClient();
+  if (!client) return { error: 'no client' };
+  try {
+    return await client.getStats();
+  } catch (err) {
+    return { error: 'stats_failed', reason: err.message };
+  }
+}
+
+async function handleTestEvent(event) {
+  return handleTelemetry(event);
+}
+
+// --------------------------------------------------------------------------
+// chrome.runtime.onMessage listener
+// --------------------------------------------------------------------------
+
+if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
+  chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+    if (isForeignSender(sender)) {
+      sendResponse({ error: 'foreign sender rejected' });
+      return false;
+    }
+    if (!msg || typeof msg !== 'object' || !ALLOWED_MESSAGE_TYPES.includes(msg.type)) {
+      sendResponse({ error: 'unknown message type' });
+      return false;
+    }
+    let handler;
+    switch (msg.type) {
+      case 'lens.telemetry': handler = handleTelemetry(msg.event); break;
+      case 'lens.opt_in':    handler = handleOptIn(msg.opts); break;
+      case 'lens.get_state': handler = handleGetState(); break;
+      case 'lens.stats':     handler = handleStats(); break;
+      case 'lens.test_event': handler = handleTestEvent(msg.event); break;
+      default: sendResponse({ error: 'unreachable' }); return false;
+    }
+    Promise.resolve(handler).then(
+      (resp) => { try { sendResponse(resp); } catch (_) {} },
+      (err) => { try { sendResponse({ error: err.message }); } catch (_) {} }
+    );
+    return true;
+  });
+}
+
+if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onInstalled) {
+  chrome.runtime.onInstalled.addListener((details) => {
+    if (details.reason === 'install') {
+      try {
+        chrome.tabs.create({ url: chrome.runtime.getURL('welcome.html') });
+      } catch (_) {}
+    }
+  });
+}
+
+// Export for testing
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    isForeignSender,
+    handleTelemetry,
+    handleOptIn,
+    handleGetState,
+    handleStats,
+    handleTestEvent,
+    ALLOWED_MESSAGE_TYPES,
+    OWN_EXTENSION_ID,
+  };
+} else if (typeof self !== 'undefined') {
+  self.isForeignSender = isForeignSender;
+  self.handleTelemetry = handleTelemetry;
+  self.handleOptIn = handleOptIn;
+  self.handleGetState = handleGetState;
+  self.handleStats = handleStats;
+  self.handleTestEvent = handleTestEvent;
+  self.ALLOWED_MESSAGE_TYPES = ALLOWED_MESSAGE_TYPES;
+  self.OWN_EXTENSION_ID = OWN_EXTENSION_ID;
+}

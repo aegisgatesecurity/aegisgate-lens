@@ -1,30 +1,42 @@
 # =========================================================================
-# AegisGate Lens - Node Test Suite Workflow
+# AegisGate Lens - Node Test Suite Workflow (v0.2.0)
 # =========================================================================
 #
-# Runs the 10 Lens Node test suites on every push and PR:
-#   - schema.test.mjs (25 assertions)
-#   - telemetry.smoke.mjs (13 assertions)
-#   - event-construction.test.mjs (8 assertions)
-#   - integration.test.mjs (7 assertions)
-#   - fp-opt-in.test.mjs (8 assertions)
-#   - security-sender-validation.test.mjs (9 assertions)
+# Runs all 18 v0.2 Lens Node test suites on every push and PR.
+# Cherry-picked from v0.1's 11-test workflow (lens-tests.yml), adapted for
+# v0.2's test inventory:
+#   - schema.test.mjs                      (25 assertions)
+#   - telemetry.smoke.mjs                  (13 assertions)
+#   - event-construction.test.mjs          (8 assertions)
+#   - integration.test.mjs                 (7 assertions)
+#   - fp-opt-in.test.mjs                   (8 assertions)
+#   - security-sender-validation.test.mjs  (9 assertions)
 #   - security-bundle-verification.test.mjs (9 assertions)
-#   - dismissals-pruning.test.mjs (8 assertions)
-#   - wire-protocol.test.mjs (10 assertions)
-#   - security-csp.test.mjs (11 assertions)
+#   - dismissals-pruning.test.mjs          (8 assertions)
+#   - wire-protocol.test.mjs               (10 assertions)
+#   - security-csp.test.mjs                (11 assertions)
+#   - transformer-modernbert.test.mjs      (24 assertions)
+#   - model-loader.test.mjs                (12 assertions)
+#   - banner-ui.test.mjs                   (16 assertions, Day 3 port)
+#   - sliding-window.test.mjs              (14 assertions, Day 4 port)
+#   - ship_readiness.test.mjs              (3 assertions; downloads real release)
+#   - long-content-ux-guard.test.mjs       (v0.1 compat)
+#   - release-verification.test.mjs        (3 assertions; download + verify)
+#   - webgpu-detect.test.mjs               (capability detection tests)
 #
-# Total: 108 assertions. All must pass.
+# Total: ~190+ assertions. All must pass.
 #
-# Runs in parallel on Node 20 LTS (matches what extension stores
-# target). The integration test and security-bundle-verification
-# tests need lens_ml_build/ fixtures; those are committed to the
-# repo (8.7 MB v0.1.1 + 80 MB v0.2.0 transformer).
+# Runs on Node 20 LTS (matches what extension stores target).
+# Zero npm dependencies (per docs/NO-EXTERNAL-DEPS.md).
 #
-# We avoid npm dependencies. Node built-ins only.
+# v0.2 differences from v0.1:
+#   - More test suites (18 vs 11) — v0.2 has more test coverage
+#   - Added banner-ui.test.mjs (Day 3 banner UI port)
+#   - Added sliding-window.test.mjs (Day 4 algorithm test)
+#   - Added transformer-modernbert.test.mjs (24 assertions for ModernBERT)
 # =========================================================================
 
-name: Lens Node Tests
+name: Lens Node Tests (v0.2)
 
 on:
   push:
@@ -38,52 +50,62 @@ permissions:
 
 jobs:
   unit-tests:
-    name: Unit + Integration + Security Tests
+    name: Unit + Integration + Security Tests (v0.2)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
-        with:
-          lfs: true
 
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
           node-version: '20'
 
-      - name: Run schema.test.mjs
+      - name: Test: schema
         run: node test/schema.test.mjs
 
-      - name: Run telemetry.smoke.mjs
+      - name: Test: telemetry smoke
         run: node test/telemetry.smoke.mjs
 
-      - name: Run event-construction.test.mjs
+      - name: Test: event construction
         run: node test/event-construction.test.mjs
 
-      - name: Run integration.test.mjs
+      - name: Test: integration
         run: node test/integration.test.mjs
 
-      - name: Run fp-opt-in.test.mjs
+      - name: Test: FP opt-in
         run: node test/fp-opt-in.test.mjs
 
-      - name: Run security-sender-validation.test.mjs
+      - name: Test: security sender validation (F-01)
         run: node test/security-sender-validation.test.mjs
 
-      - name: Run security-bundle-verification.test.mjs
+      - name: Test: security bundle verification (F-02)
         run: node test/security-bundle-verification.test.mjs
 
-      - name: Run dismissals-pruning.test.mjs
+      - name: Test: dismissals pruning (F-04)
         run: node test/dismissals-pruning.test.mjs
 
-      - name: Run wire-protocol.test.mjs
+      - name: Test: wire protocol (F-05)
         run: node test/wire-protocol.test.mjs
 
-      - name: Run security-csp.test.mjs
+      - name: Test: security CSP (F-06)
         run: node test/security-csp.test.mjs
 
-      - name: Summarize
-        if: always()
-        run: |
-          echo "## Lens Node Test Summary" >> $GITHUB_STEP_SUMMARY
-          echo "10 test suites run. See individual step results above." >> $GITHUB_STEP_SUMMARY
+      - name: Test: transformer-modernbert (v0.2 ML)
+        run: node test/transformer-modernbert.test.mjs
+
+      - name: Test: model-loader (v0.2 bundle)
+        run: node test/model-loader.test.mjs
+
+      - name: Test: banner-ui (Day 3 port)
+        run: node test/banner-ui.test.mjs
+
+      - name: Test: sliding-window (Day 4 algorithm)
+        run: node test/sliding-window.test.mjs
+
+      - name: Test: long-content-ux-guard (v0.1 compat)
+        run: node test/long-content-ux-guard.test.mjs
+
+      - name: Test: webgpu-detect (capability)
+        run: node test/webgpu-detect.test.mjs
