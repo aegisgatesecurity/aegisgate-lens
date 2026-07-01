@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<!--
+  Mock AI Provider Page for ship-readiness test.
+
+  This page mimics the DOM structure of a real AI provider
+  (specifically modeled on ChatGPT) so the AegisGate Lens content
+  script can attach and detect prompt injections.
+
+  The puppeteer test dispatches a known prompt into #prompt-textarea
+  and verifies the Lens's banner appears.
+
+  IMPORTANT: This page runs ONLY on localhost (127.0.0.1) during
+  CI tests. The Lens manifest only matches real AI provider hostnames,
+  so the manifest's `matches` array would need to include 127.0.0.1
+  in a test-only manifest.json (not the production one).
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Mock AI Provider (Ship-Readiness Test)</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #f7f7f8;
+    }
+    .chat-container {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .messages {
+      min-height: 200px;
+      padding: 10px;
+      margin-bottom: 16px;
+      border: 1px solid #e5e5e5;
+      border-radius: 8px;
+    }
+    .input-row {
+      display: flex;
+      gap: 8px;
+    }
+    #prompt-textarea {
+      flex: 1;
+      min-height: 60px;
+      padding: 12px;
+      border: 1px solid #d9d9e3;
+      border-radius: 8px;
+      font-size: 16px;
+      font-family: inherit;
+      resize: vertical;
+    }
+    button {
+      padding: 12px 24px;
+      background: #10a37f;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    button:hover { background: #0d8f6f; }
+    button[data-testid="send-button"] {
+      /* Match ChatGPT's send-button selector */
+    }
+  </style>
+</head>
+<body>
+  <div class="chat-container">
+    <h1>Mock AI Provider</h1>
+    <p>This is a test page used by the AegisGate Lens ship-readiness test.</p>
+    <div class="messages" id="messages"></div>
+    <div class="input-row">
+      <textarea
+        id="prompt-textarea"
+        placeholder="Type a message..."
+        data-testid="prompt-textarea"
+      ></textarea>
+      <button
+        data-testid="send-button"
+        onclick="sendMessage()"
+      >Send</button>
+    </div>
+  </div>
+
+  <script>
+    function sendMessage() {
+      const textarea = document.getElementById('prompt-textarea');
+      const text = textarea.value.trim();
+      if (!text) return;
+      const messages = document.getElementById('messages');
+      const msg = document.createElement('div');
+      msg.className = 'message';
+      msg.textContent = 'You: ' + text;
+      messages.appendChild(msg);
+      // Echo a fake response (not used by Lens)
+      setTimeout(() => {
+        const reply = document.createElement('div');
+        reply.className = 'reply';
+        reply.textContent = 'AI: I received your message.';
+        messages.appendChild(reply);
+      }, 100);
+      textarea.value = '';
+    }
+
+    // Allow Enter to send
+    document.getElementById('prompt-textarea').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+  </script>
+</body>
+</html>

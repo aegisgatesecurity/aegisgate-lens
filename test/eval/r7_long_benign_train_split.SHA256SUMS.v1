@@ -1,0 +1,6 @@
+# AegisGate Lens v0.2 — Fixed corpus split lockfile
+# Generated 2026-06-28 from r7_long_benign_train_fixed.jsonl
+# Split into single-class subsets for Item H analysis
+# Original corpus (mixed): 45eaf3237a895e1f1a1f5e5d9cb3b8ac975865c2ba0fc878562b5758cde7ba11
+1440a2c9e6dbe1b8d94bcb7082611fd46e7994b8fd351679a0e18d22d6b8c5b9  r7_long_benign_train_FIXED.benign.jsonl
+685db411ad1f4b576115c353f3fa0a6ee199ac5420d9002731f8e66ddaba2874  r7_long_benign_train_FIXED.attack.jsonl

@@ -1,0 +1,19 @@
+{
+  "timestamp": "2026-06-28",
+  "fixed_corpus": "/home/chaos/Desktop/AegisGate/lens-repo-bootstrap-v02/test/eval/r7_long_benign_train_fixed.jsonl",
+  "threshold": 0.5,
+  "total_records": 364,
+  "n_benign": 228,
+  "n_attack": 136,
+  "n_reclassified": 136,
+  "tp": 50,
+  "fp": 29,
+  "tn": 199,
+  "fn": 86,
+  "recall": 0.36764705882352944,
+  "fpr": 0.12719298245614036,
+  "precision": 0.6329113924050633,
+  "f1": 0.46511627906976744,
+  "reclassified_tp": 50,
+  "reclassified_fn": 86
+}

@@ -11,8 +11,9 @@
     (typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : self)).AegisGateLens || {};
   const log = NS.logger || console;
 
-  // Ed25519 Public Key (32 bytes, base64-encoded)
-  const SIGNING_PUBLIC_KEY_B64 = 'aKzukcm1ElgBZDMlG7IROw12CyjPHfkuKv+Bj8I70+c=';
+  // Ed25519 Public Key (32 bytes, base64-encoded).
+  // Override via NS.util.bundleLoader._setSigningPublicKey(b64) for testing.
+  let SIGNING_PUBLIC_KEY_B64 = 'aKzukcm1ElgBZDMlG7IROw12CyjPHfkuKv+Bj8I70+c=';
 
   function base64Decode(b64) {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
@@ -55,20 +56,99 @@
 
   // Find the header by searching for the magic value in the bytes.
   // Returns the index of the opening '{' of the JSON header.
+  //
+  // The magic value is always a top-level key in the JSON header. To find
+  // the ROOT '{' (not a nested '{' inside the files array), we walk back
+  // from the magic value while tracking JSON nesting depth: count unmatched
+  // '}' and ']' (delimiters that close ahead of us) and '[' and '{'
+  // (delimiters that open ahead of us). When we hit an opener with
+  // depth_close == 0, that's the root.
+  //
+  // The first '{' in the byte array IS the root, but we need to verify it
+  // by walking back, because a deeply-nested bundle could in principle
+  // have a sibling '{' before the root (e.g., a string field containing
+  // literal '{' chars). In practice the JSON we sign never has that, but
+  // the depth check is the safe approach.
+  //
+  // History: the original implementation (v0.1) used a naive "walk back
+  // to nearest '{'" which broke on bundles where the magic value is
+  // pushed deep into the header by alphabetical key sorting. See
+  // plans/AEGISGATE-LENS-V03-CRITICAL-BUNDLE-PARSER-BUG-2026-06-30.md.
   function findHeaderStart(bytes) {
-    // Search for "magic" : "AEGISGATE_LENS_BUNDLE_V1" with flexible whitespace
-    // We do this by searching for the value and walking back
     const valueBytes = new TextEncoder().encode(MAGIC_VALUE);
     outer: for (let i = 0; i <= bytes.length - valueBytes.length; i++) {
       for (let j = 0; j < valueBytes.length; j++) {
         if (bytes[i + j] !== valueBytes[j]) continue outer;
       }
-      // Found the value. Walk back to find the opening '{' of the JSON object.
-      // We need to skip back past: "magic" : "..." but the '{' could be far back
-      // if there's a leading comment. For our format, it's right before "magic".
-      let k = i - 1;
-      while (k >= 0 && bytes[k] !== 123) k--;  // 123 = '{'
-      if (k >= 0) return k;
+      // Found the magic value at position i. Walk back to find the root '{'.
+      return findRootOpenBrace(bytes, i);
+    }
+    return -1;
+  }
+
+  /**
+   * Walk back from a position inside the magic string and find the index
+   * of the ROOT '{' of the JSON object that contains the magic key.
+   *
+   * The magic value is the value of a top-level "magic" key. We start
+   * inside the string literal `"AEGISGATE_LENS_BUNDLE_V1"`. We need to
+   * walk back past:
+   *   - the opening '"' of the value string
+   *   - the "magic" key string
+   *   - the ':' separator
+   *   - any preceding key-value pairs (and their nested arrays/objects)
+   * until we find the root '{'.
+   *
+   * We track JSON nesting depth by counting unmatched closing brackets
+   * (}, ]) we pass going backwards. Each closing bracket we pass means
+   * its matching opener is also behind us, so the root is one bracket
+   * "deeper". When we hit an opening bracket and depth_close == 0, we
+   * found the root.
+   *
+   * @param {Uint8Array} bytes - the bundle bytes
+   * @param {number} magicPos - position of the first byte of MAGIC_VALUE
+   * @returns {number} index of the root '{', or -1 if not found
+   */
+  function findRootOpenBrace(bytes, magicPos) {
+    // Step 1: walk back to the opening '"' of the magic value string.
+    // We're inside the string at magicPos; the opening '"' is somewhere
+    // before magicPos (skipping the closing '"' immediately before).
+    let k = magicPos - 1;
+    while (k >= 0 && bytes[k] !== 34 /* " */) k--;
+    if (k < 0) return -1;
+    // k is now the position of the opening '"' of the value string.
+    // Step 2: walk back from k-1, tracking string-state and bracket depth.
+    let depthClose = 0;  // count of unmatched }, ] we've passed
+    let inString = false;
+    let i = k - 1;
+    while (i >= 0) {
+      const b = bytes[i];
+      if (inString) {
+        if (b === 34 /* " */) {
+          // Check for escaped quote (preceded by odd number of backslashes).
+          let bs = 0;
+          for (let j = i - 1; j >= 0 && bytes[j] === 92 /* \ */; j--) bs++;
+          if (bs % 2 === 0) inString = false;
+        }
+        i--;
+        continue;
+      }
+      // Not in a string.
+      if (b === 34 /* " */) {
+        inString = true;
+        i--;
+        continue;
+      }
+      if (b === 125 /* } */ || b === 93 /* ] */) {
+        depthClose++;
+      } else if (b === 123 /* { */ || b === 91 /* [ */) {
+        if (depthClose === 0) {
+          // This is the root opener.
+          return i;
+        }
+        depthClose--;
+      }
+      i--;
     }
     return -1;
   }
@@ -139,6 +219,7 @@
     }
 
     const models = [];
+    const rawFiles = {};  // name → raw Uint8Array (for binary files like .onnx)
     for (let i = 0; i < header.files.length; i++) {
       const fileInfo = header.files[i];
       const fileStart = payloadStart + fileInfo.offset;
@@ -148,16 +229,31 @@
       if (fileSha !== fileInfo.sha256) {
         throw new Error('File ' + fileInfo.name + ' SHA-256 mismatch');
       }
-      const fileText = new TextDecoder('utf-8').decode(fileBytes);
-      const fileData = JSON.parse(fileText);
-      models.push({ name: fileInfo.name, data: fileData });
+      // Binary files (e.g., .onnx) keep their raw bytes; JSON files parse as text.
+      // Plain text files (e.g., vocab.txt) keep as raw text.
+      if (fileInfo.name.endsWith('.onnx') || fileInfo.name.endsWith('.bin')) {
+        rawFiles[fileInfo.name] = fileBytes;
+        // Still expose a placeholder object so v0.1 callers see this file.
+        models.push({ name: fileInfo.name, data: { _binary: true, size: fileInfo.size } });
+      } else if (fileInfo.name.endsWith('.json')) {
+        const fileText = new TextDecoder('utf-8').decode(fileBytes);
+        const fileData = JSON.parse(fileText);
+        models.push({ name: fileInfo.name, data: fileData });
+      } else {
+        // Plain text file (vocab.txt, merges.txt, etc.). Keep raw bytes
+        // accessible for callers that need the text (tokenizer can re-decode),
+        // and also store the decoded text in models for legacy callers.
+        const fileText = new TextDecoder('utf-8').decode(fileBytes);
+        rawFiles[fileInfo.name] = fileBytes;
+        models.push({ name: fileInfo.name, data: fileText });
+      }
     }
 
     log.info('[AegisGate Lens] Bundle verified: v' + header.bundle_version +
              ' (' + (bytes.length / 1024 / 1024).toFixed(2) + ' MB, ' +
              header.n_files + ' files)');
 
-    return { header: header, models: models };
+    return { header: header, models: models, rawFiles: rawFiles };
   }
 
   function reconstructModels(parsed) {
@@ -217,5 +313,16 @@
     _base64Decode: base64Decode,
     _findHeaderStart: findHeaderStart,
     _findJsonEnd: findJsonEnd,
+  };
+
+  // Compat alias: model-loader.js (v0.2) reads NS.util.bundleLoader.
+  // The v0.1 export surface (NS.bundleLoader) is preserved above for
+  // backwards compatibility with v0.1 callers.
+  NS.util = NS.util || {};
+  NS.util.bundleLoader = NS.bundleLoader;
+  // Allow tests to override the signing public key. Production builds
+  // never call this; the default key is hardcoded above.
+  NS.util.bundleLoader._setSigningPublicKey = function (b64) {
+    SIGNING_PUBLIC_KEY_B64 = b64;
   };
 })();
