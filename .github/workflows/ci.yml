@@ -196,6 +196,9 @@ jobs:
         run: |
           set -e
           # Install OS-level dependencies that chrome-for-testing needs.
+          # Note: libgconf-2-4 and libappindicator3-1 are deprecated in
+          # Ubuntu 24.04 and were removed from apt. Chrome 120 does NOT
+          # need them (only legacy GTK2 apps do).
           sudo apt-get update
           sudo apt-get install -y \
             libnss3 \
@@ -205,9 +208,8 @@ jobs:
             libgbm1 \
             libxss1 \
             libasound2t64 \
-            libgconf-2-4 \
             fonts-liberation \
-            libappindicator3-1
+            libnss3-tools
           # Download Chrome-for-Testing 120.0.6099.109 from the official
           # CDN. This is the version the test harness was written against.
           CHROME_VERSION="120.0.6099.109"
