@@ -506,7 +506,23 @@ await test('20. _reset clears state for next test', async () => {
  * Run a Python script and capture stdout (JSON).
  */
 function runPython(scriptText, args = []) {
-  const venvPy = path.join(repoRoot, '.venv-v02/bin/python');
+  // v0.3.0 (fix for snapshot tests): the venv lives at the PARENT of
+  // the mirror (lens-repo-bootstrap-v02/.venv-v02), not at the mirror's
+  // repoRoot. Walk up the directory tree (up to 4 levels) looking for
+  // .venv-v02/bin/python. This makes the test portable whether it's
+  // run from the mirror (lens-repo-bootstrap-v02/.v0.1-mirror/v0.1) or
+  // from the parent (lens-repo-bootstrap-v02).
+  const venvPy = (() => {
+    let d = repoRoot;
+    for (let i = 0; i < 4; i++) {
+      const candidate = path.join(d, '.venv-v02', 'bin', 'python');
+      if (fs.existsSync(candidate)) return candidate;
+      const parent = path.dirname(d);
+      if (parent === d) break;
+      d = parent;
+    }
+    return path.join(repoRoot, '.venv-v02/bin/python');
+  })();
   const result = spawnSync(venvPy, ['-c', scriptText, ...args], {
     encoding: 'utf8',
     maxBuffer: 50 * 1024 * 1024,
