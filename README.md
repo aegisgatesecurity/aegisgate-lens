@@ -15,7 +15,7 @@
 
 > **The browser-side complement to the [AegisGate Platform](https://github.com/aegisgatesecurity/aegisgate-platform) security gateway.** Detects prompt injection, PII, secrets, XSS, and toxic content **BEFORE** it reaches ChatGPT, Claude, Gemini, or Copilot — with 100% on-device ML and a privacy-first design enforced in CI.
 
-[🌐 Website](https://aegisgatesecurity.io) • [🚀 **Live Demo**](https://demo.aegisgatesecurity.io/) • [📊 Pricing](https://aegisgatesecurity.io/pricing/) • [📚 Docs](https://aegisgatesecurity.io/lens/) • [🔒 Security](SECURITY.md) • [💬 Discussions](https://github.com/aegisgatesecurity/aegisgate-lens/discussions)
+[🌐 Website](https://aegisgatesecurity.io) • [🧪 **Try the Lens**](docs/try/index.html) • [📊 Pricing](https://aegisgatesecurity.io/pricing/) • [📚 Docs](https://aegisgatesecurity.io/lens/) • [🔒 Security](SECURITY.md) • [💬 Discussions](https://github.com/aegisgatesecurity/aegisgate-lens/discussions)
 
 </div>
 
@@ -278,20 +278,45 @@ policy documented in `docs/THREAT-MODEL.md`.
 
 ---
 
-## 🛠️ Try the Live Demo
+## 🛠️ Try the Lens
 
-**Want to see AegisGate Lens in action before reading another line of docs?**
-Try the [AegisGate Live Demo →](https://demo.aegisgatesecurity.io/)
+**Want to see AegisGate Lens in action?** The Lens is a Chrome
+extension, so the only way to try it is to install it. There's no
+hosted demo for browser extensions (browsers prevent a web page from
+loading an extension for security reasons), but the install is one
+click and the extension works on the AI tools you already use.
 
-The demo runs the **actual AegisGate Lens** in headless Chrome against
-AI provider mocks. You'll get:
-- 4 of the 6 detection facets running live (PII, secrets, XSS, compliance)
-- 10+ pre-loaded test prompts covering all categories
-- The full banner UI with "send anyway" / "edit" / "cancel" actions
+1. **Install the Lens** from the
+   [Chrome Web Store](https://chromewebstore.google.com/) (one click)
+2. **Visit any AI tool** you use (ChatGPT, Claude, Gemini, Copilot,
+   Perplexity, etc.)
+3. **Type a test prompt** with sensitive data — e.g. `My SSN is 123-45-6789`
+4. **See the Lens banner** appear at the top of the page, explaining what
+   was detected and offering "Send anyway" / "Edit" / "Cancel" actions
 
-The Platform demo (separate) also includes the Trust Framework, MCP
-guardrails, and EU AI Act compliance — try that one too if you want the
-full picture.
+**No account, no email signup, no LLM API keys.** The Lens runs entirely
+in your browser. Your prompts never leave your device.
+
+> 👉 **See the [preview page](docs/try/index.html)** for 8 ready-to-use
+> test prompts covering all 6 detection facets (PII, secrets, XSS,
+> compliance, toxicity, prompt injection).
+
+### See the Platform side?
+
+The AegisGate [Platform](https://github.com/aegisgatesecurity/aegisgate-platform)
+(the server-side AI traffic gateway) has a separate
+[live demo](https://demo.aegisgatesecurity.io/) that runs the Platform
+binary in browser-only mode. The Platform's demo is a "see the
+Trust Framework + MCP guardrails + EU AI Act" demo; the Lens is
+"install the extension and try it on real prompts."
+
+### Want a real demo page (not a preview)?
+
+See [plans/AEGISGATE-LENS-DEMO-PAGE-2026-07-01.md](../../plans/AEGISGATE-LENS-DEMO-PAGE-2026-07-01.md)
+for the post-launch plan to build a Web Component that emulates the
+Lens's banner UI (no extension install required). Phased delivery:
+Phase 1 (this static preview) is shipped with v0.3.0-rc1; Phase 2
+(Web Component) is tracked for v0.4.0.
 
 ---
 
