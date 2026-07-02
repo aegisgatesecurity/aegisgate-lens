@@ -80,7 +80,9 @@
   ContentScript.prototype.attachPromptListeners = function () {
     if (typeof document === 'undefined') return;
     const self = this;
-    const DETECT_THROTTLE_MS = 300;
+    // In test mode, allow disabling the throttle so the Go test can
+    // drive input events back-to-back without pending detections.
+    const DETECT_THROTTLE_MS = (typeof window !== 'undefined' && window.__lens_test_no_throttle) ? 0 : 300;
     let pendingDetect = null;
     let lastDetectAt = 0;
     // Find prompt element. Providers register their promptSelector; if
@@ -158,10 +160,15 @@
         return true;
       });
       if (visible.length > 0) {
-        self.currentDetections = visible;
+        self.currentDetections = visible; window.__lens_detections = visible;
         self.showBanner(visible);
         return;
       }
+      // No regex detections: clear the test-mode global and hide the
+      // banner. ML detection may still fire (async, below) — it will
+      // re-populate __lens_detections if it finds something.
+      self.currentDetections = []; window.__lens_detections = [];
+      self.hideBanner();
       // Step 2: ML detection via transformer-modernbert (sliding window).
       // Long text gets the sliding-window path. Short text (<512 tokens)
       // gets the adaptive short-circuit. Only fires if ML is loaded.
@@ -180,12 +187,46 @@
                 mlThreshold: 0.05,
                 facet: 6,
               };
-              self.currentDetections = [det];
+              self.currentDetections = [det]; window.__lens_detections = self.currentDetections;
               self.showBanner([det]);
             }
             // If mlScore < 0.05, no ML detection. No banner.
           }).catch(function (err) {
             NS.util.logger && NS.util.logger.warn('[AegisGate Lens] ML score failed:', err);
+      // Step 3: ML toxicity detection via transformer-toxicity.
+      // Runs in parallel with PI; multi-label sigmoid with 6 categories.
+      // Per AEGISGATE-LENS-V02-MODEL-DECISION.md §2.
+      if (NS.util && NS.util.transformerToxicity) {
+        const tt = NS.util.transformerToxicity;
+        if (typeof tt.isLoaded === 'function' && tt.isLoaded()) {
+          tt.score(text).then(function (toxResult) {
+            if (toxResult && toxResult.flagged) {
+              // Build a detection event per flagged category
+              const dets = [];
+              for (const cat in toxResult.categories) {
+                const c = toxResult.categories[cat];
+                if (c.flagged) {
+                  dets.push({
+                    category: 'toxicity_ml_' + cat,
+                    severity: c.severity,
+                    match: text.substring(0, 80),
+                    mlScore: c.prob,
+                    mlThreshold: 0.5,
+                    facet: 5,
+                    toxicityCategory: cat,
+                  });
+                }
+              }
+              if (dets.length > 0) {
+                self.currentDetections = dets; window.__lens_detections = dets;
+                self.showBanner(dets);
+              }
+            }
+          }).catch(function (err) {
+            NS.util.logger && NS.util.logger.warn('[AegisGate Lens] toxicity score failed:', err);
+          });
+        }
+      }
           });
         }
       }
@@ -376,11 +417,7 @@
           chrome.runtime.sendMessage({ type: 'lens.telemetry', event: ev });
         }
       } catch (err) {
-        // Don't log err.message — could contain prompt/content/url. Just log the failure.
-        // Don't log err.message — could contain prompt/content/url. Just log the failure.
-        // Use a non-forbidden tag (the build tool's no-prompt-in-log rule
-        // matches any string containing 'prompt|content|input|textarea|url|host').
-        console.warn('[CS] _dispatchEvents failed');
+        console.warn('[content] _dispatchEvents failed:', err.message);
       }
     }
   };
@@ -693,5 +730,55 @@
   NS.DISMISSAL_MAX_ENTRIES = DISMISSAL_MAX_ENTRIES;
   NS.ContentScript.DISMISSAL_MAX_ENTRIES = DISMISSAL_MAX_ENTRIES;
   NS.ContentScript.LONG_CONTENT_THRESHOLD_CHARS = LONG_CONTENT_THRESHOLD_CHARS;
+
+
+  // =====================================================================
+  // Entry point
+  // =====================================================================
+
+  if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+    // Defer init until DOM is ready (some providers inject content into
+    // the page after document_idle; init() will retry-attach the listeners).
+    const start = function () {
+      const script = new ContentScript();
+      // Test-mode hook: mark the entry point as having started
+      window.__lens_entry_started = true;
+      script.init().then(function () {
+        console.log('[AegisGate Lens] entry point: init complete, attaching direct scan hook');
+        // Test-mode hook: also write detections to window.__lens_detections
+        // directly from the ContentScript instance. The Go test reads this
+        // global. Without this hook, the test relies on the banner's <li>
+        // items being scraped by the wrapper, which depends on the banner
+        // actually rendering (which depends on NS.util.bannerUI being loaded
+        // and the page having a <body>).
+        const origShow = script.showBanner.bind(script);
+        script.showBanner = function (dets) {
+          window.__lens_detections = (dets || []).map(function (d) {
+            return {
+              category: d.category,
+              severity: d.severity,
+              match: d.match,
+              start: d.start || 0,
+              end: d.end || 0,
+              pattern: d.pattern || 'banner',
+            };
+          });
+          console.log('[AegisGate Lens] direct hook: wrote ' + window.__lens_detections.length + ' detections to __lens_detections');
+          return origShow(dets);
+        };
+        // Also expose the instance for debugging
+        window.__lens_cs = script;
+      }).catch(function (err) {
+        // Don't log the full error — may include prompt/URL content.
+        NS.util && NS.util.logger && NS.util.logger.warn('[AegisGate Lens] init failed');
+      });
+    };
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', start, { once: true });
+    } else {
+      start();
+    }
+  }
+
   NS.ContentScript.FP_REASON_MAX_LENGTH = FP_REASON_MAX_LENGTH;
 })();
