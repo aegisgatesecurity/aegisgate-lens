@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "AegisGate Lens",
   "version": "0.3.0",
-  "description": "Privacy-first Chrome extension that detects prompt injection, PII, secrets, and toxic content before they reach AI tools. 6-facet detection system with on-device ModernBERT ML + sliding window. No prompt content ever crosses the wire. Apache 2.0.",
+  "description": "Catches prompt injection, PII, secrets & toxic content. 100% on-device; no prompt leaves your browser. Apache 2.0.",
   "author": "AegisGate Security, LLC",
   "icons": {
     "16": "icons/icon-16.png",
