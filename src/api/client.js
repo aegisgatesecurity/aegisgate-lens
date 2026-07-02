@@ -18,6 +18,31 @@
      - Same wire-protocol shape as v0.1; schema version 2
    ========================================================================= */
 
+  /**
+   * @typedef {Object} LensEvent
+   * @property {number} lens_event_version  Schema version. The extension
+   *                                       emits 2 (v0.2.0+). The backend
+   *                                       accepts ONLY version 2.
+   * @property {string} domain_hash       SHA-256 prefix of the AI provider
+   *                                       hostname (16 hex chars, k-anonymous)
+   * @property {string} category          Enum: pii_email, secret_api_key,
+   *                                       xss_payload, etc. (65 categories)
+   * @property {string} severity          Enum: low, medium, high, critical
+   * @property {string} user_action       Enum: send_anyway, edit, cancel,
+   *                                       dismiss
+   * @property {number} timestamp         ISO 8601 epoch (seconds since 1970)
+   * @property {string} model_version     e.g. "modernbert-v1", "regex-v1"
+   * @property {string} lens_version      e.g. "0.3.0"
+   * @property {number} confidence       0-1 float
+   * @property {string} [id]             Client-side UUID; optional, not
+   *                                       stored server-side
+   *
+   * The cross-language schema contract: this JSDoc @typedef must agree
+   * field-for-field with the Go struct in pkg/lensbackend/validation.go
+   * (which is enforced by CI via the Platform's tools/build-lens-extension/
+   * build tool's validate-schema stage).
+   */
+
 'use strict';
 
 (function () {
