@@ -417,7 +417,7 @@
           chrome.runtime.sendMessage({ type: 'lens.telemetry', event: ev });
         }
       } catch (err) {
-        console.warn('[content] _dispatchEvents failed:', err.message);
+        console.warn('AegisGate Lens: _dispatchEvents failed:', err.message);
       }
     }
   };
