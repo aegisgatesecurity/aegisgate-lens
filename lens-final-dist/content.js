@@ -744,7 +744,6 @@
       // Test-mode hook: mark the entry point as having started
       window.__lens_entry_started = true;
       script.init().then(function () {
-        console.log('[AegisGate Lens] entry point: init complete, attaching direct scan hook');
         // Test-mode hook: also write detections to window.__lens_detections
         // directly from the ContentScript instance. The Go test reads this
         // global. Without this hook, the test relies on the banner's <li>
@@ -763,7 +762,6 @@
               pattern: d.pattern || 'banner',
             };
           });
-          console.log('[AegisGate Lens] direct hook: wrote ' + window.__lens_detections.length + ' detections to __lens_detections');
           return origShow(dets);
         };
         // Also expose the instance for debugging
