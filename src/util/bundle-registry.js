@@ -52,18 +52,18 @@
     },
     'toxicity': {
       bundle_filename: 'aegisgate-lens-toxicity-v0.2.0.bundle',
-      bundle_sha256: 'PLACEHOLDER_FILLED_AT_TRAIN_TIME',
-      signing_pub_key_id: 'lens-v02-2026-06-26',
+      bundle_sha256: '45c8bd5b6355c8886efe153507e074d1ac0ee5937a38b2bfa21305b892dfdfd3',
+      signing_pub_key_id: 'lens-v02-c6c3ab5a',
       base_checkpoint: 'unitary/toxic-bert',
       base_license: 'Apache-2.0',
       onnx_format: 'int8',
-      // The on-disk bundle ships BOTH model.onnx (417 MB FP32) and
-      // model_int8.onnx (105 MB int8) for forward-compatibility with
-      // downstream tooling. The int8 model is what gets loaded (see
-      // model-loader.js createSession), so the effective runtime
-      // footprint is `model_size_bytes` (105 MB). The build pipeline
-      // (post-train) fills bundle_sha256 and expected_size_bytes.
-      expected_size_bytes: 110 * 1024 * 1024,  // filled post-train (see bundle-registry.js in lens-final-dist)
+      // The on-disk bundle is 549 MB. It currently contains BOTH
+      // model.onnx (417 MB FP32) and model_int8.onnx (105 MB int8) for
+      // forward-compatibility with downstream tooling. The int8 model is
+      // what gets loaded (see model-loader.js createSession), so the
+      // effective runtime footprint is `model_size_bytes` (105 MB).
+      // A follow-up build will drop the FP32 and ship a ~110 MB bundle.
+      expected_size_bytes: 549 * 1024 * 1024,  // 549 MB (on-disk bundle size, matches PI convention)
       model_size_bytes: 105 * 1024 * 1024,     // 105 MB (int8 model, what gets loaded)
       max_context_tokens: 512,
       inference: 'wasm-only',
