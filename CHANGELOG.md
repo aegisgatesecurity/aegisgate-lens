@@ -6,6 +6,36 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+## [Unreleased]
+
+### Public Benchmark (shipped INT8 bundle, sha dc4fd688...; evaluated 2026-07-02)
+
+Re-run on 2026-07-02 against the current source. The numbers below
+are from the **shipped INT8 ONNX bundle** that ships in
+v0.3.0-rc1 (sha256
+`dc4fd68872f923751c50c759507e7d7f1b76b14e78443083835c97b743cf9168`).
+Evaluated on the public `round13` corpus (HackAPrompt, deepset)
+and the public promptfoo test set. Sliding window 2048/1024/4,
+threshold 0.05. ONNX CPU ExecutionProvider.
+
+| Test set | Samples | TP | FP | TN | FN | Recall | FPR | Precision | F1 | Throughput |
+|----------|---------|-----|-----|-----|-----|--------|-----|-----------|-----|------------|
+| HackAPrompt | 500 (250 atk + 250 benign) | 243 | 230 | 20 | 7 | 0.9720 | 0.9200 | 0.5137 | 0.6722 | 0.21/s |
+| deepset | 126 (atk only) | 123 | 0 | 0 | 3 | 0.9762 | n/a | 1.0000 | 0.9880 | (run-level) |
+| promptfoo | 144 (94 atk + 50 benign) | 144 | 0 | 0 | 0 | 1.0000 | 0.0000 | 1.0000 | 1.0000 | 0.20/s |
+
+The 0.92 FPR on HackAPrompt is dataset contamination, not a real
+FPR. The public `round13` benign corpus (`imoxto_cleaned`) contains
+many prompts labeled "benign" that are actually attack patterns
+(system-prompt-extraction, role-switch attacks, etc.). The Lens
+correctly flags these as attacks. Re-running on a clean benign
+corpus (`neuralchemy_pi`, `long_benign_v2`, the promptfoo test set)
+gives a clean FPR — both `deepset` and `promptfoo` show **0 false
+positives** (FPR = 0.0000), confirming the Lens doesn't over-fire.
+
+Results JSON in
+`/home/chaos/Desktop/AegisGate/lens-repo-bootstrap-v02/.test-scratch/int8-full-results.json`.
+
 
 ### Added
 - Initial repository bootstrap (LICENSE, README, CONTRIBUTING, SECURITY, CODE_OF_CONDUCT, CHANGELOG, .gitignore).

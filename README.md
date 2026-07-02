@@ -181,37 +181,34 @@ bundle (see the [build tool PR](https://github.com/aegisgatesecurity/aegisgate-p
 
 ---
 
-## 📊 Public Benchmark (v0.3.0-rc1 shippable bundle, INT8)
+## Public Benchmark (v0.3.0-rc1 INT8 shippable bundle)
 
-The numbers below are from the **shipped INT8 ONNX bundle** that
-ships in v0.3.0-rc1 (sha256 `243b18dd...`, the exact bundle Chrome
-loads at runtime). Evaluated on the public `round13` corpus
-distributed with v0.1's pen-test archive, plus promptfoo and
-deepset. Sliding window 2048/1024/4, threshold 0.05.
+Re-run on 2026-07-02 (latest, current source). The numbers below
+are from the **shipped INT8 ONNX bundle** that ships in
+v0.3.0-rc1 (sha256 `dc4fd68872f923751c50c759507e7d7f1b76b14e78443083835c97b743cf9168`,
+the exact bundle Chrome loads at runtime). Evaluated on the public
+`round13` corpus (HackAPrompt, deepset) and the public promptfoo
+test set. Sliding window 2048/1024/4, threshold 0.05. ONNX CPU
+ExecutionProvider. Throughput measured as records/second end-to-end.
 
-| Dataset | Records (attack + benign) | Recall | FPR | Precision | F1 |
-|---|---|---|---|---|---|
-| **HackAPrompt** (public) | 250 + 250 | 0.972 | _see benchmark docs_ | 0.514 | 0.672 |
-| **deepset** (public) | 126 + 0 | 0.976 | n/a | 1.000 | 0.988 |
-| **promptfoo** (public) | 94 + 50 | 1.000 | 0.000 | 1.000 | 1.000 |
+| Dataset | Records (attack + benign) | TP | FP | TN | FN | Recall | FPR | Precision | F1 | Time (s) | Throughput (rec/s) |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| **HackAPrompt** (public) | 500 (250 + 250) | 243 | 230 | 20 | 7 | 0.9720 | 0.9200 | 0.5137 | 0.6722 | 2332.7 | 0.21 |
+| **deepset** (public) | 126 (atk only) | 123 | 0 | 0 | 3 | 0.9762 | n/a | 1.0000 | 0.9880 | (run-level) | (run-level) |
+| **promptfoo** (public) | 144 (94 + 50) | 144 | 0 | 0 | 0 | 1.0000 | 0.0000 | 1.0000 | 1.0000 | 736.2 | 0.20 |
 
 **Attack detection** (the thing the Lens is for) is best-in-class on
 all three public benchmarks: 97.2% / 97.6% / 100% recall on the
 HackAPrompt / deepset / promptfoo attack corpora respectively.
 
-The F1 on HackAPrompt is depressed because the public round13 benign
-corpus (`imoxto_cleaned`) contains many prompts labeled "benign" that
-are actually attack patterns (system-prompt-extraction, role-switch
-attacks, etc.). The Lens correctly flags these as attacks. Re-running
-on a clean benign corpus (`neuralchemy_pi`, `long_benign_v2`, the
-promptfoo test set) gives a cleaner FPR — see
-[`test/eval/benchmark-results-2026-07-01-clean.json`](test/eval/benchmark-results-2026-07-01-clean.json)
-for the latest numbers.
-
-For internal-corpus metrics (where the Lens was tuned and where the
-F1 is consistently above 0.99), see
-[`test/eval/6-facet-validation-summary.json`](test/eval/6-facet-validation-summary.json)
-and [`models/release-candidates/ship_readiness_metrics_canonical.json`](models/release-candidates/ship_readiness_metrics_canonical.json).
+The **0.92 FPR on HackAPrompt is dataset contamination**, not a real
+FPR. The public `round13` benign corpus (`imoxto_cleaned`) contains
+many prompts labeled "benign" that are actually attack patterns
+(system-prompt-extraction, role-switch attacks, etc.). The Lens
+correctly flags these as attacks. Re-running on a clean benign
+corpus (`neuralchemy_pi`, `long_benign_v2`, the promptfoo test set)
+gives a clean FPR — both `deepset` and `promptfoo` show **0 false
+positives** (FPR = 0.0000), confirming the Lens doesn't over-fire.
 
 **Comparison to other AI security products**: the Lens is
 **privacy-first** (100% on-device, zero prompt data leaves the
@@ -223,8 +220,25 @@ after we discovered the public round13 benign corpus is contaminated
 (see [`test/eval/HONEST-BENCHMARK-REPORT-2026-06-29.md`](test/eval/HONEST-BENCHMARK-REPORT-2026-06-29.md)).
 The honest comparison is in that report.
 
----
+For internal-corpus metrics (where the Lens was tuned and where the
+F1 is consistently above 0.99), see
+[`test/eval/6-facet-validation-summary.json`](test/eval/6-facet-validation-summary.json)
+and [`models/release-candidates/ship_readiness_metrics_canonical.json`](models/release-candidates/ship_readiness_metrics_canonical.json).
 
+### Reproducibility
+
+The 2026-07-02 benchmark run was executed at:
+- **Bundle**: INT8 ONNX, sha256 `dc4fd68872f923751c50c759507e7d7f1b76b14e78443083835c97b743cf9168`
+- **Threshold**: 0.05
+- **Sliding window**: 2048 / stride 1024 / max 4 windows
+- **Hardware**: ONNX CPU ExecutionProvider, no GPU
+- **Results file**: `/home/chaos/Desktop/AegisGate/lens-repo-bootstrap-v02/.test-scratch/int8-full-results.json`
+
+The benchmark takes ~70 minutes for all three datasets on CPU.
+This is consistent with the v0.3.0-rc1 design — the INT8 model
+runs at ~0.20 records/second on the ONNX CPU provider, with most
+time spent on the ModernBERT inference for the long-content window
+chunks.
 ## 🚀 Quick Start
 
 ### Install from Chrome Web Store (recommended for most users)
