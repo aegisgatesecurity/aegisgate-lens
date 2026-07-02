@@ -847,13 +847,13 @@
       category: 'owasp_insecure_output',
       name: 'owasp_LLM02-001',
       severity: 'high',
-      // codeql[js/bad-tag-filter] False positive: this regex is the
-      // Lens's DETECTION pattern for HTML injection in LLM output, not a
-      // sanitizer. The Lens detects and warns; the user decides. Source:
-      // pkg/compliance/owasp.go LLM02-001 in Platform. CodeQL suppression
-      // directive is repeated as a trailing comment on the next line so the
-      // scanner picks it up regardless of comment-position changes.
-      regex: new RegExp('<\\s*(script\\b[^>]*>[^<]*</\\s*script\\s*>|iframe\\s+[^>]*src\\s*=|object\\s+[^>]*data\\s*=|embed\\s+[^>]*src\\s*=|meta\\s+http-equiv\\s*=\\s*["\']?refresh|form\\s+[^>]*action\\s*=\\s*["\']?\\s*javascript|on(load|error|click|mouseover)\\s*=\\s*["\'][^"\']*["\'])', 'gi'), // codeql[js/bad-tag-filter]
+      // linter-disable-next-line js/bad-tag-filter False positive: this
+      // regex is the Lens's DETECTION pattern for HTML injection in LLM
+      // output, not a sanitizer. The Lens detects and warns; the user
+      // decides. Source: pkg/compliance/owasp.go LLM02-001 in Platform.
+      // TODO Day 19+: add `//nolint:gosec` to the Go source so the
+      // generator picks up the suppression comment.
+      regex: new RegExp('<\\s*(script\\b[^>]*>[^<]*</\\s*script\\s*>|iframe\\s+[^>]*src\\s*=|object\\s+[^>]*data\\s*=|embed\\s+[^>]*src\\s*=|meta\\s+http-equiv\\s*=\\s*["\']?refresh|form\\s+[^>]*action\\s*=\\s*["\']?\\s*javascript|on(load|error|click|mouseover)\\s*=\\s*["\'][^"\']*["\'])', 'gi'),
       description: 'Potential HTML injection in LLM output',
       compliance: Object.freeze(['OWASP-LLM']),
     }),
@@ -1203,8 +1203,11 @@
       source: 'pii_scanner',
       category: 'pii_phone',
       name: 'pii_scanner_pii_phone_v1',
-      severity: 'medium',
-      regex: new RegExp('\\b\\+?1?[-.\\s]?\\(?\\d{3}\\)?[-.\\s]\\d{3}[-.\\s]\\d{4}\\b', 'g'),
+      severity: 'high',
+      // Updated to allow opening paren as part of the match (so
+      // "(555) 123-4567" captures with the paren) and to use a
+      // negative lookbehind to avoid leading-space matches.
+      regex: new RegExp('(?<![\\d\\w])\\+?1?[-.\\s]?\\(?\\d{3}\\)?[-.\\s]\\d{3}[-.\\s]\\d{4}(?![\\d])', 'g'),
       description: 'Phone Number',
       compliance: Object.freeze(['GDPR', 'SOC2']),
     }),
