@@ -140,6 +140,18 @@
 
     const btnLater = el('btn-later');
     if (btnLater) btnLater.addEventListener('click', decideLater);
+
+    // T2.2.1: in-extension "upgrade to Platform" CTA. The link
+    // opens aegisgatesecurity.io in a new tab; we log the click
+    // (Tier 1 metadata only, no prompt/URL/page content) so the
+    // Platform team can measure Lens -> Platform funnel
+    // conversion without collecting any PII.
+    const linkPlatform = el('link-platform');
+    if (linkPlatform) {
+      linkPlatform.addEventListener('click', function () {
+        try { log.info && log.info('Lens: clicked Platform CTA'); } catch (_) {}
+      });
+    }
   }
 
   if (document.readyState === 'loading') {
