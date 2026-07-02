@@ -166,16 +166,18 @@ function getClientSync() {
 async function getClient() {
   if (cachedClient) return cachedClient;
   if (typeof chrome === 'undefined' || !chrome.storage) return null;
-  // APIClient is loaded via the global AegisGateLens namespace (set up by
-  // the static import order in the extension's content_scripts). The
-  // build tool's no-dynamic-import rule blocks await import() at lint time,
-  // so we use the namespace accessor instead. If the namespace is not
-  // available (e.g., in a test harness), we fall back to the global APIClient.
-  const APIClient = (typeof self !== 'undefined'
-    && self.AegisGateLens
-    && self.AegisGateLens.api
-    && self.AegisGateLens.api.APIClient)
-    || (typeof self !== 'undefined' && self.APIClient);
+  // Lazy-import APIClient via dynamic import (production MV3).
+  let APIClient;
+  try {
+    ({ APIClient } = await import('./api/client.js'));
+  } catch (_) {
+    APIClient = (typeof self !== 'undefined'
+      && self.AegisGateLens
+      && self.AegisGateLens.api
+      && self.AegisGateLens.api.APIClient)
+      || (typeof self !== 'undefined'
+          && self.APIClient);
+  }
   if (!APIClient) return null;
 
   // v0.1-compat: also read 'lens.bearer_token' (test/legacy) and 'lens.__base_url_override'.

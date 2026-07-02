@@ -112,8 +112,15 @@
       category: 'pii_phone',
       severity: 'high',
       name: 'phone_na_v1',
+      // Matches common North American phone formats. We require
+      // the area code and at least one separator to reduce false
+      // positives on long numbers that are not phones. The opening
+      // paren is allowed as a "soft" boundary so "(555) 123-4567"
+      // captures the full string with the paren. The "+1" prefix
+      // is captured when present so "+1 555-123-4567" matches with
+      // the leading "+".
       pattern:
-        '\\b(?:\\+?1[-.\\s]?)?\\(?[2-9][0-9]{2}\\)?[-.\\s]?[2-9][0-9]{2}[-.\\s]?[0-9]{4}\\b',
+        '(?<![\\d\\w])\\+?1?[-.\\s]?\\(?[2-9][0-9]{2}\\)?[-.\\s]?[2-9][0-9]{2}[-.\\s]?[0-9]{4}(?![\\d])',
       description: 'North American phone number (NANP format)',
     }),
 
@@ -439,6 +446,28 @@
         + 'between letters). Catches polyglot, CSS-background, '
         + 'JS-comment, and obfuscated-letter variants that bypass '
         + 'OWASP LLM02-001.',
+    }),
+
+    // ===================================================================
+    // Source Code - Private Key Markers
+    // ===================================================================
+    // PEM-encoded private keys (RSA, EC, DSA, OpenSSH, PGP). The
+    // BEGIN/END block format is distinctive; we don't try to match
+    // the base64 body. This is a high-signal pattern with very low
+    // FP risk — legitimate prose rarely contains a PEM header.
+    // The leading ----- is optional so partial markers (BEGIN ...
+    // PRIVATE KEY-----) still match.
+    Object.freeze({
+      category: 'source_code',
+      severity: 'critical',
+      name: 'private_key_pem_v1',
+      // PEM markers often appear as "-----BEGIN ... PRIVATE KEY-----".
+      // We allow an optional leading "-----" to capture the full
+      // marker when present, but match without it when not (so
+      // partial markers like "BEGIN RSA PRIVATE KEY-----" still match).
+      // The match starts at either "-----" (when present) or "BEGIN".
+      pattern: '(?:-----)BEGIN (?:RSA |EC |DSA |OPENSSH |PGP |ENCRYPTED )?PRIVATE KEY(?: BLOCK)?-----(?:-----)?|^BEGIN (?:RSA |EC |DSA |OPENSSH |PGP |ENCRYPTED )?PRIVATE KEY(?: BLOCK)?-----(?:-----)?',
+      description: 'PEM-encoded private key (BEGIN marker)',
     }),
   ]);
 

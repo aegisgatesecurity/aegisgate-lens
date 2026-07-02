@@ -1,370 +1,295 @@
 <!DOCTYPE html>
-<!-- SPDX-License-Identifier: Apache-2.0
-     =========================================================================
-     AegisGate Lens - Welcome Page
-     =========================================================================
+<!--
+  AegisGate Lens - Welcome Page (v0.3.0)
 
-     Opened automatically after first install via chrome.runtime.openOptionsPage
-     (or the post-install hook in service-worker.js). Designed to be a
-     standalone brand-consistent landing experience that:
+  Shown on first install (and on opt-in state change). Lets the user:
+    1. Learn what AegisGate Lens does
+    2. See the 12 non-negotiables (privacy commitments)
+    3. Choose whether to enable telemetry (default OFF)
+    4. Choose between Tier 1 (anonymized metadata) and Tier 2 (full event details)
 
-       1. Confirms Lens is installed and active.
-       2. Lists the 5 user-facing promises (privacy, speed, no signup, etc.).
-       3. Shows version + commit hash for transparency.
-
-     Visual language matches https://aegisgatesecurity.io exactly:
-       - Background: #0a0c10 (deep midnight)
-       - Primary:    #38bdf8 (sophisticated cyan)
-       - Success:    #10b981 (emerald)
-       - Critical:   #f43f5e (rose)
-       - Text:       #f8fafc (white-grey)
-       - Glass:      rgba(17, 20, 29, 0.7)
-       - Font:       Inter (Google Fonts)
-
-     v0.2.2 (Day 1 of 30-day plan): full logo + dark theme UX overhaul.
-     ========================================================================= -->
+  Plain HTML/CSS/JS, no dependencies.
+-->
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <title>AegisGate Lens — Installed</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome to AegisGate Lens</title>
   <style>
-    /* -----------------------------------------------------------------------
-       AegisGate Lens - Welcome Page Styles
-       Aesthetic: "Cybersecurity command console"
-       Deep midnight base, sophisticated cyan accents, sharp hairlines.
-       No rounded pills, no drop-shadow decoration, no generic AI slop.
-       ----------------------------------------------------------------------- */
-    :root {
-      --bg-deep:        #0a0c10;
-      --bg-panel:       #0f1218;
-      --bg-glass:       rgba(17, 20, 29, 0.7);
-      --hairline:       rgba(56, 189, 248, 0.18);
-      --hairline-soft:  rgba(248, 250, 252, 0.08);
-      --text-primary:   #f8fafc;
-      --text-secondary: #94a3b8;
-      --text-muted:     #64748b;
-      --accent:         #38bdf8;
-      --accent-dim:     #0ea5e9;
-      --success:        #10b981;
-      --critical:       #f43f5e;
-      --warn:           #f59e0b;
-      --font-sans:      'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      --font-mono:      'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
-    }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { background: var(--bg-deep); color: var(--text-primary); font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
     body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(180deg, #0a0c10 0%, #1e293b 100%);
+      color: #f8fafc;
       min-height: 100vh;
-      /* Faint radial cyan glow from top-left - distinctive signature */
-      background:
-        radial-gradient(ellipse 800px 600px at 0% 0%, rgba(56, 189, 248, 0.06) 0%, transparent 60%),
-        radial-gradient(ellipse 600px 400px at 100% 100%, rgba(244, 63, 94, 0.03) 0%, transparent 60%),
-        var(--bg-deep);
-      background-attachment: fixed;
-      line-height: 1.55;
-      font-size: 15px;
-      letter-spacing: -0.005em;
-    }
-
-    /* Hero / brand bar ---------------------------------------------- */
-    .hero {
-      max-width: 980px;
-      margin: 0 auto;
-      padding: 64px 32px 40px;
       display: flex;
       align-items: center;
-      gap: 24px;
+      justify-content: center;
+      padding: 20px;
     }
-    .hero-logo {
-      width: 88px;
-      height: 88px;
-      flex-shrink: 0;
-      filter: drop-shadow(0 0 24px rgba(56, 189, 248, 0.25));
+    .container {
+      max-width: 720px;
+      width: 100%;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      border-radius: 12px;
+      padding: 32px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
     }
-    .hero-text { flex: 1; min-width: 0; }
-    .hero-eyebrow {
-      font-family: var(--font-mono);
-      font-size: 11px;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: var(--accent);
-      margin-bottom: 8px;
+    .header {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 16px;
+      margin-bottom: 24px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid rgba(56, 189, 248, 0.15);
     }
-    .hero-eyebrow::before {
-      content: '';
-      display: inline-block;
-      width: 8px;
-      height: 8px;
-      background: var(--success);
-      border-radius: 50%;
-      box-shadow: 0 0 8px var(--success);
-      animation: pulse 2s ease-in-out infinite;
+    .header img {
+      width: 48px;
+      height: 48px;
     }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50%      { opacity: 0.6; transform: scale(0.85); }
-    }
-    .hero h1 {
-      font-size: 32px;
+    .header h1 {
+      font-size: 24px;
       font-weight: 600;
-      letter-spacing: -0.02em;
-      color: var(--text-primary);
+      color: #f8fafc;
+      letter-spacing: -0.01em;
+    }
+    .header .version {
+      font-size: 12px;
+      color: #94a3b8;
+      font-family: ui-monospace, monospace;
+    }
+    h2 {
+      font-size: 16px;
+      font-weight: 600;
+      color: #38bdf8;
+      margin-top: 20px;
+      margin-bottom: 12px;
+    }
+    p, li {
+      font-size: 14px;
+      line-height: 1.55;
+      color: #cbd5e1;
+      margin-bottom: 8px;
+    }
+    ul {
+      list-style: none;
+      padding-left: 0;
+    }
+    ul li {
+      padding-left: 24px;
+      position: relative;
       margin-bottom: 4px;
     }
-    .hero h1 .accent { color: var(--accent); }
-    .hero-tagline {
-      font-size: 15px;
-      color: var(--text-secondary);
-      font-weight: 400;
+    ul li::before {
+      content: "✓";
+      position: absolute;
+      left: 0;
+      color: #10b981;
+      font-weight: 700;
     }
-
-    /* Sharp hairline divider - signature element */
-    .hairline {
-      max-width: 980px;
-      margin: 0 auto;
-      padding: 0 32px;
+    .tier {
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(56, 189, 248, 0.2);
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 16px;
     }
-    .hairline hr {
-      border: none;
-      height: 1px;
-      background: linear-gradient(90deg,
-        transparent 0%,
-        var(--hairline) 15%,
-        var(--hairline) 85%,
-        transparent 100%);
-    }
-
-    /* Status row ---------------------------------------------------- */
-    .status {
-      max-width: 980px;
-      margin: 24px auto;
-      padding: 0 32px;
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 1px;
-      background: var(--hairline-soft);
-      border-top: 1px solid var(--hairline);
-      border-bottom: 1px solid var(--hairline);
-    }
-    .stat {
-      background: var(--bg-deep);
-      padding: 20px 16px;
-    }
-    .stat-label {
-      font-family: var(--font-mono);
-      font-size: 10px;
-      letter-spacing: 0.15em;
-      text-transform: uppercase;
-      color: var(--text-muted);
-      margin-bottom: 6px;
-    }
-    .stat-value {
-      font-family: var(--font-mono);
-      font-size: 18px;
-      font-weight: 500;
-      color: var(--text-primary);
-      letter-spacing: -0.01em;
-    }
-    .stat-value.accent  { color: var(--accent); }
-    .stat-value.success { color: var(--success); }
-
-    /* 5 Promises grid ----------------------------------------------- */
-    .promises {
-      max-width: 980px;
-      margin: 0 auto;
-      padding: 48px 32px 32px;
-    }
-    .section-eyebrow {
-      font-family: var(--font-mono);
-      font-size: 11px;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: var(--text-muted);
-      margin-bottom: 24px;
-    }
-    .section-eyebrow .accent { color: var(--accent); }
-
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 0;
-      border: 1px solid var(--hairline-soft);
-    }
-    .promise {
-      padding: 24px;
-      border-right: 1px solid var(--hairline-soft);
-      border-bottom: 1px solid var(--hairline-soft);
-      background: var(--bg-deep);
-      position: relative;
-      transition: background 120ms ease;
-    }
-    .promise:hover {
-      background: rgba(56, 189, 248, 0.03);
-    }
-    .promise:last-child { border-right: none; }
-    .promise-num {
-      font-family: var(--font-mono);
-      font-size: 11px;
-      color: var(--accent);
-      letter-spacing: 0.1em;
+    .tier h3 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #f8fafc;
       margin-bottom: 8px;
     }
-    .promise-title {
-      font-size: 15px;
+    .tier .description {
+      font-size: 13px;
+      color: #94a3b8;
+      margin-bottom: 12px;
+    }
+    .tier .data-list {
+      font-size: 12px;
+      font-family: ui-monospace, monospace;
+      color: #cbd5e1;
+      background: rgba(10, 12, 16, 0.6);
+      border-radius: 4px;
+      padding: 10px;
+      margin-bottom: 12px;
+    }
+    .tier .data-list div {
+      margin-bottom: 2px;
+    }
+    .tier .data-list div:last-child {
+      margin-bottom: 0;
+    }
+    .tier .not-sent {
+      color: #f43f5e;
+    }
+    .actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 28px;
+      flex-wrap: wrap;
+    }
+    .actions button {
+      flex: 1;
+      min-width: 200px;
+      padding: 12px 20px;
+      border: 0;
+      border-radius: 6px;
+      font-size: 14px;
       font-weight: 600;
-      color: var(--text-primary);
-      margin-bottom: 6px;
-      letter-spacing: -0.01em;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 120ms ease;
+    }
+    .actions button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .btn-primary {
+      background: #38bdf8;
+      color: #0a0c10;
+    }
+    .btn-primary:hover:not(:disabled) {
+      background: #0ea5e9;
+    }
+    .btn-secondary {
+      background: transparent;
+      color: #cbd5e1;
+      border: 1px solid rgba(148, 163, 184, 0.4);
+    }
+    .btn-secondary:hover:not(:disabled) {
+      background: rgba(148, 163, 184, 0.1);
+    }
+    .btn-link {
+      background: transparent;
+      color: #94a3b8;
+      text-decoration: underline;
+      font-weight: 400;
+    }
+    .promise {
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin: 16px 0;
+    }
+    .promise-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #10b981;
+      margin-bottom: 4px;
     }
     .promise-body {
-      font-size: 13px;
-      color: var(--text-secondary);
-      line-height: 1.55;
-    }
-    .promise-body code {
-      font-family: var(--font-mono);
       font-size: 12px;
-      background: rgba(56, 189, 248, 0.08);
-      color: var(--accent);
-      padding: 1px 5px;
-      border: 1px solid rgba(56, 189, 248, 0.15);
+      color: #94a3b8;
     }
-
-    /* Footer -------------------------------------------------------- */
-    .footer {
-      max-width: 980px;
-      margin: 0 auto;
-      padding: 32px 32px 48px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 16px;
-    }
-    .footer-left {
-      font-family: var(--font-mono);
-      font-size: 11px;
-      color: var(--text-muted);
-      letter-spacing: 0.05em;
-    }
-    .footer-left a {
-      color: var(--accent);
-      text-decoration: none;
-      border-bottom: 1px solid transparent;
-      transition: border-color 120ms ease;
-    }
-    .footer-left a:hover { border-bottom-color: var(--accent); }
-    .footer-cta {
-      display: inline-block;
-      padding: 10px 20px;
-      background: transparent;
-      border: 1px solid var(--accent);
-      color: var(--accent);
-      font-family: var(--font-mono);
-      font-size: 12px;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      text-decoration: none;
-      transition: all 120ms ease;
-    }
-    .footer-cta:hover {
-      background: var(--accent);
-      color: var(--bg-deep);
-    }
-
-    /* Print / small screen tweaks ----------------------------------- */
-    @media (max-width: 640px) {
-      .hero { flex-direction: column; align-items: flex-start; padding: 40px 20px 32px; }
-      .hero-logo { width: 64px; height: 64px; }
-      .hero h1 { font-size: 24px; }
-      .hairline, .status, .promises, .footer { padding-left: 20px; padding-right: 20px; }
-      .promise { border-right: none; }
+    .privacy-link {
+      color: #38bdf8;
+      text-decoration: underline;
     }
   </style>
 </head>
 <body>
-  <!-- HERO: brand bar with full AegisGate shield logo -->
-  <header class="hero">
-    <img class="hero-logo" src="logo.png" alt="AegisGate Security shield logo">
-    <div class="hero-text">
-      <div class="hero-eyebrow">System status: active</div>
-      <h1>AegisGate <span class="accent">Lens</span></h1>
-      <div class="hero-tagline">Real-time prompt injection detection for AI chat platforms.</div>
+  <div class="container">
+    <div class="header">
+      <img src="icons/icon-48.png" alt="AegisGate Lens" width="48" height="48">
+      <div>
+        <h1>AegisGate Lens</h1>
+        <div class="version">v<span id="version">0.0.0</span></div>
+      </div>
     </div>
-  </header>
 
-  <div class="hairline"><hr></div>
+    <p>
+      AegisGate Lens protects you from accidentally pasting sensitive data
+      (API keys, passwords, personal info) into AI chat tools like ChatGPT,
+      Claude, and Gemini. It detects prompt injection attacks before they
+      reach the AI. Detection runs <strong>entirely in your browser</strong>.
+    </p>
 
-  <!-- STATUS: live stats row, terminal-style monospace -->
-  <section class="status" aria-label="Installation status">
-    <div class="stat">
-      <div class="stat-label">Version</div>
-      <div class="stat-value accent" id="stat-version">0.2.2</div>
-    </div>
-    <div class="stat">
-      <div class="stat-label">Detection</div>
-      <div class="stat-value success">3-tier cascade</div>
-    </div>
-    <div class="stat">
-      <div class="stat-label">Tier 3 (transformer)</div>
-      <div class="stat-value success">99.11% TPR</div>
-    </div>
-    <div class="stat">
-      <div class="stat-label">Network egress</div>
-      <div class="stat-value success">Zero prompt bytes</div>
-    </div>
-    <div class="stat">
-      <div class="stat-label">License</div>
-      <div class="stat-value">Apache 2.0</div>
-    </div>
-  </section>
+    <h2>Privacy first. Default OFF. Your call.</h2>
+    <p>
+      AegisGate Lens works without sending any data anywhere. But if you
+      opt in, your anonymized detection metadata helps us improve protection
+      for everyone.
+    </p>
 
-  <!-- 5 PROMISES: the user-facing value propositions -->
-  <section class="promises">
-    <div class="section-eyebrow"><span class="accent">//</span> 5 PROMISES WE MAKE TO YOU</div>
-    <div class="grid">
-      <article class="promise">
-        <div class="promise-num">01</div>
-        <h2 class="promise-title">Your prompts never leave the browser.</h2>
-        <p class="promise-body">Detection runs entirely client-side. No prompt text, no embeddings, no telemetry bytes are uploaded. The extension has <code>host_permissions</code> only for one endpoint that we never call with your data.</p>
-      </article>
-      <article class="promise">
-        <div class="promise-num">02</div>
-        <h2 class="promise-title">Detection in under 50&nbsp;ms.</h2>
-        <p class="promise-body">A 3-tier cascade (regex → TF-IDF → transformer) runs on every keystroke. Most prompts clear Tier 1 in &lt;5&nbsp;ms. Only ambiguous prompts reach the transformer, and even that path is local.</p>
-      </article>
-      <article class="promise">
-        <div class="promise-num">03</div>
-        <h2 class="promise-title">No account. No signup. No email.</h2>
-        <p class="promise-body">Install and you're done. There is no onboarding flow, no license key, no "create your free account" wall. The source is Apache 2.0 — read every line on GitHub.</p>
-      </article>
-      <article class="promise">
-        <div class="promise-num">04</div>
-        <h2 class="promise-title">Open source. Auditable. Signed.</h2>
-        <p class="promise-body">Every ML model bundle is Ed25519-signed with the public key shipped in the repo. You can verify what runs in your browser matches what we published — no silent model swaps, no remote-fetched code.</p>
-      </article>
-      <article class="promise">
-        <div class="promise-num">05</div>
-        <h2 class="promise-title">Honest failure modes.</h2>
-        <p class="promise-body">When we're not sure, we say so. The banner shows the score, threshold, and per-model breakdown. False-positive dismissals are stored locally. CJK and Cyrillic are not covered yet — see the model card before relying on Lens for those scripts.</p>
-      </article>
+    <div class="promise">
+      <div class="promise-title">We NEVER send:</div>
+      <div class="promise-body">
+        Your prompt text · URLs · Page content · User IDs · Session cookies
+      </div>
     </div>
-  </section>
 
-  <!-- FOOTER: version + commit hash + docs link -->
-  <footer class="footer">
-    <div class="footer-left">
-      v0.2.2 &middot; build&nbsp;<span id="commit-hash">dev</span> &middot; <a href="https://aegisgatesecurity.io/lens" target="_blank" rel="noopener">aegisgatesecurity.io/lens</a>
+    <h2>Choose your level of help</h2>
+
+    <div class="tier" id="tier-detect">
+      <h3>Detect-only (no telemetry)</h3>
+      <div class="description">
+        AegisGate Lens protects you locally. No data leaves your browser.
+        Recommended for maximum privacy.
+      </div>
+      <button class="btn-secondary" id="btn-detect-only">
+        Use detect-only mode
+      </button>
     </div>
-    <a class="footer-cta" href="https://github.com/aegisgate-security/lens" target="_blank" rel="noopener">View source &rarr;</a>
-  </footer>
 
+    <div class="tier" id="tier-1">
+      <h3>Tier 1: Help improve detection (anonymized metadata)</h3>
+      <div class="description">
+        Send anonymized detection metadata to AegisGate Security. We use
+        this to identify new attack patterns and improve our detection.
+        Recommended for most users.
+      </div>
+      <div class="data-list">
+        <div>✓ domain_hash (first 16 chars of SHA-256)</div>
+        <div>✓ category (pii_ssn, secret_jwt, prompt_injection, etc.)</div>
+        <div>✓ severity (low/medium/high/critical)</div>
+        <div>✓ user_action (send_anyway/edit/cancel/dismiss)</div>
+        <div>✓ timestamp + model version</div>
+        <div class="not-sent">✗ NO prompt text</div>
+        <div class="not-sent">✗ NO URLs</div>
+        <div class="not-sent">✗ NO page content</div>
+        <div class="not-sent">✗ NO personal identifiers</div>
+      </div>
+      <button class="btn-primary" id="btn-tier1">
+        Help improve detection
+      </button>
+    </div>
+
+    <div class="tier" id="tier-2">
+      <h3>Tier 2: Full event details (power users)</h3>
+      <div class="description">
+        Send richer event metadata for advanced threat intelligence.
+        Still no prompt content or URLs. Includes detection timing,
+        model consensus, and pattern IDs. <strong>Requires Tier 1</strong>.
+      </div>
+      <div class="data-list">
+        <div>✓ Everything in Tier 1, plus:</div>
+        <div>✓ detection timing (window index)</div>
+        <div>✓ model consensus (0-1)</div>
+        <div>✓ pattern fingerprint (NOT text)</div>
+        <div>✓ 30-day rolling count (anonymized)</div>
+        <div class="not-sent">✗ NO prompt text</div>
+        <div class="not-sent">✗ NO URLs</div>
+      </div>
+      <button class="btn-secondary" id="btn-tier2">
+        Enable Tier 2 (full events)
+      </button>
+    </div>
+
+    <p style="margin-top: 24px; font-size: 12px;">
+      Read our full
+      <a href="https://aegisgatesecurity.io/lens/privacy" target="_blank" class="privacy-link">Privacy Policy</a>
+      to see exactly what we send and why.
+    </p>
+
+    <div class="actions">
+      <button class="btn-link" id="btn-later">Decide later (close)</button>
+    </div>
+  </div>
+
+  <script src="util/opt-in.js"></script>
   <script src="welcome.js"></script>
 </body>
 </html>

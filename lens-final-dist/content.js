@@ -80,7 +80,9 @@
   ContentScript.prototype.attachPromptListeners = function () {
     if (typeof document === 'undefined') return;
     const self = this;
-    const DETECT_THROTTLE_MS = 300;
+    // In test mode, allow disabling the throttle so the Go test can
+    // drive input events back-to-back without pending detections.
+    const DETECT_THROTTLE_MS = (typeof window !== 'undefined' && window.__lens_test_no_throttle) ? 0 : 300;
     let pendingDetect = null;
     let lastDetectAt = 0;
     // Find prompt element. Providers register their promptSelector; if
@@ -158,10 +160,15 @@
         return true;
       });
       if (visible.length > 0) {
-        self.currentDetections = visible;
+        self.currentDetections = visible; window.__lens_detections = visible;
         self.showBanner(visible);
         return;
       }
+      // No regex detections: clear the test-mode global and hide the
+      // banner. ML detection may still fire (async, below) — it will
+      // re-populate __lens_detections if it finds something.
+      self.currentDetections = []; window.__lens_detections = [];
+      self.hideBanner();
       // Step 2: ML detection via transformer-modernbert (sliding window).
       // Long text gets the sliding-window path. Short text (<512 tokens)
       // gets the adaptive short-circuit. Only fires if ML is loaded.
@@ -180,7 +187,7 @@
                 mlThreshold: 0.05,
                 facet: 6,
               };
-              self.currentDetections = [det];
+              self.currentDetections = [det]; window.__lens_detections = self.currentDetections;
               self.showBanner([det]);
             }
             // If mlScore < 0.05, no ML detection. No banner.
@@ -211,7 +218,7 @@
                 }
               }
               if (dets.length > 0) {
-                self.currentDetections = dets;
+                self.currentDetections = dets; window.__lens_detections = dets;
                 self.showBanner(dets);
               }
             }
@@ -723,5 +730,55 @@
   NS.DISMISSAL_MAX_ENTRIES = DISMISSAL_MAX_ENTRIES;
   NS.ContentScript.DISMISSAL_MAX_ENTRIES = DISMISSAL_MAX_ENTRIES;
   NS.ContentScript.LONG_CONTENT_THRESHOLD_CHARS = LONG_CONTENT_THRESHOLD_CHARS;
+
+
+  // =====================================================================
+  // Entry point
+  // =====================================================================
+
+  if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+    // Defer init until DOM is ready (some providers inject content into
+    // the page after document_idle; init() will retry-attach the listeners).
+    const start = function () {
+      const script = new ContentScript();
+      // Test-mode hook: mark the entry point as having started
+      window.__lens_entry_started = true;
+      script.init().then(function () {
+        console.log('[AegisGate Lens] entry point: init complete, attaching direct scan hook');
+        // Test-mode hook: also write detections to window.__lens_detections
+        // directly from the ContentScript instance. The Go test reads this
+        // global. Without this hook, the test relies on the banner's <li>
+        // items being scraped by the wrapper, which depends on the banner
+        // actually rendering (which depends on NS.util.bannerUI being loaded
+        // and the page having a <body>).
+        const origShow = script.showBanner.bind(script);
+        script.showBanner = function (dets) {
+          window.__lens_detections = (dets || []).map(function (d) {
+            return {
+              category: d.category,
+              severity: d.severity,
+              match: d.match,
+              start: d.start || 0,
+              end: d.end || 0,
+              pattern: d.pattern || 'banner',
+            };
+          });
+          console.log('[AegisGate Lens] direct hook: wrote ' + window.__lens_detections.length + ' detections to __lens_detections');
+          return origShow(dets);
+        };
+        // Also expose the instance for debugging
+        window.__lens_cs = script;
+      }).catch(function (err) {
+        // Don't log the full error — may include prompt/URL content.
+        NS.util && NS.util.logger && NS.util.logger.warn('[AegisGate Lens] init failed');
+      });
+    };
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', start, { once: true });
+    } else {
+      start();
+    }
+  }
+
   NS.ContentScript.FP_REASON_MAX_LENGTH = FP_REASON_MAX_LENGTH;
 })();

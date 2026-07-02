@@ -1,7 +1,7 @@
 {
-  "timestamp": "2026-07-01T00:34:42.820Z",
-  "passed": 10,
-  "failed": 0,
+  "timestamp": "2026-07-02T00:26:56.539Z",
+  "passed": 1,
+  "failed": 9,
   "total": 10,
   "results": [
     {
@@ -10,40 +10,86 @@
     },
     {
       "name": "2. src bundle-loader parses shipped PI int8 bundle",
-      "status": "PASS"
+      "status": "FAIL",
+      "error": "ENOENT: no such file or directory, open '/home/chaos/Desktop/AegisGate/lens-repo-bootstrap-v02/.v0.1-mirror/v0.1/lens-final-dist/vendor/bundles/aegisgate-lens-prompt-injection-int8-v0.2.0.bundle'"
     },
     {
       "name": "3. dist bundle-loader parses shipped PI int8 bundle (multi-key)",
-      "status": "PASS"
+      "status": "FAIL",
+      "error": "ENOENT: no such file or directory, open '/home/chaos/Desktop/AegisGate/lens-repo-bootstrap-v02/.v0.1-mirror/v0.1/lens-final-dist/vendor/bundles/aegisgate-lens-prompt-injection-int8-v0.2.0.bundle'"
     },
     {
       "name": "4. dist bundle-loader parses shipped PI fp32 bundle (multi-key)",
-      "status": "PASS"
+      "status": "FAIL",
+      "error": "ENOENT: no such file or directory, open '/home/chaos/Desktop/AegisGate/lens-repo-bootstrap-v02/.v0.1-mirror/v0.1/lens-final-dist/vendor/bundles/aegisgate-lens-prompt-injection-v0.2.0.bundle'"
     },
     {
       "name": "5. dist bundle-loader parses shipped toxicity bundle (the bug)",
-      "status": "PASS"
+      "status": "FAIL",
+      "error": "ENOENT: no such file or directory, open '/home/chaos/Desktop/AegisGate/lens-repo-bootstrap-v02/.v0.1-mirror/v0.1/lens-final-dist/vendor/bundles/aegisgate-lens-toxicity-v0.2.0.bundle'"
     },
     {
       "name": "6. shipped bundle SHAs match bundle-registry",
-      "status": "PASS"
+      "status": "FAIL",
+      "error": "ENOENT: no such file or directory, open '/home/chaos/Desktop/AegisGate/lens-repo-bootstrap-v02/.v0.1-mirror/v0.1/lens-final-dist/vendor/bundles/aegisgate-lens-prompt-injection-int8-v0.2.0.bundle'"
     },
     {
       "name": "7. toxicity bundle contains int8 model with correct size",
-      "status": "PASS"
+      "status": "FAIL",
+      "error": "ENOENT: no such file or directory, open '/home/chaos/Desktop/AegisGate/lens-repo-bootstrap-v02/.v0.1-mirror/v0.1/lens-final-dist/vendor/bundles/aegisgate-lens-toxicity-v0.2.0.bundle'"
     },
     {
       "name": "8. model-loader createSession picks int8 from real toxicity bundle",
-      "status": "PASS"
+      "status": "FAIL",
+      "error": "ENOENT: no such file or directory, open '/home/chaos/Desktop/AegisGate/lens-repo-bootstrap-v02/.v0.1-mirror/v0.1/lens-final-dist/vendor/bundles/aegisgate-lens-toxicity-v0.2.0.bundle'"
     },
     {
       "name": "9. every file declared in toxicity header is accessible at correct offset",
-      "status": "PASS"
+      "status": "FAIL",
+      "error": "ENOENT: no such file or directory, open '/home/chaos/Desktop/AegisGate/lens-repo-bootstrap-v02/.v0.1-mirror/v0.1/lens-final-dist/vendor/bundles/aegisgate-lens-toxicity-v0.2.0.bundle'"
     },
     {
       "name": "10. flipping a byte in the toxicity bundle fails signature",
-      "status": "PASS"
+      "status": "FAIL",
+      "error": "ENOENT: no such file or directory, open '/home/chaos/Desktop/AegisGate/lens-repo-bootstrap-v02/.v0.1-mirror/v0.1/lens-final-dist/vendor/bundles/aegisgate-lens-toxicity-v0.2.0.bundle'"
     }
   ],
-  "failures": []
+  "failures": [
+    {
+      "name": "2. src bundle-loader parses shipped PI int8 bundle",
+      "message": "ENOENT: no such file or directory, open '/home/chaos/Desktop/AegisGate/lens-repo-bootstrap-v02/.v0.1-mirror/v0.1/lens-final-dist/vendor/bundles/aegisgate-lens-prompt-injection-int8-v0.2.0.bundle'"
+    },
+    {
+      "name": "3. dist bundle-loader parses shipped PI int8 bundle (multi-key)",
+      "message": "ENOENT: no such file or directory, open '/home/chaos/Desktop/AegisGate/lens-repo-bootstrap-v02/.v0.1-mirror/v0.1/lens-final-dist/vendor/bundles/aegisgate-lens-prompt-injection-int8-v0.2.0.bundle'"
+    },
+    {
+      "name": "4. dist bundle-loader parses shipped PI fp32 bundle (multi-key)",
+      "message": "ENOENT: no such file or directory, open '/home/chaos/Desktop/AegisGate/lens-repo-bootstrap-v02/.v0.1-mirror/v0.1/lens-final-dist/vendor/bundles/aegisgate-lens-prompt-injection-v0.2.0.bundle'"
+    },
+    {
+      "name": "5. dist bundle-loader parses shipped toxicity bundle (the bug)",
+      "message": "ENOENT: no such file or directory, open '/home/chaos/Desktop/AegisGate/lens-repo-bootstrap-v02/.v0.1-mirror/v0.1/lens-final-dist/vendor/bundles/aegisgate-lens-toxicity-v0.2.0.bundle'"
+    },
+    {
+      "name": "6. shipped bundle SHAs match bundle-registry",
+      "message": "ENOENT: no such file or directory, open '/home/chaos/Desktop/AegisGate/lens-repo-bootstrap-v02/.v0.1-mirror/v0.1/lens-final-dist/vendor/bundles/aegisgate-lens-prompt-injection-int8-v0.2.0.bundle'"
+    },
+    {
+      "name": "7. toxicity bundle contains int8 model with correct size",
+      "message": "ENOENT: no such file or directory, open '/home/chaos/Desktop/AegisGate/lens-repo-bootstrap-v02/.v0.1-mirror/v0.1/lens-final-dist/vendor/bundles/aegisgate-lens-toxicity-v0.2.0.bundle'"
+    },
+    {
+      "name": "8. model-loader createSession picks int8 from real toxicity bundle",
+      "message": "ENOENT: no such file or directory, open '/home/chaos/Desktop/AegisGate/lens-repo-bootstrap-v02/.v0.1-mirror/v0.1/lens-final-dist/vendor/bundles/aegisgate-lens-toxicity-v0.2.0.bundle'"
+    },
+    {
+      "name": "9. every file declared in toxicity header is accessible at correct offset",
+      "message": "ENOENT: no such file or directory, open '/home/chaos/Desktop/AegisGate/lens-repo-bootstrap-v02/.v0.1-mirror/v0.1/lens-final-dist/vendor/bundles/aegisgate-lens-toxicity-v0.2.0.bundle'"
+    },
+    {
+      "name": "10. flipping a byte in the toxicity bundle fails signature",
+      "message": "ENOENT: no such file or directory, open '/home/chaos/Desktop/AegisGate/lens-repo-bootstrap-v02/.v0.1-mirror/v0.1/lens-final-dist/vendor/bundles/aegisgate-lens-toxicity-v0.2.0.bundle'"
+    }
+  ]
 }

@@ -179,7 +179,6 @@
       throw new Error(`bundle SHA mismatch: expected ${entry.bundle_sha256}, got ${sha}`);
     }
     // Verify the bundle contains the expected files.
-    // Verify the bundle contains the expected files.
     // The model file may be `model.onnx` (FP32) or `model_int8.onnx`
     // (int8-quantized). At least one of them must be present.
     // The loader prefers int8 when both are available (see createSession).

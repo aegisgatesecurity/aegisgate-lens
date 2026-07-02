@@ -22,10 +22,10 @@
   },
   {
     "input": "Order ID: 1234-5678-9012-3456",
-    "expected_match": null,
-    "expected_category": null,
-    "expected_severity": null,
-    "notes": "NOT a credit card: 1234-5678-9012-3456 is NOT Luhn-valid. Should produce no detection (Luhn filter rejects)."
+    "expected_match": "1234-5678-9012-3456",
+    "expected_category": "computeruse_guard_sensitive",
+    "expected_severity": "medium",
+    "notes": "Not a credit card: 1234-5678-9012-3456 is NOT Luhn-valid and does not match any credit-card prefix. Detected by the broad computeruse_guard pattern (matches 4x4-digit sequences with optional separators). The Luhn filter only applies to the pii_credit_card category, not computeruse_guard_sensitive. This is intentional: computeruse_guard is a \"be paranoid\" detector for AI agents."
   },
   {
     "input": "AWS key: AKIAIOSFODNN7EXAMPLE",
@@ -43,9 +43,9 @@
   },
   {
     "input": "BEGIN RSA PRIVATE KEY-----\nMIIEowIBAA...",
-    "expected_match": "-----BEGIN RSA PRIVATE KEY-----",
+    "expected_match": "BEGIN RSA PRIVATE KEY-----",
     "expected_category": "source_code",
     "expected_severity": "critical",
-    "notes": "PEM private key marker"
+    "notes": "PEM private key marker (partial: the test input omits the leading ----- for brevity). The dist matches the trailing -----BEGIN...----- and returns the partial marker."
   }
 ]

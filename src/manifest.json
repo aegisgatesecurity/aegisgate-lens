@@ -12,7 +12,7 @@
   },
   "action": {
     "default_popup": "welcome.html",
-    "default_title": "AegisGate Lens (TEST)",
+    "default_title": "AegisGate Lens",
     "default_icon": {
       "16": "icons/icon-16.png",
       "32": "icons/icon-32.png"
@@ -43,6 +43,7 @@
         "util/banner-ui.js",
         "util/model-loader.js",
         "util/transformer-modernbert.js",
+        "util/transformer-toxicity.js",
         "util/webgpu-detect.js",
         "util/license-checker.js",
         "util/bundle-loader.js",
@@ -64,7 +65,8 @@
   ],
   "permissions": [
     "storage",
-    "alarms"
+    "alarms",
+    "unlimitedStorage"
   ],
   "host_permissions": [
     "https://lens.aegisgatesecurity.io/*"
@@ -83,7 +85,8 @@
         "vendor/onnxruntime/ort-wasm-simd-threaded.wasm",
         "vendor/onnxruntime/ort-wasm-simd-threaded.jsep.mjs",
         "vendor/bundles/aegisgate-lens-prompt-injection-int8-v0.2.0.bundle",
-        "vendor/bundles/aegisgate-lens-prompt-injection-v0.2.0.bundle"
+        "vendor/bundles/aegisgate-lens-prompt-injection-v0.2.0.bundle",
+        "vendor/bundles/aegisgate-lens-toxicity-v0.2.0.bundle"
       ],
       "matches": [
         "https://chat.openai.com/*",
@@ -100,7 +103,7 @@
     }
   ],
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'"
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
   },
   "minimum_chrome_version": "116",
   "homepage_url": "https://aegisgatesecurity.io/lens"
