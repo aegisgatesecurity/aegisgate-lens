@@ -1,15 +1,16 @@
 {
-  "timestamp": "2026-07-01T01:00:29.019Z",
-  "node_tests_passed": 8,
-  "node_tests_failed": 0,
+  "timestamp": "2026-07-02T00:26:56.145Z",
+  "node_tests_passed": 5,
+  "node_tests_failed": 3,
   "go_tests_passed": 0,
   "go_tests_failed": 0,
-  "go_binary": "/home/chaos/Desktop/AegisGate/consolidated/aegisgate-platform/tools/test-extension/test-extension",
-  "report_path": "/home/chaos/Desktop/AegisGate/lens-repo-bootstrap-v02/test/eval/extension-e2e-report.json",
+  "go_binary": "/home/chaos/Desktop/AegisGate/lens-repo-bootstrap-v02/.v0.1-mirror/consolidated/aegisgate-platform/tools/test-extension/test-extension",
+  "report_path": "/home/chaos/Desktop/AegisGate/lens-repo-bootstrap-v02/.v0.1-mirror/v0.1/test/eval/extension-e2e-report.json",
   "results": [
     {
       "name": "1. Go test-extension binary exists",
-      "status": "PASS"
+      "status": "FAIL",
+      "error": "Go binary not found at /home/chaos/Desktop/AegisGate/lens-repo-bootstrap-v02/.v0.1-mirror/consolidated/aegisgate-platform/tools/test-extension/test-extension"
     },
     {
       "name": "2. Lens dist directory exists",
@@ -21,7 +22,8 @@
     },
     {
       "name": "3. Go binary can be invoked (--help)",
-      "status": "PASS"
+      "status": "FAIL",
+      "error": "spawn /home/chaos/Desktop/AegisGate/lens-repo-bootstrap-v02/.v0.1-mirror/consolidated/aegisgate-platform/tools/test-extension/test-extension ENOENT"
     },
     {
       "name": "4. Go binary detects no-tests scenario gracefully",
@@ -29,7 +31,8 @@
     },
     {
       "name": "5.chatgpt Go test-extension produces JSON report",
-      "status": "PASS"
+      "status": "FAIL",
+      "error": "Go binary not found at /home/chaos/Desktop/AegisGate/lens-repo-bootstrap-v02/.v0.1-mirror/consolidated/aegisgate-platform/tools/test-extension/test-extension. Build it: cd /home/chaos/Desktop/AegisGate/lens-repo-bootstrap-v02/.v0.1-mirror/consolidated/aegisgate-platform/tools/test-extension && go build"
     },
     {
       "name": "6. All Go tests passed across all providers",
@@ -40,5 +43,18 @@
       "status": "PASS"
     }
   ],
-  "failures": []
+  "failures": [
+    {
+      "name": "1. Go test-extension binary exists",
+      "message": "Go binary not found at /home/chaos/Desktop/AegisGate/lens-repo-bootstrap-v02/.v0.1-mirror/consolidated/aegisgate-platform/tools/test-extension/test-extension"
+    },
+    {
+      "name": "3. Go binary can be invoked (--help)",
+      "message": "spawn /home/chaos/Desktop/AegisGate/lens-repo-bootstrap-v02/.v0.1-mirror/consolidated/aegisgate-platform/tools/test-extension/test-extension ENOENT"
+    },
+    {
+      "name": "5.chatgpt Go test-extension produces JSON report",
+      "message": "Go binary not found at /home/chaos/Desktop/AegisGate/lens-repo-bootstrap-v02/.v0.1-mirror/consolidated/aegisgate-platform/tools/test-extension/test-extension. Build it: cd /home/chaos/Desktop/AegisGate/lens-repo-bootstrap-v02/.v0.1-mirror/consolidated/aegisgate-platform/tools/test-extension && go build"
+    }
+  ]
 }
