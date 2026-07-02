@@ -1,0 +1,35 @@
+# RFC 9116 — /.well-known/security.txt
+# AegisGate Lens security disclosure policy
+# Canonical: https://aegisgatesecurity.io/.well-known/security.txt
+# Last updated: 2026-07-02
+
+# Contact: must appear, must be a URI
+Contact: mailto:security@aegisgatesecurity.io
+
+# Canonical URL: the absolute URL of this file
+Canonical: https://github.com/aegisgatesecurity/aegisgate-lens/blob/main/.well-known/security.txt
+
+# Expires: when this file should be re-fetched (RFC 9116 §2.5.4)
+# Format: ISO 8601 (must be within 1 year per spec)
+Expires: 2027-07-02T00:00:00.000Z
+
+# Acknowledgments: optional, but we like to thank reporters
+Acknowledgments: https://aegisgatesecurity.io/security/acknowledgments
+
+# Preferred languages for security reports
+Preferred-Languages: en
+
+# Canonical URIs for the security.txt
+# (RFC 9116 §2.5.5 — list of URIs where the same security.txt is hosted)
+Canonical: https://aegisgatesecurity.io/.well-known/security.txt
+
+# Policy: link to the full disclosure policy
+Policy: https://github.com/aegisgatesecurity/aegisgate-lens/blob/main/SECURITY.md
+
+# Hiring: opt-in, link to security-related job openings
+# (omitted — we don't have a dedicated security hiring page)
+
+# Encryption: optional, key for encrypted reports
+# (omitted — we accept PGP-encrypted email but the key is in the
+#  contact email auto-response, not in this file, to keep the
+#  key separate from the disclosure policy)
