@@ -98,3 +98,6 @@ keys/*-private.pem
 keys/*-private.key
 keys/id_rsa
 keys/id_rsa.pub
+
+# CWS screenshot capture tool (local only, contains synthetic test tokens)
+lens-final-dist/store-capture.html

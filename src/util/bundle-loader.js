@@ -31,12 +31,12 @@
   //
   // IMPORTANT: When adding a new key, also update bundle-registry.js with
   // the bundle's signing_pub_key_id (it identifies which key to use).
-  const SIGNING_KEY_RING = Object.freeze([
+  const SIGNING_KEY_RING = [
     // PI bundle key (v0.2.0-rc1, generated 2026-06-29, shipped in vendor/bundles)
     { id: 'lens-v02-2026-06-29', b64: 'aKzukcm1ElgBZDMlG7IROw12CyjPHfkuKv+Bj8I70+c=' },
     // Toxicity bundle key (v0.2.0, generated 2026-06-30, lens-v02-c6c3ab5a)
     { id: 'lens-v02-c6c3ab5a',    b64: 'LdOjF1LXqqfUHB8yfI2WanpRvi1kaugKMWJ32dfMfQU=' },
-  ]);
+  ];
 
   // Backward-compat: the v0.1 single-key variable is preserved as an alias
   // to the FIRST key in the ring (the PI key). v0.1 callers that read

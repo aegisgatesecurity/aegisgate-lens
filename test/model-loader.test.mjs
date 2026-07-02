@@ -216,6 +216,13 @@ async function buildSyntheticBundle() {
   const payloadSha = await crypto.subtle.digest('SHA-256', payloadConcat);
   const payloadShaHex = Array.from(new Uint8Array(payloadSha)).map(b => b.toString(16).padStart(2, '0')).join('');
 
+  // v0.3.0: include signing_public_key (hex) in the header so the
+  // bundle loader can match it to the key ring. The public key is
+  // generated fresh per test, so we export it as hex and include it.
+  const pubKeyBytes = await crypto.subtle.exportKey('raw', publicKey);
+  const pubKeyHex = Array.from(new Uint8Array(pubKeyBytes))
+    .map(b => b.toString(16).padStart(2, '0')).join('');
+
   const header = {
     magic: 'AEGISGATE_LENS_BUNDLE_V1',
     bundle_version: '0.2.0-test',
@@ -224,6 +231,7 @@ async function buildSyntheticBundle() {
     total_payload_size: payloadSize,
     payload_sha256: payloadShaHex,
     n_files: files.length,
+    signing_public_key: pubKeyHex,
   };
   const headerBytes = new TextEncoder().encode(JSON.stringify(header));
 
@@ -430,6 +438,13 @@ async function buildSyntheticBundleWithFiles(extraFiles) {
   const payloadShaHex = Array.from(new Uint8Array(payloadSha))
     .map(b => b.toString(16).padStart(2, '0')).join('');
 
+  // v0.3.0: include signing_public_key (hex) in the header so the
+  // bundle loader can match it to the key ring. The public key is
+  // generated fresh per test, so we export it as hex and include it.
+  const pubKeyBytes = await crypto.subtle.exportKey('raw', publicKey);
+  const pubKeyHex = Array.from(new Uint8Array(pubKeyBytes))
+    .map(b => b.toString(16).padStart(2, '0')).join('');
+
   const header = {
     magic: 'AEGISGATE_LENS_BUNDLE_V1',
     bundle_version: '0.2.0-test',
@@ -438,6 +453,7 @@ async function buildSyntheticBundleWithFiles(extraFiles) {
     total_payload_size: payloadSize,
     payload_sha256: payloadShaHex,
     n_files: files.length,
+    signing_public_key: pubKeyHex,
   };
   const headerBytes = new TextEncoder().encode(JSON.stringify(header));
 
