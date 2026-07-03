@@ -79,7 +79,7 @@ This was verified by source review of `src/api/client.js` lines 175-189 in
 
 ### What does NOT cross the wire
 
-- ❌ The prompt text (whatever the user typed into ChatGPT/Claude/Gemini)
+- ❌ The prompt text (whatever the user typed into any of the supported AI input surfaces)
 - ❌ The AI response (whatever the model replied)
 - ❌ The page URL (only the SHA-256 of the hostname)
 - ❌ Any user-identifiable information (no user ID, no session ID, no cookie)
