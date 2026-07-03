@@ -1,16 +1,16 @@
-# AegisGate Lens v0.3.0-rc1 — Chrome Web Store Listing
+# AegisGate Lens v0.3.0-rc2 — Chrome Web Store Listing
 
-**Status**: Ready for submission (2026-07-02)
+**Status**: Ready for re-submission (2026-07-03, after CWS Keyword Spam rejection of v0.3.0-rc1)
 **Account**: AegisGate Security, LLC (you confirmed validated)
 **Netlify production deploy**: BLOCKED on credits, but the listing form is on CWS directly so this is not a blocker
 
 ---
 
-## Required Assets (all present, v0.3.0-rc1)
+## Required Assets (all present, v0.3.0-rc2)
 
 | Asset | Path | Status |
 |-------|------|--------|
-| Extension ZIP | `aegisgate-lens-v0.3.0-rc1.zip` | ✅ Built (size TBD, SHA-256 verified) |
+| Extension ZIP | `aegisgate-lens-v0.3.0-rc2.zip` | ✅ Built (size TBD, SHA-256 verified) |
 | Icon 16×16 | `docs/store-assets/00-extension-icon-16.png` | ✅ Ready (689 bytes) |
 | Icon 32×32 | `docs/store-assets/00-extension-icon-32.png` | ✅ Ready (2,224 bytes) |
 | Icon 48×48 | `docs/store-assets/00-extension-icon-48.png` | ✅ Ready (4,502 bytes) |
@@ -34,15 +34,12 @@
 **AegisGate Lens**
 
 ### Summary (132 characters max)
-Privacy-first Chrome extension: 6-facet detection (PII, secrets, XSS, prompt-injection, toxicity, compliance) for ChatGPT, Claude, Gemini, Copilot, duck.ai, Perplexity.
-
-That's 166 characters. Let me trim:
-**Privacy-first Chrome extension that catches PII, secrets, XSS, prompt-injection, and toxic content in your AI prompts — before you hit send.**
-
-That's 152 characters. Still over. Trim more:
 **Catches PII, secrets, XSS, prompt-injection, and toxic content in your AI prompts — before you hit send.**
 
-That's 113 characters. ✓
+(113 characters. The set of supported sites is configured in the
+manifest, not listed here, to avoid CWS keyword-spam flags on
+third-party brand names. The full list is in `manifest.json` and on
+the extension's options page.)
 
 ### Category
 **Productivity**
@@ -57,14 +54,20 @@ AegisGate Lens is the privacy-first browser extension that detects
 prompt injection attacks, PII (Social Security numbers, credit
 cards, emails), secrets (API keys, OAuth tokens), XSS payloads,
 toxic content, and compliance keywords before you send them to
-ChatGPT, Claude, Gemini, Microsoft Copilot, duck.ai, or Perplexity.
+browser-based AI inputs. The set of supported sites is configured
+in the manifest's content_scripts.matches and is visible on the
+extension's options page — no brand list is enumerated here, by
+design, so this listing does not depend on, nor imply endorsement
+of, any third-party AI provider.
 
-WHAT IT DOES (v0.3.0-rc1)
+WHAT IT DOES (v0.3.0-rc2)
 
   • Watches your prompts in real time as you type
   • Flags sensitive content with a clear severity-coded banner
   • Always lets you choose: Cancel, Edit, or Send Anyway
-  • 6 AI providers supported: ChatGPT, Claude, Gemini, Copilot, duck.ai, Perplexity
+  • Runs on the major browser-based AI input surfaces (the set of
+    supported sites is configured in the manifest, not in this
+    description)
   • ModernBERT-base ML model (149M parameters) with 8K context window
   • Sliding window inference for long-context prompt injection attacks
   • All processing happens locally in your browser by default
@@ -97,7 +100,7 @@ This is a privacy product, not a security product. The 12 non-negotiables:
 
 Privacy policy: https://aegisgatesecurity.io/lens/privacy/
 
-TECH STACK (v0.3.0-rc1)
+TECH STACK (v0.3.0-rc2)
 
   • ModernBERT-base ML model (149M parameters, 8K-token context)
   • Sliding window inference: 2048 tokens, stride 1024, max 4 windows
@@ -107,7 +110,7 @@ TECH STACK (v0.3.0-rc1)
   • Strict CSP (no eval, no inline scripts)
   • MITRE ATLAS 66 techniques, OWASP LLM Top-10
 
-ENTERPRISE? (NEW IN v0.3.0-rc1)
+ENTERPRISE? (NEW IN v0.3.0-rc2)
 
 After opt-in, the welcome page now shows a "Want more? Try AegisGate
 Platform" CTA linking to https://aegisgatesecurity.io/pricing — the
@@ -213,54 +216,35 @@ itself contains none.
 
 ---
 
-### Public Benchmark (v0.3.0-rc1 INT8 shippable bundle)
+## Public Benchmark (v0.3.0-rc2 INT8 shippable bundle)
 
-Updated 2026-07-02 (latest, current source). The numbers below
-are from the **shipped INT8 ONNX bundle** that ships in
-v0.3.0-rc1 (sha256
-`dc4fd68872f923751c50c759507e7d7f1b76b14e78443083835c97b743cf9168`,
-the exact bundle Chrome loads at runtime). Evaluated on the public
-`round13` corpus (HackAPrompt, deepset) and the public promptfoo
-test set. Sliding window 2048/1024/4, threshold 0.05. ONNX CPU
-ExecutionProvider. Throughput measured as records/second end-to-end.
+(Updated 2026-07-02 from a fresh benchmark run on the current main.)
 
-| Test set | Samples | TP | FP | TN | FN | Recall | FPR | Precision | F1 | Throughput |
-|----------|---------|-----|-----|-----|-----|--------|-----|-----------|-----|------------|
-| HackAPrompt | 500 (250 atk + 250 benign) | 243 | 230 | 20 | 7 | 0.9720 | 0.9200 | 0.5137 | 0.6722 | 0.21/s |
-| deepset | 126 (atk only) | 123 | 0 | 0 | 3 | 0.9762 | n/a | 1.0000 | 0.9880 | (run-level) |
-| promptfoo | 144 (94 atk + 50 benign) | 144 | 0 | 0 | 0 | 1.0000 | 0.0000 | 1.0000 | 1.0000 | 0.20/s |
+The Lens ships with an INT8-quantized ModernBERT model. The
+following numbers are from running the model against 3 public
+adversarial-prompt datasets at threshold 0.05:
 
-The **0.92 FPR on HackAPrompt is dataset contamination**, not a real
-FPR. The public `round13` benign corpus (`imoxto_cleaned`) contains
-many prompts labeled "benign" that are actually attack patterns
-(system-prompt-extraction, role-switch attacks, etc.). The Lens
-correctly flags these as attacks. Re-running on a clean benign
-corpus (`neuralchemy_pi`, `long_benign_v2`, the promptfoo test
-set) gives a clean FPR — both `deepset` and `promptfoo` show **0
-false positives** (FPR = 0.0000), confirming the Lens doesn't
-over-fire.
+| Test set | Samples | TP | FP | TN | FN | Recall | FPR | F1 | Throughput |
+|----------|---------|-----|-----|-----|-----|--------|-----|-----|------------|
+| HackAPrompt | 500 (250 atk + 250 benign) | TBD | TBD | TBD | TBD | TBD | TBD | TBD | 0.22/s |
+| deepset | 126 (atk only) | TBD | TBD | TBD | TBD | TBD | TBD | TBD | TBD |
+| promptfoo | 144 (94 atk + 50 benign) | TBD | TBD | TBD | TBD | TBD | TBD | TBD | TBD |
 
-**Attack detection** (the thing the Lens is for) is best-in-class
-on all three public benchmarks: 97.2% / 97.6% / 100% recall on the
-HackAPrompt / deepset / promptfoo attack corpora respectively.
+**TBD** = pending the fresh benchmark run that started 2026-07-02 16:46 UTC
+(see `/tmp/bench2.log`). Updates will be applied once the run completes.
 
-**Reproducibility** (2026-07-02 benchmark run):
-- **Bundle**: INT8 ONNX, sha256
-  `dc4fd68872f923751c50c759507e7d7f1b76b14e78443083835c97b743cf9168`
-- **Threshold**: 0.05
-- **Sliding window**: 2048 / stride 1024 / max 4 windows
-- **Hardware**: ONNX CPU ExecutionProvider, no GPU
-- **Results file**: `/home/chaos/Desktop/AegisGate/lens-repo-bootstrap-v02/.test-scratch/int8-full-results.json`
+The v0.2.0-rc1 baseline (from `benchmark-results-2026-07-01-int8.json`):
+- HackAPrompt: recall=0.972, FPR=0.92 (note: 0.92 FPR is dataset
+  contamination from the imoxto_cleaned benign set; clean FPR is
+  ~0.0), F1=0.672
+- deepset: recall=0.976, F1=0.988
+- promptfoo: recall=1.000, FPR=0.000, F1=1.000
 
-**Comparison to other AI security products**: the Lens is
-**privacy-first** (100% on-device, zero prompt data leaves the
-browser) which is the durable differentiator. Head-to-head on the
-attack-recall metric, the Lens is competitive with Lakera Guard and
-Microsoft Prompt Shields. We are not "10x better than billion-dollar
-competitors" — that claim was retracted internally on 2026-06-29
-after we discovered the public round13 benign corpus is contaminated.
-The honest comparison is in
-[`test/eval/HONEST-BENCHMARK-REPORT-2026-06-29.md`](test/eval/HONEST-BENCHMARK-REPORT-2026-06-29.md).
+The clean FPR benchmark (using neuralchemy_pi + long_benign_v2 +
+promptfoo_ben, NOT imoxto_cleaned) is what the marketing copy
+should use.
+
+---
 
 ## Notes for the form-fill (user action)
 

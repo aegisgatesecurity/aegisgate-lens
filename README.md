@@ -11,7 +11,7 @@
 [![DCO](https://img.shields.io/badge/DCO-Required-blueviolet)](DCO.md)
 [![EU AI Act](https://img.shields.io/badge/EU_AI_Act-Compatible-003399?logo=europeanunion)](docs/COMPLIANCE-MATRIX.md)
 
-> **The browser-side complement to the [AegisGate Platform](https://github.com/aegisgatesecurity/aegisgate-platform) security gateway.** Detects prompt injection, PII, secrets, XSS, and toxic content **BEFORE** it reaches ChatGPT, Claude, Gemini, or Copilot — with 100% on-device ML and a privacy-first design enforced in CI.
+> **The browser-side complement to the [AegisGate Platform](https://github.com/aegisgatesecurity/aegisgate-platform) security gateway.** Detects prompt injection, PII, secrets, XSS, and toxic content **BEFORE** it reaches browser-based AI input surfaces — with 100% on-device ML and a privacy-first design enforced in CI.
 
 [🌐 Website](https://aegisgatesecurity.io) • [🧪 **Try the Lens**](docs/try/index.html) • [📊 Pricing](https://aegisgatesecurity.io/pricing/) • [📚 Docs](https://aegisgatesecurity.io/lens/) • [🔒 Security](SECURITY.md) • [💬 Discussions](https://github.com/aegisgatesecurity/aegisgate-lens/discussions)
 
@@ -57,7 +57,7 @@ across the full AI request lifecycle.
 
 ### Who It's For
 
-- **Security teams** at organizations using ChatGPT Enterprise, Claude for Work, Gemini for Workspace, or Microsoft Copilot who need to prevent prompt injection, accidental secret leakage, and PII exfiltration
+- **Security teams** at organizations using enterprise tiers of browser-based AI input surfaces who need to prevent prompt injection, accidental secret leakage, and PII exfiltration
 - **Privacy-conscious professionals** (lawyers, doctors, journalists, researchers) who use AI tools but cannot send client/patient/source data to the cloud
 - **Solo developers and small teams** using AI as a daily coding assistant and want a "set and forget" guardrail against accidentally pasting API keys, tokens, or PII
 - **Enterprise customers** who need auditor-ready evidence (SOC 2, ISO 27001, EU AI Act, HIPAA, PCI-DSS) that AI usage is monitored and policy-compliant
@@ -73,7 +73,7 @@ across the full AI request lifecycle.
 
 ## The Problem
 
-When you paste a prompt into ChatGPT, Claude, or Copilot, you're trusting the AI provider with:
+When you paste a prompt into a browser-based AI input surface, you're trusting that provider with:
 
 - **Customer PII** (names, emails, SSNs, payment data) that the model may log for training
 - **API keys and tokens** (GitHub PATs, AWS credentials, Slack webhooks) that get cached server-side
@@ -344,8 +344,8 @@ click and the extension works on the AI tools you already use.
 
 1. **Install the Lens** from the
    [Chrome Web Store](https://chromewebstore.google.com/) (one click)
-2. **Visit any AI tool** you use (ChatGPT, Claude, Gemini, Copilot,
-   Perplexity, etc.)
+2. **Visit any AI tool** you use (any site listed in the
+   extension's `content_scripts.matches`)
 3. **Type a test prompt** with sensitive data — e.g. `My SSN is 123-45-6789`
 4. **See the Lens banner** appear at the top of the page, explaining what
    was detected and offering "Send anyway" / "Edit" / "Cancel" actions

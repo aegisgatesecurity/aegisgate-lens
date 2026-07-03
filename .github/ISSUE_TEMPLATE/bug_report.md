@@ -15,7 +15,7 @@ A clear and concise description of what the bug is.
 - **Lens version** (e.g., 0.1.0-alpha.1):
 - **Browser** (e.g., Chrome 128, Firefox 130):
 - **Operating system** (e.g., macOS 14.5, Windows 11, Ubuntu 24.04):
-- **AI provider** (e.g., ChatGPT, Claude, Gemini, Copilot):
+- **AI provider / site** (whichever site you were on when you saw the issue):
 
 ## Steps to reproduce
 
