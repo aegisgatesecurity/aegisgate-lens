@@ -38,6 +38,7 @@
       ],
       "js": [
         "util/logger.js",
+        "util/bundle-registry.js",
         "util/opt-in.js",
         "util/telemetry-queue.js",
         "util/banner-ui.js",
@@ -47,7 +48,6 @@
         "util/webgpu-detect.js",
         "util/license-checker.js",
         "util/bundle-loader.js",
-        "util/bundle-registry.js",
         "detectors/regex.js",
         "detectors/regex_v2.js",
         "detectors/luhn.js",
