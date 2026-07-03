@@ -105,8 +105,8 @@
       }
       return null;
     };
-    const el = findPrompt();
-    if (!el) {
+    let promptEl = findPrompt();
+    if (!promptEl) {
       // Retry once after 1s (some SPAs render the prompt area after
       // first paint). After 5 retries, give up.
       let retries = 0;
@@ -115,6 +115,7 @@
         const e = findPrompt();
         if (e) {
           clearInterval(retryInterval);
+          promptEl = e;
           attach(e);
         } else if (retries >= 5) {
           clearInterval(retryInterval);
@@ -138,10 +139,13 @@
       }, delay);
     }
     function readPromptText() {
-      if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT') {
-        return el.value || '';
+      // Defensive: promptEl may be null if no prompt has been found yet
+      // (e.g., user navigates away, or DOM is replaced by SPA rerender).
+      if (!promptEl) return '';
+      if (promptEl.tagName === 'TEXTAREA' || promptEl.tagName === 'INPUT') {
+        return promptEl.value || '';
       }
-      return el.innerText || el.textContent || '';
+      return promptEl.innerText || promptEl.textContent || '';
     }
     function runDetectionAndShow() {
       if (!self.runDetection) return;

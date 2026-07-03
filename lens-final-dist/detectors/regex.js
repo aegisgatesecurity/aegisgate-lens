@@ -461,12 +461,7 @@
       category: 'source_code',
       severity: 'critical',
       name: 'private_key_pem_v1',
-      // PEM markers often appear as "-----BEGIN ... PRIVATE KEY-----".
-      // We allow an optional leading "-----" to capture the full
-      // marker when present, but match without it when not (so
-      // partial markers like "BEGIN RSA PRIVATE KEY-----" still match).
-      // The match starts at either "-----" (when present) or "BEGIN".
-      pattern: '(?:-----)BEGIN (?:RSA |EC |DSA |OPENSSH |PGP |ENCRYPTED )?PRIVATE KEY(?: BLOCK)?-----(?:-----)?|^BEGIN (?:RSA |EC |DSA |OPENSSH |PGP |ENCRYPTED )?PRIVATE KEY(?: BLOCK)?-----(?:-----)?',
+      pattern: 'BEGIN (?:RSA |EC |DSA |OPENSSH |PGP |ENCRYPTED )?PRIVATE KEY(?: BLOCK)?-----(?:-----)?',
       description: 'PEM-encoded private key (BEGIN marker)',
     }),
   ]);
