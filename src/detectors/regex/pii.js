@@ -131,15 +131,32 @@
   // Post-process: Luhn-validate credit card candidates. If a candidate
   // doesn't pass Luhn, we drop it (it was a 16-digit number, not a
   // real card). This is the FP-reduction step.
+  //
+  // If luhn.js failed to load (i.e., __lensLuhn is not on globalThis),
+  // we log a warning and drop the match anyway. The CC detection is
+  // useless without Luhn (high FP rate), so we drop rather than
+  // silently pass through.
   function postProcess(category, match) {
     if (category === 'pii_credit_card') {
       var luhn = getLuhn();
-      if (luhn) {
-        var v = luhn.validateCard(match.value);
-        if (!v.valid) return null;  // drop false positive
-        // Attach the card type for the dispatcher
-        match.cardType = v.type;
+      if (!luhn) {
+        // Luhn module unavailable. Without Luhn validation, every
+        // 13-19 digit run would be flagged as a credit card — too
+        // many false positives. Drop the match. The logger, if
+        // available, will note this so the user knows CC detection
+        // is degraded.
+        var log = (typeof self !== 'undefined' && self.__lensLogger) ||
+                  (typeof globalThis !== 'undefined' && globalThis.__lensLogger) ||
+                  null;
+        if (log && typeof log.warn === 'function') {
+          log.warn('pii.detect: luhn module unavailable; credit card candidate dropped');
+        }
+        return null;
       }
+      var v = luhn.validateCard(match.value);
+      if (!v.valid) return null;  // drop false positive
+      // Attach the card type for the dispatcher
+      match.cardType = v.type;
     }
     return match;
   }
