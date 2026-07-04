@@ -130,14 +130,42 @@
         log.info('user dismissed (' + action + ')');
       } else if (action === 'fp_reports') {
         // The user opted in. The reports are in payload.reports.
-        // TODO(3g): send them to the backend via the SW.
-        log.info('user opted in to ' + (payload && payload.reports ? payload.reports.length : 0) + ' FP report(s)');
-        // For now, log them to the console so we can verify the
-        // payload is correct.
-        if (payload && payload.reports) {
-          for (var i = 0; i < payload.reports.length; i++) {
-            log.info('FP report: ' + JSON.stringify(payload.reports[i]));
+        // Send them to the SW via chrome.runtime.sendMessage.
+        // The SW validates the message shape, queues it, and
+        // attempts to send to the backend. See api/messages.js
+        // for the message envelope and background.js for the
+        // SW handler.
+        if (typeof chrome !== 'undefined' && chrome.runtime &&
+            typeof chrome.runtime.sendMessage === 'function') {
+          try {
+            var message = {
+              type: 'FP_REPORTS',
+              version: '0.1.0-beta',
+              payload: {
+                timestamp: Math.floor(Date.now() / 1000),
+                reports: payload.reports || []
+              }
+            };
+            chrome.runtime.sendMessage(message, function (response) {
+              if (chrome.runtime && chrome.runtime.lastError) {
+                log.warn('sendMessage error: ' + chrome.runtime.lastError.message);
+                return;
+              }
+              if (response && response.type === 'ACK') {
+                log.info('SW ack: ' + JSON.stringify(response.payload || {}));
+              } else if (response && response.type === 'ERROR') {
+                log.error('SW error: ' + (response.payload && response.payload.error));
+              }
+            });
+          } catch (e) {
+            log.error('sendMessage threw', e);
           }
+        } else {
+          log.info('chrome.runtime.sendMessage not available; reports queued locally only');
+        }
+        // For diagnostic purposes, also log the first report
+        if (payload && payload.reports && payload.reports[0]) {
+          log.info('FP report payload: ' + JSON.stringify(payload.reports[0]));
         }
       }
     } catch (err) {
