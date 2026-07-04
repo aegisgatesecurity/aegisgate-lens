@@ -235,7 +235,7 @@
         }
       }
     }
-    attach(el);
+    attach(promptEl);
   };
 
   /** Read the current prompt text from the active provider's input. */
