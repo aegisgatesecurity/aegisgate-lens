@@ -41,7 +41,12 @@
         "https://grok.com/*",
         "https://x.com/*"
       ],
-      "js": ["src/util/logger.js", "src/content.js"],
+      "js": [
+        "src/util/logger.js",
+        "src/detectors/luhn.js",
+        "src/detectors/regex/pii.js",
+        "src/content.js"
+      ],
       "run_at": "document_idle",
       "all_frames": false
     }
