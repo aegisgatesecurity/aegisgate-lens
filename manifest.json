@@ -1,0 +1,66 @@
+{
+  "manifest_version": 3,
+  "name": "AegisGate Lens",
+  "version": "0.1.0-beta",
+  "description": "Privacy-first browser extension that detects prompt injection, PII, secrets, and toxicity before they reach AI tools. No prompt content ever leaves your browser. Apache 2.0.",
+  "author": "AegisGate Security, LLC",
+  "homepage_url": "https://aegisgatesecurity.io/lens",
+
+  "icons": {
+    "16": "src/icons/icon-16.png",
+    "32": "src/icons/icon-32.png",
+    "48": "src/icons/icon-48.png",
+    "128": "src/icons/icon-128.png"
+  },
+
+  "action": {
+    "default_popup": "src/popup/popup.html",
+    "default_title": "AegisGate Lens",
+    "default_icon": {
+      "16": "src/icons/icon-16.png",
+      "32": "src/icons/icon-32.png",
+      "48": "src/icons/icon-48.png"
+    }
+  },
+
+  "background": {
+    "service_worker": "src/background.js"
+  },
+
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chat.openai.com/*",
+        "https://chatgpt.com/*",
+        "https://claude.ai/*",
+        "https://gemini.google.com/*",
+        "https://copilot.microsoft.com/*",
+        "https://duck.ai/*",
+        "https://duckduckgo.com/*",
+        "https://perplexity.ai/*",
+        "https://grok.com/*",
+        "https://x.com/*"
+      ],
+      "js": ["src/util/logger.js", "src/content.js"],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+
+  "permissions": ["storage", "alarms", "unlimitedStorage"],
+
+  "host_permissions": ["https://lens.aegisgatesecurity.io/*"],
+
+  "web_accessible_resources": [
+    {
+      "resources": ["src/welcome/welcome.html"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  },
+
+  "minimum_chrome_version": "116"
+}
