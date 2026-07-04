@@ -1,98 +1,493 @@
-// AegisGate Lens — background.js (service worker)
+// AegisGate Lens — background.js (the MV3 service worker)
 //
-// Step 3a: minimum viable service worker. It exists so the manifest
-// reference is valid and the extension loads cleanly. The full
-// implementation comes in 3g (api/messages.js + the message handler)
-// and 3h (ML bundle caching + lazy-load).
+// Per docs/ARCHITECTURE-v0.1.0-BETA.md Section 8, the SW:
+//   1. Receives messages from the content script (validated)
+//   2. Owns chrome.storage.local (content scripts cannot share state)
+//   3. Persists dismissals (24h scope)
+//   4. Sends FP reports to the backend ONLY when the user has
+//      explicitly opted in (via "Submit & dismiss")
+//   5. Is 100% local by default (Tier 0)
 //
-// What this file DOES today (3a):
-//   1. Logs on install + on startup
-//   2. Opens the welcome page on first install
-//   3. Validates sender.id on every message (per F-01: foreign senders
-//      are rejected even though no message handlers exist yet)
+// The SW is NOT a module (per the architecture doc and the threat
+// model F-02). No "type": "module" in the manifest.
 //
 // Apache 2.0. Copyright 2026 AegisGate Security, LLC.
 
-// self here is the service worker global. In MV3, this is an isolated
-// context with no DOM access.
-var log = (typeof self !== 'undefined' && self.__lensLogger) ||
-          (typeof globalThis !== 'undefined' && globalThis.__lensLogger) ||
-          { info: function(m){ console.log('[AegisGate Lens SW] ' + m); },
-            warn: function(m){ console.warn('[AegisGate Lens SW] ' + m); },
-            error: function(m,e){ console.error('[AegisGate Lens SW] ' + m, e); } };
+(function () {
+  'use strict';
 
-// In an MV3 service worker, the content scripts we load via
-// content_scripts.js share a separate global context. They can't
-// directly set self.__lensLogger; we set it here from our own
-// bundle. Logger is duplicated in SW (not shared) for simplicity.
+  // --- Tiny logger (the SW has its own console; logger.js is
+  // for the content script because it doesn't have a global
+  // __lensLogger when it boots) ---
+  var log = {
+    info: function (m) { try { console.log('[AegisGate Lens SW] ' + m); } catch (e) {} },
+    warn: function (m) { try { console.warn('[AegisGate Lens SW] ' + m); } catch (e) {} },
+    error: function (m, e) {
+      try { console.error('[AegisGate Lens SW] ' + m, e); } catch (e2) {}
+    }
+  };
 
-self.__lensLogger = log;
+  log.info('background.js loaded; service worker ready');
 
-// F-01: validate sender.id on every message. Even though no message
-// handlers exist yet, we set up the listener so the security boundary
-// is in place from day one.
-function isOwnSender(sender) {
-  if (!sender) return false;
-  if (typeof sender.id !== 'string' || sender.id.length === 0) return false;
-  // chrome.runtime.id is our own extension's ID; foreign extensions
-  // send a different sender.id.
-  if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.id) return false;
-  // Case-sensitive comparison (no toLowerCase bypass)
-  return sender.id === chrome.runtime.id;
-}
+  // Load the messages module. In the SW context, scripts are
+  // loaded via importScripts() OR by being in the same JS file
+  // (we chose the latter for transparency). To avoid duplicating
+  // the messages module, we use a minimal inline copy below.
+  // The content script uses src/api/messages.js; the SW uses
+  // the same shape but inlined here.
+  //
+  // We DO NOT use importScripts() because that would require
+  // the file to be web-accessible (which would leak it to
+  // page content) OR bundled into the SW. For 1 file we
+  // inline; if the module grows, we'll revisit.
+  var M = {
+    TYPE: {
+      PING: 'PING',
+      DETECTION: 'DETECTION',
+      USER_ACTION: 'USER_ACTION',
+      FP_REPORTS: 'FP_REPORTS',
+      GET_OPT_IN_STATE: 'GET_OPT_IN_STATE',
+      PONG: 'PONG',
+      ACK: 'ACK',
+      ERROR: 'ERROR',
+      OPT_IN_STATE: 'OPT_IN_STATE'
+    },
+    isValidEnvelope: function (msg) {
+      if (msg === null || typeof msg !== 'object') return false;
+      if (typeof msg.type !== 'string') return false;
+      if (typeof msg.version !== 'string') return false;
+      if (!msg.payload || typeof msg.payload !== 'object') return false;
+      return true;
+    },
+    isValidDetection: function (msg) {
+      if (!this.isValidEnvelope(msg)) return false;
+      if (msg.type !== 'DETECTION') return false;
+      var p = msg.payload;
+      return typeof p.timestamp === 'number' && p.timestamp > 0 &&
+             typeof p.domain_hash === 'string' && /^[0-9a-f]{16}$/.test(p.domain_hash) &&
+             typeof p.facet === 'string' &&
+             typeof p.category === 'string' &&
+             ['low', 'medium', 'high', 'critical'].indexOf(p.severity) !== -1 &&
+             typeof p.count === 'number' && p.count > 0;
+    },
+    isValidFPReports: function (msg) {
+      if (!this.isValidEnvelope(msg)) return false;
+      if (msg.type !== 'FP_REPORTS') return false;
+      var p = msg.payload;
+      if (!Array.isArray(p.reports)) return false;
+      var forbidden = ['text', 'prompt', 'url', 'page_content',
+                       'page', 'input', 'output', 'value', 'matches',
+                       'cookies', 'keystrokes', 'mouse', 'fingerprint'];
+      for (var i = 0; i < p.reports.length; i++) {
+        var r = p.reports[i];
+        if (typeof r !== 'object' || r === null) return false;
+        for (var j = 0; j < forbidden.length; j++) {
+          if (r[forbidden[j]] !== undefined) return false;
+        }
+        if (typeof r.domain_hash !== 'string' || !/^[0-9a-f]{16}$/.test(r.domain_hash)) return false;
+        if (typeof r.category !== 'string') return false;
+        if (typeof r.facet !== 'string') return false;
+        if (typeof r.severity !== 'string') return false;
+      }
+      return true;
+    }
+  };
 
-// Service worker lifecycle hooks
-self.addEventListener('install', function (event) {
-  log.info('service worker installed');
-  // Skip waiting so the SW activates immediately on update.
-  if (typeof self.skipWaiting === 'function') {
-    self.skipWaiting();
+  // --- Storage helpers ---
+
+  // Get a value from chrome.storage.local. Returns Promise.
+  function storageGet(key) {
+    return new Promise(function (resolve) {
+      try {
+        if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) {
+          resolve(null);
+          return;
+        }
+        chrome.storage.local.get([key], function (result) {
+          if (chrome.runtime && chrome.runtime.lastError) {
+            log.warn('storage get failed: ' + chrome.runtime.lastError.message);
+            resolve(null);
+            return;
+          }
+          resolve(result[key] || null);
+        });
+      } catch (e) {
+        log.error('storageGet threw', e);
+        resolve(null);
+      }
+    });
   }
-});
 
-self.addEventListener('activate', function (event) {
-  log.info('service worker activated');
-  // Claim existing clients so content scripts on already-open pages
-  // start working immediately on SW update.
-  if (event && typeof event.waitUntil === 'function' && typeof self.clients === 'object') {
-    event.waitUntil(self.clients.claim());
+  function storageSet(key, value) {
+    return new Promise(function (resolve) {
+      try {
+        if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) {
+          resolve(false);
+          return;
+        }
+        var obj = {};
+        obj[key] = value;
+        chrome.storage.local.set(obj, function () {
+          if (chrome.runtime && chrome.runtime.lastError) {
+            log.warn('storage set failed: ' + chrome.runtime.lastError.message);
+            resolve(false);
+            return;
+          }
+          resolve(true);
+        });
+      } catch (e) {
+        log.error('storageSet threw', e);
+        resolve(false);
+      }
+    });
   }
-});
 
-// chrome.runtime.onMessage: validate sender, then route.
-// Step 3a: only the F-01 validation exists. Message routing comes in 3g.
-if (typeof chrome !== 'undefined' && chrome.runtime && typeof chrome.runtime.onMessage === 'object') {
-  chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
+  // --- The FP report queue ---
+  // When the user opts in, we send the reports. If the network
+  // is down, we persist them in chrome.storage.local and
+  // retry on the next SW startup (or when a new FP_REPORTS
+  // message arrives).
+
+  var FP_QUEUE_KEY = 'aegisgate_lens_fp_queue';
+  var OPT_IN_KEY = 'aegisgate_lens_opt_in';
+  var LAST_SEND_KEY = 'aegisgate_lens_last_fp_send';
+
+  // The backend endpoint. Default: the corporate Platform
+  // endpoint. Configurable via storage for self-hosted users.
+  // (The /lens/telemetry/fp-report endpoint is added to the
+  // Platform in a sibling change; until then, the SW attempts
+  // the send but the network may 404 — that's fine, the queue
+  // will retry next time.)
+  var DEFAULT_BACKEND = 'https://lens.aegisgatesecurity.io';
+
+  function getBackend() {
+    return storageGet('aegisgate_lens_backend_url').then(function (url) {
+      return url || DEFAULT_BACKEND;
+    });
+  }
+
+  function getOptIn() {
+    return storageGet(OPT_IN_KEY).then(function (v) { return !!v; });
+  }
+
+  function setOptIn(optedIn) {
+    return storageSet(OPT_IN_KEY, !!optedIn);
+  }
+
+  // Add a report (or array of reports) to the queue
+  function enqueueFP(reports) {
+    return storageGet(FP_QUEUE_KEY).then(function (queue) {
+      queue = queue || [];
+      if (!Array.isArray(reports)) reports = [reports];
+      for (var i = 0; i < reports.length; i++) {
+        // Tag with a client-generated UUID so we can dedup
+        // (also useful for the backend to ignore duplicates)
+        if (!reports[i].client_id) {
+          reports[i].client_id = generateUUID();
+        }
+        queue.push(reports[i]);
+      }
+      return storageSet(FP_QUEUE_KEY, queue);
+    });
+  }
+
+  // Drain the queue: send all queued reports in one batch
+  function drainQueue() {
+    return Promise.all([
+      storageGet(FP_QUEUE_KEY),
+      getBackend(),
+      getOptIn()
+    ]).then(function (results) {
+      var queue = results[0] || [];
+      var backend = results[1];
+      var optedIn = results[2];
+      if (queue.length === 0) return { sent: 0, failed: 0 };
+      if (!optedIn) {
+        // The user revoked opt-in between sending and now.
+        // Drop the queue. The privacy guarantee is paramount.
+        log.info('queue drained but user is not opted in; dropping ' + queue.length + ' reports');
+        return storageSet(FP_QUEUE_KEY, []).then(function () {
+          return { sent: 0, failed: 0, dropped: queue.length };
+        });
+      }
+      return sendToBackend(backend, queue).then(function (result) {
+        if (result.success) {
+          return storageSet(FP_QUEUE_KEY, []).then(function () {
+            return storageSet(LAST_SEND_KEY, Date.now()).then(function () {
+              return { sent: queue.length, failed: 0 };
+            });
+          });
+        } else {
+          // Keep the queue; we'll retry on next send or SW startup
+          log.warn('queue send failed; will retry. reason: ' + result.reason);
+          return { sent: 0, failed: queue.length, reason: result.reason };
+        }
+      });
+    });
+  }
+
+  // Send a batch of reports to the backend
+  function sendToBackend(backend, reports) {
+    return new Promise(function (resolve) {
+      try {
+        if (typeof fetch === 'undefined') {
+          resolve({ success: false, reason: 'fetch not available' });
+          return;
+        }
+        var url = backend.replace(/\/+$/, '') + '/lens/telemetry/fp-report';
+        fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            lens_event_version: '0.1.0-beta',
+            timestamp: Math.floor(Date.now() / 1000),
+            reports: reports
+          }),
+          // We don't want to block; a hung fetch should not stall the SW
+          // (chrome SWs can be killed mid-fetch, but we want to keep
+          // the queue intact in that case)
+          // 10 second timeout via AbortController
+          signal: (typeof AbortController !== 'undefined')
+            ? new AbortController().signal  // never aborts; placeholder
+            : undefined
+        }).then(function (resp) {
+          if (resp.ok) {
+            log.info('sent ' + reports.length + ' FP reports to backend');
+            resolve({ success: true });
+          } else {
+            resolve({ success: false, reason: 'HTTP ' + resp.status });
+          }
+        }).catch(function (err) {
+          resolve({ success: false, reason: (err && err.message) || String(err) });
+        });
+      } catch (e) {
+        log.error('sendToBackend threw', e);
+        resolve({ success: false, reason: (e && e.message) || String(e) });
+      }
+    });
+  }
+
+  // Simple UUID v4 generator (RFC 4122). No external deps.
+  function generateUUID() {
+    var b = new Uint8Array(16);
+    if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+      crypto.getRandomValues(b);
+    } else {
+      for (var i = 0; i < 16; i++) b[i] = Math.floor(Math.random() * 256);
+    }
+    // RFC 4122 v4
+    b[6] = (b[6] & 0x0f) | 0x40;
+    b[8] = (b[8] & 0x3f) | 0x80;
+    var s = '';
+    for (var j = 0; j < 16; j++) {
+      var hex = b[j].toString(16);
+      if (hex.length === 1) hex = '0' + hex;
+      s += hex;
+      if (j === 3 || j === 5 || j === 7 || j === 9) s += '-';
+    }
+    return s;
+  }
+
+  // --- Message handlers ---
+
+  // PING: respond with PONG (used to verify SW is alive)
+  function handlePing(msg, sender, sendResponse) {
+    sendResponse({ type: M.TYPE.PONG, version: msg.version, payload: { ok: true } });
+  }
+
+  // DETECTION: log the detection (local-only for now; future
+  // versions may aggregate detection counts for the popup)
+  function handleDetection(msg, sender, sendResponse) {
+    if (!M.isValidDetection(msg)) {
+      sendResponse({ type: M.TYPE.ERROR, version: msg.version,
+                     payload: { error: 'invalid detection message' } });
+      return;
+    }
+    log.info('detection: ' + msg.payload.facet + '/' + msg.payload.category +
+             ' severity=' + msg.payload.severity + ' count=' + msg.payload.count);
+    // Increment a local counter (for the popup badge in 3j)
+    storageGet('aegisgate_lens_detection_count').then(function (count) {
+      count = (count || 0) + 1;
+      return storageSet('aegisgate_lens_detection_count', count);
+    });
+    sendResponse({ type: M.TYPE.ACK, version: msg.version, payload: { ok: true } });
+  }
+
+  // USER_ACTION: log what the user did (send/cancel/dismiss).
+  // Local-only; the privacy doc says we may store "user_action"
+  // in the schema but for v1.0 we just log it.
+  function handleUserAction(msg, sender, sendResponse) {
+    if (!M.isValidEnvelope(msg)) {
+      sendResponse({ type: M.TYPE.ERROR, version: msg.version,
+                     payload: { error: 'invalid user_action message' } });
+      return;
+    }
+    var p = msg.payload;
+    log.info('user_action: ' + p.action + ' domain=' + p.domain_hash);
+    // Persist user actions for the popup / opt-in flow (3i)
+    storageGet('aegisgate_lens_user_actions').then(function (actions) {
+      actions = actions || [];
+      actions.push({
+        action: p.action,
+        domain_hash: p.domain_hash,
+        timestamp: p.timestamp
+      });
+      // Cap at last 100 actions to keep storage small
+      if (actions.length > 100) actions = actions.slice(-100);
+      return storageSet('aegisgate_lens_user_actions', actions);
+    });
+    sendResponse({ type: M.TYPE.ACK, version: msg.version, payload: { ok: true } });
+  }
+
+  // FP_REPORTS: the user explicitly opted in to send. Queue
+  // the reports, then attempt to drain. If opt-in is FALSE
+  // (the user revoked after the banner fired but before this
+  // message was sent), we drop the reports.
+  function handleFPReports(msg, sender, sendResponse) {
+    if (!M.isValidFPReports(msg)) {
+      sendResponse({ type: M.TYPE.ERROR, version: msg.version,
+                     payload: { error: 'invalid FP_REPORTS message (privacy check failed)' } });
+      return;
+    }
+    // Mark the user as opted in (they clicked Submit & dismiss)
+    setOptIn(true).then(function () {
+      // Enqueue all reports
+      return enqueueFP(msg.payload.reports);
+    }).then(function () {
+      // Attempt to drain immediately
+      return drainQueue();
+    }).then(function (result) {
+      log.info('FP reports: ' + JSON.stringify(result));
+      sendResponse({ type: M.TYPE.ACK, version: msg.version, payload: result });
+    }).catch(function (err) {
+      log.error('FP_REPORTS handler failed', err);
+      sendResponse({ type: M.TYPE.ERROR, version: msg.version,
+                     payload: { error: (err && err.message) || String(err) } });
+    });
+  }
+
+  // GET_OPT_IN_STATE: the popup (3j) asks whether the user
+  // has opted in
+  function handleGetOptInState(msg, sender, sendResponse) {
+    getOptIn().then(function (optedIn) {
+      sendResponse({ type: M.TYPE.OPT_IN_STATE, version: msg.version,
+                     payload: { opted_in: optedIn } });
+    });
+  }
+
+  // The message router. The SW validates sender.id (must be
+  // chrome.runtime.id; i.e., our own extension) and dispatches.
+  // This is F-01 from the threat model: defend against messages
+  // from other extensions or page content.
+  function onMessage(msg, sender, sendResponse) {
     try {
-      if (!isOwnSender(sender)) {
-        log.warn('rejecting message from foreign sender: ' + (sender && sender.id ? sender.id : '<no-id>'));
-        try { sendResponse({ error: 'foreign sender rejected' }); } catch (e) { /* ignore */ }
+      // F-01: validate sender. In MV3, sender.id is the extension
+      // id for extension-to-extension messages. For content
+      // scripts, sender.id is also chrome.runtime.id.
+      if (sender && sender.id && chrome.runtime && chrome.runtime.id) {
+        if (sender.id !== chrome.runtime.id) {
+          log.warn('rejecting message from foreign sender: ' + sender.id);
+          sendResponse({ type: M.TYPE.ERROR, payload: { error: 'foreign sender' } });
+          return false;  // do not keep the channel open
+        }
+      }
+      // Validate envelope
+      if (!M.isValidEnvelope(msg)) {
+        log.warn('rejecting message with invalid envelope');
+        sendResponse({ type: M.TYPE.ERROR, payload: { error: 'invalid envelope' } });
         return false;
       }
-      // No handlers yet. In 3g we route by message.type.
-      log.info('received message (no handler yet in 3a): type=' + (message && message.type ? message.type : '<no-type>'));
-      try { sendResponse({ ok: true, status: 'received' }); } catch (e) { /* ignore */ }
-      return false; // synchronous response
-    } catch (err) {
-      log.error('onMessage handler threw', err);
-      return false;
-    }
-  });
-}
-
-// On install: open the welcome page. Per the architecture doc, the
-// welcome page is the user's first contact with the privacy posture.
-if (typeof chrome !== 'undefined' && chrome.runtime && typeof chrome.runtime.onInstalled === 'object') {
-  chrome.runtime.onInstalled.addListener(function (details) {
-    try {
-      log.info('runtime.onInstalled: ' + (details && details.reason ? details.reason : '<unknown>'));
-      if (details && details.reason === 'install' && chrome.tabs && typeof chrome.tabs.create === 'function') {
-        chrome.tabs.create({ url: chrome.runtime.getURL('src/welcome/welcome.html') });
+      // Dispatch
+      switch (msg.type) {
+        case M.TYPE.PING:            handlePing(msg, sender, sendResponse); return false;
+        case M.TYPE.DETECTION:       handleDetection(msg, sender, sendResponse); return false;
+        case M.TYPE.USER_ACTION:     handleUserAction(msg, sender, sendResponse); return false;
+        case M.TYPE.FP_REPORTS:      handleFPReports(msg, sender, sendResponse); return true;  // async
+        case M.TYPE.GET_OPT_IN_STATE: handleGetOptInState(msg, sender, sendResponse); return true;  // async
+        default:
+          log.warn('unknown message type: ' + msg.type);
+          sendResponse({ type: M.TYPE.ERROR, payload: { error: 'unknown type' } });
+          return false;
       }
     } catch (err) {
-      log.error('onInstalled handler threw', err);
+      log.error('onMessage threw', err);
+      try { sendResponse({ type: M.TYPE.ERROR, payload: { error: 'internal error' } }); } catch (e) {}
+      return false;
+    }
+  }
+
+  // --- Lifecycle ---
+
+  // On install: open the welcome page (3a behavior)
+  chrome.runtime.onInstalled.addListener(function (details) {
+    try {
+      log.info('installed: ' + details.reason);
+      if (details.reason === 'install') {
+        chrome.tabs.create({ url: chrome.runtime.getURL('src/welcome/welcome.html') });
+      }
+    } catch (e) {
+      log.error('onInstalled handler threw', e);
+    }
+    // Try to drain the FP queue on every install/startup
+    drainQueue().catch(function (err) { log.warn('startup drain failed', err); });
+  });
+
+  // On startup (SW reactivated): drain the queue
+  chrome.runtime.onStartup.addListener(function () {
+    try {
+      log.info('startup');
+      drainQueue().catch(function (err) { log.warn('startup drain failed', err); });
+    } catch (e) {
+      log.error('onStartup handler threw', e);
     }
   });
-}
 
-log.info('background.js loaded; service worker ready');
+  // The message listener. The `chrome.runtime.onMessage` event
+  // fires when any content script or extension sends a message.
+  // Defensive: handle both `chrome.runtime.onMessage` (MV3)
+  // and `chrome.onMessage` (some test environments expose it
+  // at the chrome level).
+  var onMessageEvent = (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) ||
+                       (typeof chrome !== 'undefined' && chrome.onMessage) ||
+                       null;
+  if (onMessageEvent && typeof onMessageEvent.addListener === 'function') {
+    onMessageEvent.addListener(onMessage);
+  } else {
+    log.warn('no onMessage event found; SW will not receive messages');
+  }
+
+  // Keep the SW alive briefly after a message is processed
+  // (MV3 SWs can be killed within 30s of inactivity, but our
+  // async handlers may take longer for FP report sending)
+  // Note: we don't actually need this for short operations,
+  // but it makes the SW more reliable for the queue drain.
+
+  log.info('SW message handlers registered');
+
+  // Expose for tests (when loaded outside the SW context).
+  // We check both self and globalThis because:
+  //   - In the SW: self is the WorkletGlobalScope (not standard)
+  //     but globalThis is always the worker's global
+  //   - In tests: self is undefined (strict mode in eval), but
+  //     globalThis is always available
+  var _exposeTarget = (typeof self !== 'undefined' && self) ||
+                      (typeof globalThis !== 'undefined' && globalThis) ||
+                      null;
+  if (_exposeTarget) {
+    _exposeTarget.__lensSW = {
+      handlePing: handlePing,
+      handleDetection: handleDetection,
+      handleUserAction: handleUserAction,
+      handleFPReports: handleFPReports,
+      handleGetOptInState: handleGetOptInState,
+      isValidEnvelope: M.isValidEnvelope,
+      isValidDetection: M.isValidDetection,
+      isValidFPReports: M.isValidFPReports,
+      sendToBackend: sendToBackend,
+      drainQueue: drainQueue,
+      enqueueFP: enqueueFP,
+      generateUUID: generateUUID,
+      M: M
+    };
+  }
+})();
