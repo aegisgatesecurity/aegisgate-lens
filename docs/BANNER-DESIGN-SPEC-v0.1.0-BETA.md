@@ -19,6 +19,22 @@ must:
 5. **Be honest** about privacy — "we never sent your prompt to
    any server"
 
+## User decisions (2026-07-04 16:25)
+
+1. **Color mapping**: approved as critical=rose / high=amber /
+   medium=cyan / low=slate (the site's exact palette)
+2. **Action button order**: approved as
+   Cancel / Edit & redact / Send anyway (left to right)
+3. **Match masking**: approved as first 4 + `…` + last 4
+   (e.g. `4111…1111`) for most types; emails get
+   `j***@e****.com` style
+4. **"Learn more" link**: points to the **GitHub README**
+   (`github.com/aegisgatesecurity/aegisgate-lens#readme`).
+   The corporate site doesn't have public-ready docs yet
+5. **Dismissal flow**: the elaborate opt-in flow (see below)
+6. **Order of work**: 3e (dispatcher) first, then 3f (banner),
+   then 3g, 3h, 3i, 3j, 3k in order
+
 ## Brand assets extracted from the corporate site
 
 From `themes/aegisgate/assets/css/main.css`:
@@ -197,6 +213,124 @@ must not cover the AI provider's UI.
 - The welcome page (separate, in 3a)
 - The popup (Step 3j: threat-intel badge)
 - The build tool (Step 3k)
+
+## Dismissal flow (with opt-in threat-intel reporting)
+
+The user's directive (2026-07-04): the "false positive" dismissal
+IS the opt-in mechanism for the threat-intel (TI) engine. Privacy
+is the default; the user opts in by choosing to submit a sanitized
+FP report. This is consistent with the 12 non-negotiables in the
+legal doc and the Tier 0 / Tier 1 / Tier 2 model in the
+corporate privacy page.
+
+### Flow
+
+When the user clicks **"This is a false positive"** (a link
+below the detection list, in muted text), the banner expands
+inline to show the dismiss form:
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│ [🛡️ AegisGate Lens] 1 sensitive item detected       [×]  [?] │
+├──────────────────────────────────────────────────────────────┤
+│  ● Credit card number  [CRITICAL]   match: 4111…1111        │
+├──────────────────────────────────────────────────────────────┤
+│  Tell us why this is a false positive (helps us improve):   │
+│                                                              │
+│  ☐ This is test/fake data                                   │
+│  ☐ This is my own data (I know what I'm doing)              │
+│  ☐ This is for a legitimate use case I trust                │
+│                                                              │
+│  [Submit & dismiss]  [Just dismiss (private)]  [Cancel]     │
+└──────────────────────────────────────────────────────────────┘
+```
+
+### Two dismiss paths
+
+1. **"Submit & dismiss"** — the user opts in to sending ONE
+   anonymous, sanitized FP report. This is the only time Lens
+   sends any data unless the user has also separately enabled
+   Tier 1 telemetry in settings.
+
+2. **"Just dismiss (private)"** — the dismissal is local-only.
+   No data is sent. The detection is suppressed for 24h on the
+   same domain.
+
+### What "Submit & dismiss" sends (one-time, sanitized, opt-in)
+
+```json
+{
+  "domain_hash": "abc123...",          // SHA-256 prefix of hostname
+  "category": "pii_credit_card",
+  "pattern_id": "visa_v1",
+  "reason": "test_data" | "own_data" | "legitimate",
+  "ml_score": 0.34,                    // only if ML was used
+  "threshold": 0.85,                   // only if ML was used
+  "model_version": "0.1.0+regex-v1",
+  "lens_version": "0.1.0-beta",
+  "timestamp": 1234567890
+}
+```
+
+**The prompt content is NEVER sent.** No URLs, no page content,
+no user identifier. The report is bucketed by `domain_hash` so
+AegisGate can count FPs by AI provider without knowing which
+provider it is.
+
+### Where the data goes
+
+The Lens client sends this to the existing Platform backend
+endpoint at `POST /lens/telemetry/fp-report` (new endpoint, to
+be added in 3g when we wire the SW → backend channel). The
+backend aggregates the reports and feeds the TI engine's
+FP-reduction model. The user can see all reports they have
+sent in the Lens popup (3j).
+
+### Dismissal scope
+
+- Same exact detection: `category + pattern_id` (NOT the full
+  match text — only the pattern fingerprint)
+- Same domain: `domain_hash`
+- 24 hours (then the warning reappears)
+
+### State machine
+
+```
+[detection fires]
+      ↓
+[banner shown]
+      ↓
+[user clicks "This is a false positive"]
+      ↓
+[dismiss form shown inline]
+      ↓
+   ┌──┴──┐
+   ↓     ↓
+[Submit  [Just
+ &       dismiss
+ dismiss] (private)]
+   ↓     ↓
+[FP      [local
+ report  storage
+ sent]   only]
+   ↓     ↓
+   └──┬──┘
+      ↓
+[banner closes]
+      ↓
+[24h suppression on domain+pattern]
+```
+
+### Why this is a good opt-in model
+
+1. **No friction**: the user opts in at the moment of value
+   (their false positive is going away)
+2. **Transparent**: the form is open about what is sent
+3. **Reversible**: the user can clear all FP reports in the
+   popup
+4. **Narrow**: only the specific pattern + reason is sent
+5. **Bounded**: the user can never accidentally enable
+   broad telemetry by clicking "Submit & dismiss"
 
 ## Sign-off
 
