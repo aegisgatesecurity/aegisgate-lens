@@ -22,15 +22,22 @@
                   (typeof globalThis !== 'undefined' && globalThis.__lensSelectors) ||
                   null;
 
-  // The detection pipeline. The dispatcher (3e) will replace this
-  // with a real 6-facet detection. For Step 3d, we just check the
-  // PII facet as a smoke test.
+  // The detection pipeline. Delegates to the 6-facet dispatcher
+  // (loaded in 3e). The dispatcher aggregates PII + Secrets + XSS +
+  // Compliance (regex facets) and (in 3h) Toxicity + Prompt-
+  // Injection (ML facets). It validates each event against the
+  // schema, deduplicates by category, and sorts by severity.
   function detectPrompt(text) {
-    var pii = (typeof self !== 'undefined' && self.__lensPII) ||
-              (typeof globalThis !== 'undefined' && globalThis.__lensPII) ||
-              null;
-    if (!pii) return [];
-    return pii.detect(text);
+    var dispatcher = (typeof self !== 'undefined' && self.__lensDispatcher) ||
+                     (typeof globalThis !== 'undefined' && globalThis.__lensDispatcher) ||
+                     null;
+    if (!dispatcher) {
+      log.error('prompt-detect: dispatcher not available; cannot detect');
+      return [];
+    }
+    var result = dispatcher.detect(text);
+    // The banner wants the events array (with sample, matches, etc.)
+    return result.events;
   }
 
   // Debounce helper: schedule fn to run after ms of quiet

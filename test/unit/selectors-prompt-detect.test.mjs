@@ -240,16 +240,22 @@ test('selectors: identifyProvider matches case-insensitively', () => {
 
 // --- Tests for prompt-detect.js ---
 
-// Mock the pii.js and luhn.js dependencies before loading prompt-detect
+// Mock the dispatcher dependencies before loading prompt-detect.
+// We load EVERY detector so the dispatcher has all 4 facets.
 function loadWithDeps() {
   // Reset globals
   globalThis.window = { location: { hostname: 'chat.openai.com' } };
   globalThis.document = new MockDocument();
 
-  // Load deps
+  // Load deps (order matters: facets first, then schema, then dispatcher)
   loadModule('src/util/logger.js', '__lensLogger');
   loadModule('src/detectors/luhn.js', '__lensLuhn');
   loadModule('src/detectors/regex/pii.js', '__lensPII');
+  loadModule('src/detectors/regex/secrets.js', '__lensSecrets');
+  loadModule('src/detectors/regex/source_xss.js', '__lensXSS');
+  loadModule('src/detectors/regex/compliance.js', '__lensCompliance');
+  loadModule('src/privacy/schema.js', '__lensSchema');
+  loadModule('src/detectors/index.js', '__lensDispatcher');
   loadModule('src/util/selectors.js', '__lensSelectors');
 
   // Now load prompt-detect
@@ -293,17 +299,23 @@ test('prompt-detect: shutdown is idempotent', () => {
   assert.equal(st.provider, null);
 });
 
-test('prompt-detect: detectPrompt uses PII', () => {
+test('prompt-detect: detectPrompt delegates to dispatcher', () => {
   const pd = loadWithDeps();
-  var dets = pd.detectPrompt('My SSN is 123-45-6789');
-  assert.ok(dets.length > 0, 'expected PII detection');
-  assert.equal(dets[0].category, 'pii_ssn');
+  var result = pd.detectPrompt('My SSN is 123-45-6789');
+  assert.ok(Array.isArray(result), 'detectPrompt should return an array');
+  assert.ok(result.length > 0, 'expected at least one event');
+  // The dispatcher returns events with facet + category + severity
+  var first = result[0];
+  assert.equal(typeof first.facet, 'string');
+  assert.equal(first.facet, 'pii');
+  assert.equal(first.category, 'pii_ssn');
+  assert.equal(first.severity, 'critical');
 });
 
 test('prompt-detect: detectPrompt returns empty for benign', () => {
   const pd = loadWithDeps();
-  var dets = pd.detectPrompt('What is the capital of France?');
-  assert.equal(dets.length, 0);
+  var result = pd.detectPrompt('What is the capital of France?');
+  assert.equal(result.length, 0);
 });
 
 test('prompt-detect: identifyProvider on wrong hostname', () => {

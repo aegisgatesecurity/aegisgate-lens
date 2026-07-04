@@ -44,21 +44,30 @@
                   (typeof globalThis !== 'undefined' && globalThis.__lensSelectors) ||
                   null;
 
-  // The onDetect callback. The banner UI (3f) will replace this
-  // placeholder with a real banner element. For 3d, we just log
-  // the detection count.
-  function onDetect(detections, text) {
+  // The onDetect callback. Called by prompt-detect when detections
+  // change. The `result` is a DetectionResult from the dispatcher:
+  //   {
+  //     text: string,
+  //     hasDetections: boolean,
+  //     count: number,
+  //     maxSeverity: 'critical' | 'high' | 'medium' | 'low' | null,
+  //     events: [DetectionEvent]
+  //   }
+  //
+  // For 3d, we just log a summary. The banner UI (3f) will replace
+  // this with a real banner element.
+  function onDetect(events, text) {
     try {
-      if (detections && detections.length > 0) {
+      if (events && events.length > 0) {
         // Group by severity for a quick summary
         var crit = 0, high = 0, med = 0, low = 0;
-        for (var i = 0; i < detections.length; i++) {
-          if (detections[i].severity === 'critical') crit++;
-          else if (detections[i].severity === 'high') high++;
-          else if (detections[i].severity === 'medium') med++;
+        for (var i = 0; i < events.length; i++) {
+          if (events[i].severity === 'critical') crit++;
+          else if (events[i].severity === 'high') high++;
+          else if (events[i].severity === 'medium') med++;
           else low++;
         }
-        log.info('detected ' + detections.length + ' items (crit=' + crit + ' high=' + high + ' med=' + med + ' low=' + low + ')');
+        log.info('detected ' + events.length + ' items (crit=' + crit + ' high=' + high + ' med=' + med + ' low=' + low + ')');
         // TODO(3f): show banner
       }
     } catch (err) {
@@ -74,14 +83,14 @@
   //
   // For 3d, we use confirm() as a placeholder. The banner UI
   // (3f) will replace this with proper UI buttons.
-  function onSendIntercept(detections, text) {
+  function onSendIntercept(events, text) {
     try {
       // Summarize what was found
-      var summary = detections.length + ' item(s) detected:\n';
-      for (var i = 0; i < Math.min(detections.length, 5); i++) {
-        summary += '  - [' + detections[i].severity + '] ' + detections[i].category + '\n';
+      var summary = events.length + ' item(s) detected:\n';
+      for (var i = 0; i < Math.min(events.length, 5); i++) {
+        summary += '  - [' + events[i].severity + '] ' + events[i].category + '\n';
       }
-      if (detections.length > 5) summary += '  ... and ' + (detections.length - 5) + ' more\n';
+      if (events.length > 5) summary += '  ... and ' + (events.length - 5) + ' more\n';
       summary += '\nOK = send anyway, Cancel = cancel the send';
       // NOTE: confirm() is a placeholder for 3d. The banner UI
       // (3f) will replace this with proper UI.
