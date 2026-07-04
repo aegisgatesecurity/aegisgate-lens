@@ -64,6 +64,25 @@
     if (typeof hostname !== 'string' || hostname.length === 0) {
       throw new Error('hostname must be a non-empty string');
     }
+    // Feature-detect the Web Crypto API. It is only available in
+    // secure contexts (https://, http://localhost, http://127.0.0.1,
+    // file:// on some browsers). On non-secure contexts (notably
+    // file:// in headless Chrome), crypto.subtle may be undefined
+    // OR may hang on .digest() without throwing — either way the
+    // await blocks indefinitely and breaks init(). Fall back to
+    // the hand-rolled SHA-256 (computeDomainHashSync) so the Lens
+    // can still operate in those environments (test harnesses,
+    // local development, restricted corporate networks).
+    //
+    // Production: this branch is never taken (chat.openai.com,
+    // claude.ai, gemini.google.com, etc. are all https://).
+    // Test/non-secure: this branch is taken and uses the
+    // cross-validated sync SHA-256, which produces identical
+    // output to the async path for the same input.
+    if (typeof crypto === 'undefined' || !crypto || !crypto.subtle ||
+        typeof crypto.subtle.digest !== 'function') {
+      return computeDomainHashSync(hostname);
+    }
     const normalized = hostname.toLowerCase();
     const bytes = new TextEncoder().encode(normalized);
     const digest = await crypto.subtle.digest(ALGORITHM, bytes);
