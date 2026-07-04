@@ -44,9 +44,14 @@
         "src/detectors/regex/secrets.js",
         "src/detectors/regex/source_xss.js",
         "src/detectors/regex/compliance.js",
+        "src/privacy/schema.js",
+        "src/privacy/domain_hash.js",
         "src/detectors/index.js",
         "src/util/selectors.js",
         "src/util/prompt-detect.js",
+        "src/util/banner-icons.js",
+        "src/util/dismiss.js",
+        "src/util/banner-ui.js",
         "src/content.js"
       ],
       "run_at": "document_idle",
@@ -64,7 +69,7 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "src/welcome/welcome.html"
+        "src/util/banner.css"
       ],
       "matches": [
         "<all_urls>"

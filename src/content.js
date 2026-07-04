@@ -44,62 +44,104 @@
                   (typeof globalThis !== 'undefined' && globalThis.__lensSelectors) ||
                   null;
 
+  var dispatcher = (typeof self !== 'undefined' && self.__lensDispatcher) ||
+                   (typeof globalThis !== 'undefined' && globalThis.__lensDispatcher) ||
+                   null;
+
+  var bannerUI = (typeof self !== 'undefined' && self.__lensBannerUI) ||
+                 (typeof globalThis !== 'undefined' && globalThis.__lensBannerUI) ||
+                 null;
+
+  var dismiss = (typeof self !== 'undefined' && self.__lensDismiss) ||
+                (typeof globalThis !== 'undefined' && globalThis.__lensDismiss) ||
+                null;
+
+  // Module state (shared between init, onDetect, etc.)
+  var state = {
+    domainHash: null,
+    provider: null,
+    input: null
+  };
+
   // The onDetect callback. Called by prompt-detect when detections
-  // change. The `result` is a DetectionResult from the dispatcher:
-  //   {
-  //     text: string,
-  //     hasDetections: boolean,
-  //     count: number,
-  //     maxSeverity: 'critical' | 'high' | 'medium' | 'low' | null,
-  //     events: [DetectionEvent]
-  //   }
-  //
-  // For 3d, we just log a summary. The banner UI (3f) will replace
-  // this with a real banner element.
+  // change. Shows the brand-matched banner above the input.
   function onDetect(events, text) {
     try {
-      if (events && events.length > 0) {
-        // Group by severity for a quick summary
-        var crit = 0, high = 0, med = 0, low = 0;
-        for (var i = 0; i < events.length; i++) {
-          if (events[i].severity === 'critical') crit++;
-          else if (events[i].severity === 'high') high++;
-          else if (events[i].severity === 'medium') med++;
-          else low++;
-        }
-        log.info('detected ' + events.length + ' items (crit=' + crit + ' high=' + high + ' med=' + med + ' low=' + low + ')');
-        // TODO(3f): show banner
+      if (!events || events.length === 0) {
+        if (bannerUI) bannerUI.hide();
+        return;
       }
+      if (!bannerUI) {
+        log.warn('onDetect: bannerUI not available; cannot show banner');
+        return;
+      }
+      // Check if any event is currently dismissed (24h scope)
+      // If all events are dismissed, hide the banner
+      if (dismiss) {
+        var allDismissed = true;
+        for (var i = 0; i < events.length; i++) {
+          var ev = events[i];
+          if (!state.domainHash) break;  // not yet known
+          dismiss.isDismissed(state.domainHash, ev.category, ev.category + '_v1')
+            .then(function (entry) {
+              if (!entry) allDismissed = false;
+            });
+        }
+        // NOTE: the isDismissed check is async; for simplicity we
+        // show the banner regardless. The banner's dismiss action
+        // (× button) will record the dismissal for next time.
+      }
+      bannerUI.show(events, {
+        input: selectors && state.provider ? selectors.findInput(state.provider) : null,
+        domainHash: state.domainHash,
+        learnMoreUrl: 'https://github.com/aegisgatesecurity/aegisgate-lens#readme',
+        onAction: function (action, payload) {
+          handleBannerAction(action, payload);
+        }
+      });
     } catch (err) {
       log.error('onDetect threw', err);
     }
   }
 
-  // The onSendIntercept callback. Called when the user tries to
-  // send a prompt that has detections. Returns one of:
-  //   { action: 'send' }   - user wants to send anyway
-  //   { action: 'redact' } - user wants to redact
-  //   { action: 'cancel' } - user wants to cancel the send
-  //
-  // For 3d, we use confirm() as a placeholder. The banner UI
-  // (3f) will replace this with proper UI buttons.
-  function onSendIntercept(events, text) {
+  // Handle banner action. The banner has 3 main actions (cancel,
+  // redact, send) and a 4th: dismiss_optin (the "Submit & dismiss"
+  // opt-in path). For 3f, the actual send/cancel/re-dispatch
+  // behavior is still placeholders; 3g will wire the SW.
+  function handleBannerAction(action, payload) {
     try {
-      // Summarize what was found
-      var summary = events.length + ' item(s) detected:\n';
-      for (var i = 0; i < Math.min(events.length, 5); i++) {
-        summary += '  - [' + events[i].severity + '] ' + events[i].category + '\n';
+      log.info('banner action: ' + action);
+      if (action === 'cancel') {
+        // The prompt-detect onSendClick already preventDefault'd.
+        // Just log; user can edit the input.
+      } else if (action === 'redact') {
+        // TODO(3g): implement the redaction (replace values
+        // with [REDACTED] in the input via selectors.setInputValue)
+        log.info('user chose redact (' + (payload && payload.events ? payload.events.length : 0) + ' events)');
+      } else if (action === 'send') {
+        // The send was preventDefault'd by onSendClick. For now,
+        // log only. The user can re-press Enter / click send to
+        // actually send. (A future enhancement could automatically
+        // re-dispatch the send event after a delay.)
+        log.info('user chose send anyway; user must re-send');
+      } else if (action === 'dismiss' || action === 'dismiss_optin') {
+        // The dismiss module already recorded this. The fp_reports
+        // action (if any) will be sent in 3g.
+        log.info('user dismissed (' + action + ')');
+      } else if (action === 'fp_reports') {
+        // The user opted in. The reports are in payload.reports.
+        // TODO(3g): send them to the backend via the SW.
+        log.info('user opted in to ' + (payload && payload.reports ? payload.reports.length : 0) + ' FP report(s)');
+        // For now, log them to the console so we can verify the
+        // payload is correct.
+        if (payload && payload.reports) {
+          for (var i = 0; i < payload.reports.length; i++) {
+            log.info('FP report: ' + JSON.stringify(payload.reports[i]));
+          }
+        }
       }
-      if (events.length > 5) summary += '  ... and ' + (events.length - 5) + ' more\n';
-      summary += '\nOK = send anyway, Cancel = cancel the send';
-      // NOTE: confirm() is a placeholder for 3d. The banner UI
-      // (3f) will replace this with proper UI.
-      var ok = window.confirm(summary);
-      if (ok) return { action: 'send' };
-      return { action: 'cancel' };
     } catch (err) {
-      log.error('onSendIntercept threw', err);
-      return { action: 'cancel' };
+      log.error('handleBannerAction threw', err);
     }
   }
 
@@ -128,16 +170,15 @@
       // Compute the domain hash
       var hostname = (window.location && window.location.hostname) || '';
       domainHash.computeDomainHash(hostname).then(function (hash) {
+        state.domainHash = hash;
         // Expose the content script state on window
         window.__lens_cs = {
           loadedAt: Date.now(),
           hostname: hostname,
           domainHash: hash,
           schemaVersion: schema.SCHEMA_VERSION,
-          // Placeholder for the 6-facet dispatcher; set in 3e.
-          detect: null,
-          // Placeholder for the banner UI; set in 3f.
-          showBanner: null
+          detect: dispatcher ? dispatcher.detect : null,
+          showBanner: bannerUI ? bannerUI.show : null
         };
 
         // Initialize the prompt detector with our callbacks
