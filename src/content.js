@@ -67,6 +67,15 @@
   // change. Shows the brand-matched banner above the input.
   function onDetect(events, text) {
     try {
+      // Expose lastDetections on window.__lens_cs for diagnostics,
+      // testing (headless smoke test), and the popup's "what was
+      // detected" panel. This is the bridge between prompt-detect's
+      // internal state and the test harness / popup UI.
+      if (window.__lens_cs) {
+        window.__lens_cs.lastDetections = events || [];
+        window.__lens_cs.lastText = text || '';
+        window.__lens_cs.lastDetectedAt = Date.now();
+      }
       if (!events || events.length === 0) {
         if (bannerUI) bannerUI.hide();
         return;

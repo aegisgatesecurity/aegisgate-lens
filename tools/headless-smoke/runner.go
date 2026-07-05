@@ -75,23 +75,21 @@ func runOneCase(cdp *CDPClient, target cdpTarget, tc TestCase, timeout time.Dura
 	readState := `
 		(function() {
 			const cs = window.__lens_cs;
-			if (!cs) return JSON.stringify({ error: '__lens_cs undefined' });
+			if (!cs) return { error: '__lens_cs undefined' };
 			const dets = cs.lastDetections || [];
 			const banners = document.querySelectorAll('[data-aegisgate-lens="banner"]');
 			const visibleBanners = Array.from(banners).filter(b => b.style.display !== 'none');
 			const ta = document.getElementById('prompt-textarea');
+			const pd = window.__lensPromptDetect;
+			const pdInfo = pd ? (pd.getState ? pd.getState() : { state: pd.state }) : null;
 			const directResult = (function() {
 				try {
 					const d = window.__lensDispatcher;
 					if (!d) return 'dispatcher undefined';
-					const facets = (d.listFacets && d.listFacets()) || [];
 					const r = d.detect('My SSN is 123-45-6789 and email is test@example.com');
 					return {
-						facets: facets,
-						detectIsArray: Array.isArray(r),
 						detectEvents: r && r.events ? r.events.length : null,
-						detectCount: r && typeof r.count === 'number' ? r.count : null,
-						detectSample: r && r.events && r.events[0] ? JSON.stringify(r.events[0]).substring(0, 200) : null
+						detectCount: r && typeof r.count === 'number' ? r.count : null
 					};
 				} catch (e) { return 'error: ' + e.message; }
 			})();
@@ -103,6 +101,7 @@ func runOneCase(cdp *CDPClient, target cdpTarget, tc TestCase, timeout time.Dura
 				provider_id: cs.provider ? cs.provider.id : null,
 				input_found: !!ta,
 				ta_value: ta ? ta.value : null,
+				pd_info: pdInfo,
 				direct_test: directResult
 			};
 		})()
@@ -134,11 +133,7 @@ func runOneCase(cdp *CDPClient, target cdpTarget, tc TestCase, timeout time.Dura
 		ProviderID     string   `json:"provider_id"`
 		InputFound     bool     `json:"input_found"`
 		TAValue        string   `json:"ta_value"`
-		PDState        *struct {
-			Provider string `json:"provider"`
-			HasInput  bool   `json:"hasInput"`
-			LastValue string `json:"lastValue"`
-		} `json:"pd_state"`
+		PDState        interface{} `json:"pd_info"`
 		DirectTest     interface{} `json:"direct_test"`
 	}
 	if err := json.Unmarshal(res, &state); err != nil {
