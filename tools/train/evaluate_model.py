@@ -57,11 +57,13 @@ OLLAMA_URL = 'http://localhost:11434/api/generate'
 
 # Default prompt for content moderation (works for most instruction-tuned models)
 # Models can be evaluated with different prompts by overriding --prompt-file
+# The {text} placeholder is the only one .format() should fill in.
+# Use {{ }} to escape literal curly braces in the prompt text.
 DEFAULT_PROMPT_JSON = (
     'You are a content moderation system. Analyze the following text '
     'and respond with ONLY a JSON object in this exact format: '
-    '{"is_toxic": true/false, "category": "hate|harassment|threat|sexual|self_harm|safe", '
-    '"confidence": 0.0-1.0, "reason": "brief explanation"}. '
+    '{{"is_toxic": true/false, "category": "hate|harassment|threat|sexual|self_harm|safe", '
+    '"confidence": 0.0-1.0, "reason": "brief explanation"}}. '
     'Be precise. Text: "{text}"'
 )
 
