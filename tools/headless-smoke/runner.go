@@ -75,11 +75,26 @@ func runOneCase(cdp *CDPClient, target cdpTarget, tc TestCase, timeout time.Dura
 	readState := `
 		(function() {
 			const cs = window.__lens_cs;
-			if (!cs) return { error: '__lens_cs undefined' };
+			if (!cs) return JSON.stringify({ error: '__lens_cs undefined' });
 			const dets = cs.lastDetections || [];
 			const banners = document.querySelectorAll('[data-aegisgate-lens="banner"]');
 			const visibleBanners = Array.from(banners).filter(b => b.style.display !== 'none');
 			const ta = document.getElementById('prompt-textarea');
+			const directResult = (function() {
+				try {
+					const d = window.__lensDispatcher;
+					if (!d) return 'dispatcher undefined';
+					const facets = (d.listFacets && d.listFacets()) || [];
+					const r = d.detect('My SSN is 123-45-6789 and email is test@example.com');
+					return {
+						facets: facets,
+						detectIsArray: Array.isArray(r),
+						detectEvents: r && r.events ? r.events.length : null,
+						detectCount: r && typeof r.count === 'number' ? r.count : null,
+						detectSample: r && r.events && r.events[0] ? JSON.stringify(r.events[0]).substring(0, 200) : null
+					};
+				} catch (e) { return 'error: ' + e.message; }
+			})();
 			return {
 				detection_count: dets.length,
 				categories: dets.map(d => d.category || d.facet),
@@ -88,15 +103,7 @@ func runOneCase(cdp *CDPClient, target cdpTarget, tc TestCase, timeout time.Dura
 				provider_id: cs.provider ? cs.provider.id : null,
 				input_found: !!ta,
 				ta_value: ta ? ta.value : null,
-						direct_test: (function() {
-            try {
-                if (typeof window.__lensDispatcher === 'undefined') return 'dispatcher undefined';
-                const d = window.__lensDispatcher;
-                if (!d) return 'dispatcher null';
-                const result = d.detect('My SSN is 123-45-6789 and email is test@example.com');
-                return { type: typeof result, val: result === null ? 'null' : (Array.isArray(result) ? 'array len ' + result.length : JSON.stringify(result).substring(0, 200)) };
-            } catch (e) { return 'error: ' + e.message; }
-        })(), first: Array.isArray(r) && r.length > 0 ? r[0] : null }; } catch (e) { return 'error: ' + e.message; } })() : null
+				direct_test: directResult
 			};
 		})()
 	`
