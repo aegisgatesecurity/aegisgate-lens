@@ -1423,6 +1423,7 @@ try {
     pii: [
       'pii_ssn', 'pii_email', 'pii_phone', 'pii_credit_card',
       'pii_address', 'pii_dob', 'pii_driver_license', 'pii_passport',
+      'pii_bip39_seed',
       'pii_tax_id', 'pii_bank_account', 'pii_ip_address'
     ],
     secrets: [
