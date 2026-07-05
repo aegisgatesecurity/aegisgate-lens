@@ -55,7 +55,7 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Security: CSP gate (no eval/Function/innerHTML)
+      - name: "Security: CSP gate (no eval/Function/innerHTML)"
         run: |
           # Check the JS source files for forbidden constructs
           if grep -rn 'eval(' src/ 2>/dev/null | grep -v "node_modules\|__pycache__" | head -5; then
@@ -72,7 +72,7 @@ jobs:
           fi
           echo "Csp gate passed"
 
-      - name: Security: Bundle signature verification (F-02)
+      - name: "Security: Bundle signature verification (F-02)"
         # Skip if no ML bundle is present (v0.1.0-beta may not have one yet)
         run: |
           BUNDLE="models/prompt-injection-v0.1.0-beta/aegisgate-lens-prompt-injection-v0.1.0-beta.bundle"
@@ -82,7 +82,7 @@ jobs:
             echo "::notice::No ML bundle found at $BUNDLE; skipping bundle verification"
           fi
 
-      - name: Security: Sender-id validation (F-01)
+      - name: "Security: Sender-id validation (F-01)"
         run: |
           # Check the SW message handler validates sender.id
           if [ -f src/background.js ]; then
@@ -93,7 +93,7 @@ jobs:
           fi
           echo "✅ F-01 sender-id validation present"
 
-      - name: Security: No external npm dependencies
+      - name: "Security: No external npm dependencies"
         run: |
           if [ -f package.json ]; then
             echo "ERROR: package.json found. The Lens must have zero npm deps."
@@ -109,7 +109,7 @@ jobs:
           fi
           echo "✅ No external npm dependencies"
 
-      - name: DCO sign-off check
+      - name: "DCO sign-off check"
         run: |
           # Check that all commits in this push have Signed-off-by
           COMMITS=$(git log --pretty=format:"%H" ${{ github.event.before }}..${{ github.event.after }} 2>/dev/null | head -10)
@@ -122,7 +122,7 @@ jobs:
           echo "✅ DCO check complete"
 
   secret-scan:
-    name: Trivy filesystem secret scan
+    name: "Trivy filesystem secret scan"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -139,7 +139,7 @@ jobs:
           severity: 'CRITICAL,HIGH'
 
   dependency-scan:
-    name: Trivy filesystem dependency scan
+    name: "Trivy filesystem dependency scan"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
