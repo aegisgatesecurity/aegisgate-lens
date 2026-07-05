@@ -105,6 +105,59 @@
     cu_minor_protection: {
       severity: 'high',
       re: /(?:minor|child|juvenile|underage)\s+(?:protection|safety|consent)|(?:under|below)\s+(?:13|16|18)\s+(?:years?|yrs?\s+old)|(?:COPPA|age[- ]appropriate)\s+compliance/gi
+    },
+    // ====================================================================
+    // NEW PATTERNS (v0.1.0-beta Compliance expansion, 2026-07-04)
+    // Each pattern: keyword + brief context, strict regex for low FP.
+    // These cover region-specific privacy regulations and
+    // cybersecurity frameworks that the Lens should detect so users
+    // can flag content containing references to them.
+    // ====================================================================
+    nist_csf_reference: {
+      // NIST Cybersecurity Framework (CSF) identifiers. CSF uses
+      // function.category.subcategory (e.g., ID.AM-1, PR.AC-1).
+      // We match the 5 function prefixes (ID, PR, DE, RS, RC) and
+      // a few of the most common subcategories.
+      severity: 'medium',
+      re: /\b(?:(?:ID|PR|DE|RS|RC)\.[A-Z]{2}-\d+(?:\.\d+)?)\b/g
+    },
+    iso_27001_reference: {
+      // ISO/IEC 27001 control references. The format is Annex A
+      // control IDs (A.5.1, A.6.1, A.8.2, etc.) or clause
+      // references (6.1.2, 8.2.1, 10.1.1). The A.x.y format is
+      // the most common.
+      severity: 'medium',
+      re: /\b(?:A\.\d{1,2}\.\d{1,2}(?:\.\d+)?|clause\s+\d{1,2}\.\d{1,2}(?:\.\d+)?)\b/g
+    },
+    ccpa_reference: {
+      // California Consumer Privacy Act (CCPA). Section numbers
+      // (1798.100, 1798.105, etc.) or keywords like "CCPA",
+      // "California Consumer Privacy", "right to know", "right to
+      // delete", "right to opt out", "sale of personal information".
+      severity: 'medium',
+      re: /\b(?:CCPA|California\s+Consumer\s+Privacy\s+Act|Civil\s+Code\s+§\s*1798(?:\.\d+)?|right\s+to\s+(?:know|delete|opt[\s-]?out|correct)|sale\s+of\s+personal\s+information|Shine\s+the\s+Light|Do\s+Not\s+Sell)\b/gi
+    },
+    lgpd_reference: {
+      // Brazilian Lei Geral de Protecao de Dados (LGPD). Article
+      // references (Art. 7, Art. 18, Art. 46) or keywords
+      // ("LGPD", "Lei Geral de Protecao de Dados", "dados pessoais",
+      // "controlador", "operador", "ANPD").
+      severity: 'medium',
+      re: /\b(?:LGPD|Lei\s+Geral\s+de\s+Protec[ãa]o\s+de\s+Dados|Art\.\s*\d+(?:[\s,ºo]+(?:I|II|III|IV|V|VI|VII|VIII|IX|X))*|dados\s+pessoais|controlador|operador|ANPD)\b/gi
+    },
+    pipeda_reference: {
+      // Canadian Personal Information Protection and Electronic
+      // Documents Act (PIPEDA). Schedule 1 references or keywords
+      // ("PIPEDA", "personal information", "consent", "Principle").
+      severity: 'medium',
+      re: /\b(?:PIPEDA|Personal\s+Information\s+Protection\s+and\s+Electronic\s+Documents\s+Act|Schedule\s+1|Principle\s+\d+(?:\.\d+)?|express\s+consent)\b/gi
+    },
+    popia_reference: {
+      // South African Protection of Personal Information Act (POPIA).
+      // Section references (s. 11, s. 14) or keywords ("POPIA",
+      // "Information Regulator", "processing of personal information").
+      severity: 'medium',
+      re: /\b(?:POPIA|Protection\s+of\s+Personal\s+Information\s+Act|s\.\s*\d+(?:\s*\(\d+\))?|Information\s+Regulator|processing\s+of\s+personal\s+information|special\s+personal\s+information)\b/gi
     }
   };
 
