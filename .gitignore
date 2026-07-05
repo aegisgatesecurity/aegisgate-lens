@@ -97,3 +97,11 @@ TODO-local.md
 
 # --- Release artifacts (committed only as git tags, never as files) ---
 release/
+
+
+# Headless smoke test (Phase 6) - build artifacts and runtime only
+# Keep: go.mod, go.sum, *.go files, dist/ (the test bundle)
+# Ignore: built binary, runtime logs and reports
+test/headless-smoke/headless-smoke-bin
+test/headless-smoke/logs/
+test/headless-smoke/reports/
