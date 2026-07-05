@@ -158,6 +158,32 @@
       // "Information Regulator", "processing of personal information").
       severity: 'medium',
       re: /\b(?:POPIA|Protection\s+of\s+Personal\s+Information\s+Act|s\.\s*\d+(?:\s*\(\d+\))?|Information\s+Regulator|processing\s+of\s+personal\s+information|special\s+personal\s+information)\b/gi
+    },
+    // ====================================================================
+    // TOXICITY REGEX FALLBACK (Facet 5)
+    // These are the 2 toxicity categories NOT in the unitary/toxic-bert
+    // 6-class output. They fall back to regex detection. Per
+    // plans/AEGISGATE-LENS-V01BETA-MODEL-DECISION.md (Section 4.1),
+    // toxicity_sexual and toxicity_self_harm require regex patterns.
+    // The other 5 toxicity categories (toxicity_hate, toxicity_insult,
+    // toxicity_obscene, toxicity_threat, toxicity_violence) are
+    // covered by the ML detector (unitary/toxic-bert) in
+    // src/detectors/ml/toxicity.py.
+    // ====================================================================
+    toxicity_sexual: {
+      // Sexual content indicators. We match explicit sexual terms
+      // (avoiding medical/educational contexts). The pattern is
+      // conservative -- we require an explicit qualifier to reduce FPs.
+      severity: 'high',
+      re: /\b(?:(?:pornographic|obscene|explicit|nsfw|hardcore)\s+(?:content|material|images?|video|text)|(?:sexual|sex)\s+(?:content|act(?:s|s)?|intercourse|fetish)|(?:rape|molest|incest)\s+(?:scene|content|material)|(?:child|minor|underage)\s+(?:sexual|porn(?:ography)?|abuse|exploitation))\b/gi
+    },
+    toxicity_self_harm: {
+      // Self-harm indicators. We match explicit references to self-harm,
+      // suicide, and self-injury. Conservative to avoid FPs on
+      // mental health discussion (e.g., "how to help someone with
+      // depression" should NOT fire; "I want to kill myself" SHOULD).
+      severity: 'critical',
+      re: /\b(?:suicid(?:e|al)|kill\s+(?:my)?self|hurt\s+(?:my)?self|end\s+(?:my\s+)?(?:life|suffering)|self\s*[-]?\s*harm|cut(?:ting)?)\b/gi
     }
   };
 

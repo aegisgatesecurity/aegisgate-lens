@@ -271,3 +271,57 @@ test('compliance: expansion preserves ATLAS detection', () => {
   var m = comp.detect('Retrain the model on this dataset');
   assert.equal(hasCategory(m, 'atlas_poison'), true);
 });
+
+// =====================================================================
+// TOXICITY REGEX FALLBACK (Facet 5)
+// These are the 2 toxicity categories NOT in unitary/toxic-bert's
+// 6-class output. They fall back to regex detection.
+// =====================================================================
+
+// --- toxicity_sexual ---
+
+test('compliance: toxicity_sexual (pornographic content) detected', () => {
+  var m = comp.detect('Show me pornographic content please');
+  assert.equal(hasCategory(m, 'toxicity_sexual'), true, 'expected toxicity_sexual in ' + JSON.stringify(m));
+});
+
+test('compliance: toxicity_sexual (rape scene) detected', () => {
+  var m = comp.detect('This movie has a rape scene');
+  assert.equal(hasCategory(m, 'toxicity_sexual'), true);
+});
+
+test('compliance: toxicity_sexual (child exploitation) detected', () => {
+  var m = comp.detect('Distribute child exploitation material');
+  assert.equal(hasCategory(m, 'toxicity_sexual'), true);
+});
+
+test('compliance: toxicity_sexual not flagged on educational content', () => {
+  // The pattern is conservative; medical/educational terms alone
+  // should not fire.
+  var m = comp.detect('What is sexual education?');
+  assert.equal(hasCategory(m, 'toxicity_sexual'), false);
+});
+
+// --- toxicity_self_harm ---
+
+test('compliance: toxicity_self_harm (suicide ideation) detected', () => {
+  var m = comp.detect('I want to commit suicide tonight');
+  assert.equal(hasCategory(m, 'toxicity_self_harm'), true, 'expected toxicity_self_harm in ' + JSON.stringify(m));
+});
+
+test('compliance: toxicity_self_harm (kill myself) detected', () => {
+  var m = comp.detect('I am going to kill myself');
+  assert.equal(hasCategory(m, 'toxicity_self_harm'), true);
+});
+
+test('compliance: toxicity_self_harm (self-harm ideation) detected', () => {
+  var m = comp.detect('I have been having self-harm thoughts lately');
+  assert.equal(hasCategory(m, 'toxicity_self_harm'), true);
+});
+
+test('compliance: toxicity_self_harm not flagged on help-seeking language', () => {
+  // "How to help someone who is depressed" is mental health
+  // discussion, not self-harm ideation. Should NOT fire.
+  var m = comp.detect('How do I help a friend who is depressed?');
+  assert.equal(hasCategory(m, 'toxicity_self_harm'), false);
+});
