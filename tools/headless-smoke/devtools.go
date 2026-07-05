@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -268,4 +269,30 @@ func (c *CDPClient) readLoop() {
 			}
 		}
 	}
+}
+
+// addScriptToEvaluateOnNewDocument reads the bundle from a file
+// and injects it into the page's main world via Runtime.evaluate.
+// The content_scripts manifest array does not fire reliably with
+// --load-extension in headless mode. Runtime.evaluate runs the
+// script immediately in the page's main world where window.__lens_cs
+// will be visible to subsequent Runtime.evaluate calls.
+func (c *CDPClient) addScriptToEvaluateOnNewDocument(target cdpTarget, scriptPath string, timeout time.Duration) error {
+	scriptBytes, err := os.ReadFile(scriptPath)
+	if err != nil {
+		return fmt.Errorf("read bundle: %w", err)
+	}
+	if _, err := c.evaluate(string(scriptBytes), false); err != nil {
+		return fmt.Errorf("evaluate bundle: %w", err)
+	}
+	return nil
+}
+
+// reloadPage reloads the current page.
+func (c *CDPClient) reloadPage(target cdpTarget, timeout time.Duration) error {
+	if _, err := c.send("Page.enable", nil); err != nil {
+		return err
+	}
+	_, err := c.send("Page.reload", map[string]interface{}{"ignoreCache": true})
+	return err
 }

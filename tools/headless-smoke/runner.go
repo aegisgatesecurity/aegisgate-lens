@@ -74,11 +74,19 @@ func runOneCase(cdp *CDPClient, target cdpTarget, tc TestCase, timeout time.Dura
 			const dets = cs.lastDetections || [];
 			const banners = document.querySelectorAll('[data-aegisgate-lens="banner"]');
 			const visibleBanners = Array.from(banners).filter(b => b.style.display !== 'none');
+			// Debug: also return provider info and input element
+			const providerInfo = cs.provider ? {
+				id: cs.provider.id,
+				name: cs.provider.name,
+				inputFound: !!(cs.input || (cs.detect && document.querySelector('#prompt-textarea')))
+			} : null;
 			return {
 				detection_count: dets.length,
 				categories: dets.map(d => d.category || d.facet),
 				banner_count: visibleBanners.length,
-				banner_text: visibleBanners.length > 0 ? visibleBanners[0].textContent.substring(0, 200) : ''
+				banner_text: visibleBanners.length > 0 ? visibleBanners[0].textContent.substring(0, 200) : '',
+				provider: providerInfo,
+				taValue: document.getElementById('prompt-textarea') ? document.getElementById('prompt-textarea').value : null
 			};
 		})()
 	`
