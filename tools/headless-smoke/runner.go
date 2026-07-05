@@ -53,13 +53,17 @@ func runOneCase(cdp *CDPClient, target cdpTarget, tc TestCase, timeout time.Dura
 		(function() {
 			const ta = document.getElementById('prompt-textarea');
 			if (!ta) return { error: 'no textarea' };
-			// Clear
-			ta.value = '';
-			ta.dispatchEvent(new Event('input', { bubbles: true }));
-			// Set new value
-			ta.value = %q;
-			ta.dispatchEvent(new Event('input', { bubbles: true }));
-			return { ok: true };
+			const sel = window.__lensSelectors;
+			if (!sel || typeof sel.setInputValue !== 'function') {
+				return { error: 'no __lensSelectors.setInputValue available' };
+			}
+			// Use the bundled selector's setInputValue which calls
+			// the NATIVE HTMLTextAreaElement.value setter (so the
+			// prompt-detect's addEventListener('input', ...) listener
+			// fires correctly), and dispatches 'input' + 'change'.
+			sel.setInputValue(ta, '');
+			sel.setInputValue(ta, %q);
+			return { ok: true, taValue: ta.value };
 		})()
 	`, tc.Prompt)
 	_, err := cdp.evaluate(clearAndType, false)
