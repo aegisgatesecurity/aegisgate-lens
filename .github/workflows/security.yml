@@ -58,11 +58,19 @@ jobs:
       - name: Security: CSP gate (no eval/Function/innerHTML)
         run: |
           # Check the JS source files for forbidden constructs
-          if grep -rn "eval(\|new Function(\|innerHTML" src/ 2>/dev/null | grep -v "node_modules\|__pycache__" | head -5; then
-            echo "ERROR: CSP gate failed. Found eval/Function/innerHTML in src/"
+          if grep -rn 'eval(' src/ 2>/dev/null | grep -v "node_modules\|__pycache__" | head -5; then
+            echo "ERROR: CSP gate failed. Found eval() in src/"
             exit 1
           fi
-          echo "✅ CSP gate passed"
+          if grep -rn 'new Function(' src/ 2>/dev/null | grep -v "node_modules\|__pycache__" | head -5; then
+            echo "ERROR: CSP gate failed. Found new Function() in src/"
+            exit 1
+          fi
+          if grep -rn 'innerHTML' src/ 2>/dev/null | grep -v "node_modules\|__pycache__" | head -5; then
+            echo "ERROR: CSP gate failed. Found innerHTML in src/"
+            exit 1
+          fi
+          echo "Csp gate passed"
 
       - name: Security: Bundle signature verification (F-02)
         # Skip if no ML bundle is present (v0.1.0-beta may not have one yet)
