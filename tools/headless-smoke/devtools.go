@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -164,12 +165,15 @@ func (c *CDPClient) evaluate(expression string, awaitPromise bool) (json.RawMess
 	}
 	var r struct {
 		Result struct {
-			Value json.RawMessage `json:"value"`
+			Value          json.RawMessage `json:"value"`
+			Type           string          `json:"type"`
+			Description    string          `json:"description"`
 		} `json:"result"`
 	}
 	if err := json.Unmarshal(res, &r); err != nil {
 		return nil, err
 	}
+	log.Printf("evaluate type=%s desc=%s valueLen=%d", r.Result.Type, r.Result.Description, len(r.Result.Value))
 	return r.Result.Value, nil
 }
 
