@@ -196,26 +196,44 @@ Every record in the 3 unified files uses this schema:
 
 ---
 
-## 6. The strict ship gate (per the v0.1.0-beta model decision)
+## 6. The strict ship gate (per the v0.1.0-beta model decision) — REVISED 2026-07-04 19:09
 
 The held-out test set (3,630 records) is **NEVER** used during
 training. It is used ONCE at the end of Phase 0b to determine
 if the trained model meets the strict ship gate.
 
+### 6a. Prompt-injection model (Facet 6) — TIGHTER GATES per user direction
+
 | Metric | Target | On which set |
 |---|---|---|
-| **Recall (prompt-injection, Facet 6)** | ≥ 85% | Held-out (2,436 attacks) |
-| **FPR (prompt-injection, Facet 6)** | ≤ 5% | Held-out (1,194 benigns) |
-| **F1 (prompt-injection, Facet 6)** | ≥ 90% | Held-out (computed) |
-| **Recall (toxicity, any category, Facet 5)** | ≥ 90% | Held-out (toxicity subset) |
-| **FPR (toxicity, any category, Facet 5)** | ≤ 2% | Held-out (toxicity subset) |
+| **Recall (prompt-injection, Facet 6)** | **≥ 99%** | Held-out (2,436 attacks) |
+| **FPR (prompt-injection, Facet 6)** | **≤ 1%** | Held-out (1,194 benigns) |
+| **F1 (prompt-injection, Facet 6)** | **≥ 99%** | Held-out (computed) |
+
+### 6b. Toxicity model (Facet 5) — also tightened
+
+| Metric | Target |
+|---|---|
+| **Recall (any-toxicity, on held-out)** | **≥ 95%** |
+| **FPR (benign, on held-out)** | **≤ 1%** |
 
 **Statistical confidence** (per power analysis):
 - 2,436 attacks with 100% recall: 95% CI lower bound ≈ 0.999
+  (we have statistical power to distinguish 99% from 99.5%)
 - 1,194 benigns with 0% FPR: 95% CI upper bound < 0.005
+  (a 1% FPR = ~12 false positives; we can measure 12 FPs with 95% CI)
 
-**If the held-out gate is not met, we do NOT ship.** We
-retrain, augment, and try again. We do NOT lower the gate.
+**Why these gates?** Per user direction (2026-07-04 19:09):
+"our ship gates were a bit more stringent - i want 99%+ and less
+than 1%, respectively, as we previously developed. lofty as it may
+be, it is part of our guiding vision." The 99%/1% gate is the v0.2
+ship-readiness gate the team developed; we hold to that bar.
+The user's framing: "best-in-class, best-in-breed, better than
+billion-dollar competitors because we built this for the 95%, not
+the 5%."
+
+**If the held-out gate is not met, we do NOT ship.** We retrain,
+augment, and try again. We do NOT lower the gate.
 
 ---
 
@@ -233,7 +251,7 @@ checkpoint.
    for 3 epochs at batch=4, gradient_accumulation=4, lr=2e-5
 3. Validate per epoch on `v01beta-val.jsonl` (1K records)
 4. At the end of training, evaluate on `v01beta-heldout.jsonl`
-   (3,630 records). If recall ≥ 85% AND FPR ≤ 5% → SHIP. Else:
+   (3,630 records). **If recall ≥ 99% AND FPR ≤ 1% → SHIP.** Else:
    stop, analyze, report, await sign-off.
 5. For the toxicity model (`s-nlp/roberta_toxicity_classifier`):
    we use the pre-trained model as-is. We validate the held-out
