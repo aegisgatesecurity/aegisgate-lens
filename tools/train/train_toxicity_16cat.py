@@ -48,10 +48,10 @@ DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 print(f"Device: {DEVICE}")
 if DEVICE == "cuda":
     print(f"GPU: {torch.cuda.get_device_name(0)}")
-    print(f"VRAM: {torch.cuda.get_device_properties(0).total_mem / 1e9:.1f} GB")
+    print(f"VRAM: {torch.cuda.get_device_properties(0).total_memory / 1e9:.1f} GB")
 
 # Paths
-LENS = Path('/home/chaus/Desktop/AegisGate/aegisgate-lens')
+LENS = Path('/home/chaos/Desktop/AegisGate/aegisgate-lens')
 CORPUS = LENS / 'corpora' / 'v01beta-raw'
 HELDOUT = CORPUS / 'v01beta-toxicity-heldout.jsonl'
 MODEL_DIR = LENS / 'models' / 'toxicity-v0.1.0-beta' / 'finetuned'
