@@ -147,12 +147,59 @@ func main() {
 	}
 	log.Printf("  Navigated")
 
-	// Step 5: Wait for the content script to fire (window.__lens_cs is set)
-	log.Printf("\n=== Step 5: Waiting for content script to fire ===")
-	if err := cdp.waitForGlobal(target, "__lens_cs", 10*time.Second); err != nil {
-		log.Fatalf("content script did not fire: %v", err)
+	// Step 5: Inject the content script bundle via CDP
+	// The content_scripts manifest array does not fire reliably with
+	// --load-extension in headless mode. Instead, we inject the content
+	// script as a single blob via Runtime.evaluate, which runs it in
+	// the page's main world.
+	log.Printf("\n=== Step 5: Injecting content script bundle via CDP ===")
+
+	// DEBUG: test that Runtime.evaluate works at all
+	testRes, testErr := cdp.evaluate(`(function() { window.__lens_test_marker = Date.now(); return 'marker set: ' + window.__lens_test_marker; })()`, false)
+	log.Printf("  marker eval result: %s (err: %v)", string(testRes), testErr)
+	checkRes, _ := cdp.evaluate(`(function() { return typeof window.__lens_test_marker; })()`, false)
+	log.Printf("  marker is now: %s", string(checkRes))
+	bundlePath := filepath.Join(*distPath, "..", "bundle.js")
+	if err := cdp.addScriptToEvaluateOnNewDocument(target, bundlePath, 10*time.Second); err != nil {
+		log.Fatalf("inject bundle: %v", err)
 	}
-	log.Printf("  Content script fired: __lens_cs is set")
+	log.Printf("  Bundle injected at %s", bundlePath)
+	// Don't reload - the bundle was already evaluated by Runtime.evaluate
+	// in the page's main world. A reload would clear it.
+	// DEBUG: check what __lens_test_wrapper says (catches bundle errors)
+	wrapperRes, _ := cdp.evaluate(`(function() {
+		const w = window.__lens_test_wrapper;
+		if (!w) return 'no wrapper';
+		return JSON.stringify({
+			started: w.started,
+			completed: w.completed,
+			hasError: !!w.error,
+			error: w.error,
+			hasLensCs: !!window.__lens_cs,
+			hasSelectors: !!window.__lensSelectors,
+			hostname: window.location ? window.location.hostname : null,
+		});
+	})()`, false)
+	log.Printf("  wrapper state: %s", string(wrapperRes))
+	// Also check what modules are exposed
+	modRes, _ := cdp.evaluate(`(function() {
+		return JSON.stringify({
+			__lensLogger: typeof window.__lensLogger,
+			__lensSchema: typeof window.__lensSchema,
+			__lensDomainHash: typeof window.__lensDomainHash,
+			__lensSelectors: typeof window.__lensSelectors,
+			__lensPromptDetect: typeof window.__lensPromptDetect,
+			__lensDispatcher: typeof window.__lensDispatcher,
+			__lensBannerUI: typeof window.__lensBannerUI,
+		});
+	})()`, false)
+	log.Printf("  modules: %s", string(modRes))
+
+	// Now wait for __lens_cs to be set (by our injected bundle)
+	if err := cdp.waitForGlobal(target, "__lens_cs", 15*time.Second); err != nil {
+		log.Fatalf("injected bundle did not set __lens_cs: %v", err)
+	}
+	log.Printf("  Bundle ran: __lens_cs is set")
 
 	// Step 7: Verify the extension ID
 	extID, err := cdp.getExtensionID(*timeout)
