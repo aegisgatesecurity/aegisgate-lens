@@ -48,6 +48,11 @@ func spawnChromium(binary, distPath string, port int, timeout time.Duration) (*c
 		"--disable-gpu",
 		"--no-first-run",
 		"--no-default-browser-check",
+		// Accept self-signed certs on localhost (for the HTTPS mock).
+		// This is the standard workaround for headless Chrome smoke tests.
+		"--ignore-certificate-errors",
+		// Suppress the "unsupported flag" warning for --ignore-certificate-errors-spki-list
+		"--ignore-certificate-errors-spki-list=",
 		fmt.Sprintf("--remote-debugging-port=%d", port),
 		"--user-data-dir=" + dataDir,
 		"--disable-extensions-except=" + distPath,
