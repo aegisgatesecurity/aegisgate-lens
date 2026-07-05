@@ -26,6 +26,7 @@ type TestResult struct {
 	ProviderID     string   `json:"provider_id,omitempty"`
 	InputFound     bool     `json:"input_found"`
 	TAValue        string   `json:"ta_value,omitempty"`
+	DirectTest     interface{} `json:"direct_test,omitempty"`
 	Passed         bool     `json:"passed"`
 	Error          string   `json:"error,omitempty"`
 }
@@ -86,7 +87,16 @@ func runOneCase(cdp *CDPClient, target cdpTarget, tc TestCase, timeout time.Dura
 				banner_text: visibleBanners.length > 0 ? visibleBanners[0].textContent.substring(0, 200) : '',
 				provider_id: cs.provider ? cs.provider.id : null,
 				input_found: !!ta,
-				ta_value: ta ? ta.value : null
+				ta_value: ta ? ta.value : null,
+						direct_test: (function() {
+            try {
+                if (typeof window.__lensDispatcher === 'undefined') return 'dispatcher undefined';
+                const d = window.__lensDispatcher;
+                if (!d) return 'dispatcher null';
+                const result = d.detect('My SSN is 123-45-6789 and email is test@example.com');
+                return { type: typeof result, val: result === null ? 'null' : (Array.isArray(result) ? 'array len ' + result.length : JSON.stringify(result).substring(0, 200)) };
+            } catch (e) { return 'error: ' + e.message; }
+        })(), first: Array.isArray(r) && r.length > 0 ? r[0] : null }; } catch (e) { return 'error: ' + e.message; } })() : null
 			};
 		})()
 	`
@@ -122,6 +132,7 @@ func runOneCase(cdp *CDPClient, target cdpTarget, tc TestCase, timeout time.Dura
 			HasInput  bool   `json:"hasInput"`
 			LastValue string `json:"lastValue"`
 		} `json:"pd_state"`
+		DirectTest     interface{} `json:"direct_test"`
 	}
 	if err := json.Unmarshal(res, &state); err != nil {
 		r.Error = fmt.Sprintf("parse state: %v (raw=%s)", err, string(res))
@@ -139,6 +150,7 @@ func runOneCase(cdp *CDPClient, target cdpTarget, tc TestCase, timeout time.Dura
 	r.ProviderID = state.ProviderID
 	r.InputFound = state.InputFound
 	r.TAValue = state.TAValue
+	r.DirectTest = state.DirectTest
 
 	// Step 4: Assert
 	if tc.ShouldDetect {
