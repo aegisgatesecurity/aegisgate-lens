@@ -9,6 +9,7 @@ package main
 
 import (
 	"encoding/json"
+	"log"
 	"fmt"
 	"time"
 )
@@ -22,6 +23,9 @@ type TestResult struct {
 	Categories     []string `json:"categories,omitempty"`
 	BannerCount    int      `json:"banner_count"`
 	BannerText     string   `json:"banner_text,omitempty"`
+	ProviderID     string   `json:"provider_id,omitempty"`
+	InputFound     bool     `json:"input_found"`
+	TAValue        string   `json:"ta_value,omitempty"`
 	Passed         bool     `json:"passed"`
 	Error          string   `json:"error,omitempty"`
 }
@@ -74,22 +78,29 @@ func runOneCase(cdp *CDPClient, target cdpTarget, tc TestCase, timeout time.Dura
 			const dets = cs.lastDetections || [];
 			const banners = document.querySelectorAll('[data-aegisgate-lens="banner"]');
 			const visibleBanners = Array.from(banners).filter(b => b.style.display !== 'none');
-			// Debug: also return provider info and input element
-			const providerInfo = cs.provider ? {
-				id: cs.provider.id,
-				name: cs.provider.name,
-				inputFound: !!(cs.input || (cs.detect && document.querySelector('#prompt-textarea')))
-			} : null;
+			const ta = document.getElementById('prompt-textarea');
 			return {
 				detection_count: dets.length,
 				categories: dets.map(d => d.category || d.facet),
 				banner_count: visibleBanners.length,
 				banner_text: visibleBanners.length > 0 ? visibleBanners[0].textContent.substring(0, 200) : '',
-				provider: providerInfo,
-				taValue: document.getElementById('prompt-textarea') ? document.getElementById('prompt-textarea').value : null
+				provider_id: cs.provider ? cs.provider.id : null,
+				input_found: !!ta,
+				ta_value: ta ? ta.value : null
 			};
 		})()
 	`
+	// DEBUG: check the page state right before reading
+	debugRes, _ := cdp.evaluate(`(function() {
+		return JSON.stringify({
+			bodyExists: !!document.body,
+			textareaExists: !!document.getElementById('prompt-textarea'),
+			allTextareas: document.querySelectorAll('textarea').length,
+			bodyHTML: document.body ? document.body.innerHTML.substring(0, 500) : null,
+			url: window.location.href
+		});
+	})()`, false)
+	log.Printf("    debug page state: %s", string(debugRes))
 	res, err := cdp.evaluate(readState, false)
 	if err != nil {
 		r.Error = fmt.Sprintf("read state: %v", err)
@@ -103,6 +114,14 @@ func runOneCase(cdp *CDPClient, target cdpTarget, tc TestCase, timeout time.Dura
 		Categories     []string `json:"categories"`
 		BannerCount    int      `json:"banner_count"`
 		BannerText     string   `json:"banner_text"`
+		ProviderID     string   `json:"provider_id"`
+		InputFound     bool     `json:"input_found"`
+		TAValue        string   `json:"ta_value"`
+		PDState        *struct {
+			Provider string `json:"provider"`
+			HasInput  bool   `json:"hasInput"`
+			LastValue string `json:"lastValue"`
+		} `json:"pd_state"`
 	}
 	if err := json.Unmarshal(res, &state); err != nil {
 		r.Error = fmt.Sprintf("parse state: %v (raw=%s)", err, string(res))
@@ -117,6 +136,9 @@ func runOneCase(cdp *CDPClient, target cdpTarget, tc TestCase, timeout time.Dura
 	r.Categories = state.Categories
 	r.BannerCount = state.BannerCount
 	r.BannerText = state.BannerText
+	r.ProviderID = state.ProviderID
+	r.InputFound = state.InputFound
+	r.TAValue = state.TAValue
 
 	// Step 4: Assert
 	if tc.ShouldDetect {
