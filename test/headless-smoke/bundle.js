@@ -4118,12 +4118,23 @@ try {
         attention_mask: attnTensor,
       });
       var logits = results.logits.data;
+      // Softmax helper (numerically stable: subtract max before exp)
+      function softmax(arr) {
+        var max = arr[0];
+        for (var i = 1; i < arr.length; i++) if (arr[i] > max) max = arr[i];
+        var sum = 0;
+        var result = [];
+        for (var j = 0; j < arr.length; j++) { result[j] = Math.exp(arr[j] - max); sum += result[j]; }
+        for (var k = 0; k < arr.length; k++) { result[k] = result[k] / sum; }
+        return result;
+      }
 
       // Class 1 = PI attack, class 0 = benign
       var logitBenign = logits[0];
       var logitAttack = logits[1];
-      var isAttack = logitAttack > logitBenign;
-      var confidence = isAttack ? logitAttack : logitBenign;
+      var T = 20.0; var probs = softmax([logits[0] / T, logits[1] / T]);
+      var isAttack = probs[1] > 0.51;
+      var confidence = isAttack ? probs[1] : probs[0];
 
       if (isAttack) {
         log.info('PI ML: detected attack, confidence=' + confidence.toFixed(3));
