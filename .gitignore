@@ -105,3 +105,4 @@ release/
 test/headless-smoke/headless-smoke-bin
 test/headless-smoke/logs/
 test/headless-smoke/reports/
+test/headless-smoke/piml-runner
