@@ -63,6 +63,24 @@
     input: null
   };
 
+  // The onSendIntercept callback. Called by prompt-detect when the
+  // user attempts to send a message that has detections. The return
+  // value is a decision object: { action: 'send' | 'redact' | 'cancel' }.
+  // For now (3f, the regex-chain release), the only available actions
+  // are 'cancel' (default -- the banner pauses the send) and 'send'
+  // (user override -- they accept the risk and send anyway). Redact
+  // will be wired in 3g. The minimal implementation: block the send
+  // (return 'cancel') unless the user clicks "Send anyway".
+  function onSendIntercept(events, text) {
+    try {
+      log.info('onSendIntercept: blocking send (' + (events ? events.length : 0) + ' detections)');
+      return { action: 'cancel', reason: 'detections' };
+    } catch (err) {
+      log.error('onSendIntercept threw', err);
+      return { action: 'cancel', reason: 'error' };
+    }
+  }
+
   // The onDetect callback. Called by prompt-detect when detections
   // change. Shows the brand-matched banner above the input.
   function onDetect(events, text) {

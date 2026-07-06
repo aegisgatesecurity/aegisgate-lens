@@ -6,6 +6,17 @@
 (function (global) {
   'use strict';
 
+  // Logger. Per the architecture doc and standing rules: every module
+  // must NEVER silently swallow errors. Use __lensLogger (set by
+  // logger.js, which loads before this file). Fall back to console
+  // if the logger isn't available (e.g., when running under node:test
+  // or in the headless smoke test before all modules load).
+  var log = (typeof self !== 'undefined' && self.__lensLogger) ||
+            (typeof globalThis !== 'undefined' && globalThis.__lensLogger) ||
+            { info: function(m){ try { console.log('[AegisGate Lens] ' + m); } catch (e) {} },
+              warn: function(m){ try { console.warn('[AegisGate Lens] ' + m); } catch (e) {} },
+              error: function(m,e){ try { console.error('[AegisGate Lens] ' + m, e); } catch (e) {} } };
+
   // Each entry: { hosts, inputSelector, sendSelector, containerSelector,
   //               submitMethod, isContentEditable, version }
   //
