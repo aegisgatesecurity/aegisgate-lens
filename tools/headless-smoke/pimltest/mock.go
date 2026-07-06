@@ -22,6 +22,8 @@ import (
 	"fmt"
 	"math/big"
 	"net"
+	"os"
+	"path/filepath"
 	"net/http"
 	"strings"
 	"time"
@@ -84,6 +86,32 @@ func (m *mockServer) start() error {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(mockHTML))
+	})
+	// Serve the model files from the dist directory
+	mux.HandleFunc("/detectors/ml/", func(w http.ResponseWriter, r *http.Request) {
+		mlDir := os.Getenv("LENS_ML_DIR")
+		if mlDir == "" {
+			http.Error(w, "LENS_ML_DIR env var not set", 500)
+			return
+		}
+		// r.URL.Path is /detectors/ml/FILENAME
+		// LENS_ML_DIR already ends in /detectors/ml, so strip the prefix
+		name := strings.TrimPrefix(r.URL.Path, "/detectors/ml/")
+		full := filepath.Join(mlDir, name)
+		http.ServeFile(w, r, full)
+	})
+	// Serve the onnxruntime-web files (ort-wasm.wasm etc.) from the dist
+	mux.HandleFunc("/vendor/onnxruntime-web/", func(w http.ResponseWriter, r *http.Request) {
+		// r.URL.Path is like /vendor/onnxruntime-web/ort-wasm.wasm
+		// We need the dist dir, which we get from the LENS_DIST env var
+		distDir := os.Getenv("LENS_DIST")
+		if distDir == "" {
+			http.Error(w, "LENS_DIST env var not set", 500)
+			return
+		}
+		rel := r.URL.Path[len("/"):]  // vendor/onnxruntime-web/ort-wasm.wasm
+		full := filepath.Join(distDir, rel)
+		http.ServeFile(w, r, full)
 	})
 
 	// Generate self-signed cert for localhost

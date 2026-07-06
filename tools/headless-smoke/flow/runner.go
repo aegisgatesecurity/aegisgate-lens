@@ -1,3 +1,4 @@
+
 // SPDX-License-Identifier: Apache-2.0
 // AegisGate Lens v0.1.0-beta - Headless Smoke Test: Content Script Flow
 //
