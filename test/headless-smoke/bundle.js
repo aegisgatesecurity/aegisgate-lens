@@ -4101,13 +4101,21 @@ try {
 
     try {
       var input = tokenizeBPE(text);
-      var inputIds = new Int32Array(input.input_ids);
-      var attentionMask = new Int32Array(input.attention_mask);
-      var dims = [1, input.input_ids.length];
+      // ORT Web tensor input. The model was trained with int64 inputs.
+      // We use the ort.Tensor class which handles the int64 conversion
+      // internally. This avoids the "invalid data location" error we
+      // got with plain object literals.
+      var Tensor = ort.Tensor;
+      var idsArr = new Array(input.input_ids.length);
+      for (var ii = 0; ii < input.input_ids.length; ii++) idsArr[ii] = input.input_ids[ii];
+      var attnArr = new Array(input.attention_mask.length);
+      for (var ai = 0; ai < input.attention_mask.length; ai++) attnArr[ai] = input.attention_mask[ai];
+      var idsTensor = new Tensor('int64', idsArr, [1, input.input_ids.length]);
+      var attnTensor = new Tensor('int64', attnArr, [1, input.attention_mask.length]);
 
       var results = await state.session.run({
-        input_ids: { type: 'int32', data: inputIds, dims: dims },
-        attention_mask: { type: 'int32', data: attentionMask, dims: dims },
+        input_ids: idsTensor,
+        attention_mask: attnTensor,
       });
       var logits = results.logits.data;
 
