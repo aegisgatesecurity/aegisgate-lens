@@ -2133,6 +2133,17 @@ try {
 (function (global) {
   'use strict';
 
+  // Logger. Per the architecture doc and standing rules: every module
+  // must NEVER silently swallow errors. Use __lensLogger (set by
+  // logger.js, which loads before this file). Fall back to console
+  // if the logger isn't available (e.g., when running under node:test
+  // or in the headless smoke test before all modules load).
+  var log = (typeof self !== 'undefined' && self.__lensLogger) ||
+            (typeof globalThis !== 'undefined' && globalThis.__lensLogger) ||
+            { info: function(m){ try { console.log('[AegisGate Lens] ' + m); } catch (e) {} },
+              warn: function(m){ try { console.warn('[AegisGate Lens] ' + m); } catch (e) {} },
+              error: function(m,e){ try { console.error('[AegisGate Lens] ' + m, e); } catch (e) {} } };
+
   // Each entry: { hosts, inputSelector, sendSelector, containerSelector,
   //               submitMethod, isContentEditable, version }
   //
@@ -3560,6 +3571,24 @@ try {
     provider: null,
     input: null
   };
+
+  // The onSendIntercept callback. Called by prompt-detect when the
+  // user attempts to send a message that has detections. The return
+  // value is a decision object: { action: 'send' | 'redact' | 'cancel' }.
+  // For now (3f, the regex-chain release), the only available actions
+  // are 'cancel' (default -- the banner pauses the send) and 'send'
+  // (user override -- they accept the risk and send anyway). Redact
+  // will be wired in 3g. The minimal implementation: block the send
+  // (return 'cancel') unless the user clicks "Send anyway".
+  function onSendIntercept(events, text) {
+    try {
+      log.info('onSendIntercept: blocking send (' + (events ? events.length : 0) + ' detections)');
+      return { action: 'cancel', reason: 'detections' };
+    } catch (err) {
+      log.error('onSendIntercept threw', err);
+      return { action: 'cancel', reason: 'error' };
+    }
+  }
 
   // The onDetect callback. Called by prompt-detect when detections
   // change. Shows the brand-matched banner above the input.
