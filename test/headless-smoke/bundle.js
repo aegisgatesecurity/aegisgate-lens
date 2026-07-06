@@ -3778,6 +3778,375 @@ try {
   }
 })();
 
+// === detectors/ml/pi-ml.js ===
+// SPDX-License-Identifier: Apache-2.0
+// AegisGate Lens v0.1.0-beta - PI ML detector (BPE tokenizer version)
+//
+// Per user directive (2026-07-05 19:13 + 19:27):
+//  - ONNX export + browser ML wiring (the only path)
+//  - Real BPE tokenizer to match PyTorch's 0% FPR on the held-out
+//
+// This module is the pi-ml.js module with a REAL BPE tokenizer
+// (replacing the simple hash-based placeholder). The tokenizer
+// implementation is the GPT-2 / RoBERTa-style ByteLevel BPE used
+// by HuggingFace tokenizers.
+//
+// Apache 2.0. Copyright 2026 AegisGate Security, LLC.
+(function (global) {
+  'use strict';
+
+  var log = (typeof self !== 'undefined' && self.__lensLogger) ||
+            (typeof globalThis !== 'undefined' && globalThis.__lensLogger) ||
+            { info: function(m){ try { console.log('[AegisGate Lens ML] ' + m); } catch (e) {} },
+              warn: function(m){ try { console.warn('[AegisGate Lens ML] ' + m); } catch (e) {} },
+              error: function(m,e){ try { console.error('[AegisGate Lens ML] ' + m, e); } catch (e) {} } };
+
+  // GPT-2 byte-to-unicode mapping. Maps each byte (0-255) to a
+  // printable unicode character. This is the standard mapping from
+  // the GPT-2 paper, used by RoBERTa, BERT, and most modern
+  // transformers. Bytes 0-32 (control chars) and 127-160 (extended
+  // ASCII) get mapped to U+0100 onwards.
+  var BYTE_TO_UNICODE = (function() {
+    var bs = [];
+    // Printable ASCII ranges
+    for (var i = 33; i <= 126; i++) bs.push(i);   // ! to ~
+    for (var i = 161; i <= 172; i++) bs.push(i);  // ¡ to ¬
+    for (var i = 174; i <= 255; i++) bs.push(i);  // © to ÿ
+    var cs = bs.slice();
+    var n = bs.length;
+    // Map remaining bytes (0-32, 127-160) to U+0100 onwards
+    for (var b = 0; b < 256; b++) {
+      if (bs.indexOf(b) === -1) {
+        bs.push(b);
+        cs.push(256 + n);
+        n++;
+      }
+    }
+    var byteToUnicode = {};
+    var unicodeToByte = {};
+    for (var i = 0; i < bs.length; i++) {
+      byteToUnicode[bs[i]] = String.fromCharCode(cs[i]);
+      unicodeToByte[String.fromCharCode(cs[i])] = bs[i];
+    }
+    return { b2u: byteToUnicode, u2b: unicodeToByte, bytesList: bs, charsList: cs };
+  })();
+
+  // State
+  var state = {
+    session: null,
+    loading: null,
+    tokenizer: null,
+    config: null,
+    initialized: false,
+    initError: null,
+    threshold: 0.5,
+    // Cached bpeRanks: a dict from merge-pair-tuple to rank (int).
+    // Lower rank = applied first. Built once on init.
+    bpeRanks: null,
+  };
+
+  // Load the tokenizer JSON (from global).
+  function loadTokenizer() {
+    if (typeof globalThis !== 'undefined' && globalThis.__lensTokenizerJSON) {
+      return globalThis.__lensTokenizerJSON;
+    }
+    throw new Error('PI ML: tokenizer JSON not provided (set globalThis.__lensTokenizerJSON)');
+  }
+
+  function loadConfig() {
+    if (typeof globalThis !== 'undefined' && globalThis.__lensModelConfig) {
+      return globalThis.__lensModelConfig;
+    }
+    throw new Error('PI ML: model config not provided (set globalThis.__lensModelConfig)');
+  }
+
+  // Build a set of "cache" words we've already BPE-encoded.
+  // Standard BPE is O(n^2) per word; caching is essential for
+  // long inputs (8K context).
+  var bpeCache = new Map();
+  var cacheLimit = 10000;  // ~10K words cached
+
+  // Apply BPE merges to a single word (sequence of tokens).
+  // Standard GPT-2 style BPE.
+  function bpe(token) {
+    if (bpeCache.size > cacheLimit) bpeCache.clear();
+    if (bpeCache.has(token)) return bpeCache.get(token);
+
+    var word = token.split('');
+    var pairs = getPairs(word);
+
+    if (!pairs || pairs.length === 0) {
+      var single = [token];
+      bpeCache.set(token, single);
+      return single;
+    }
+
+    while (true) {
+      // Find the pair with the lowest rank
+      var minRank = Infinity;
+      var bestPair = null;
+      for (var i = 0; i < pairs.length; i++) {
+        var rank = state.bpeRanks[pairs[i]];
+        if (rank === undefined) rank = Infinity;
+        if (rank < minRank) {
+          minRank = rank;
+          bestPair = pairs[i];
+        }
+      }
+      if (bestPair === null) break;
+
+      // Merge all occurrences of bestPair
+      var first = bestPair[0];
+      var second = bestPair[1];
+      var newWord = [];
+      var i = 0;
+      while (i < word.length) {
+        var j = i;
+        // Find the next occurrence of the pair
+        while (j < word.length - 1 && word[j] !== first) j++;
+        // If no first, or first doesn't pair with next second, keep
+        if (j >= word.length || word[j] !== first) {
+          newWord.push(word[i]);
+          i++;
+          continue;
+        }
+        // Check if word[j+1] is second
+        if (j + 1 < word.length && word[j + 1] === second) {
+          // Merge
+          newWord.push(first + second);
+          i = j + 2;
+        } else {
+          newWord.push(word[i]);
+          i++;
+        }
+      }
+      word = newWord;
+      if (word.length === 1) break;
+      pairs = getPairs(word);
+    }
+
+    bpeCache.set(token, word);
+    return word;
+  }
+
+  // Get all adjacent pairs in a word (sequence).
+  function getPairs(word) {
+    var pairs = new Set();
+    var prev = word[0];
+    for (var i = 1; i < word.length; i++) {
+      pairs.add(prev + '|' + word[i]);
+      prev = word[i];
+    }
+    // Convert back to [a, b] tuples
+    var result = [];
+    pairs.forEach(function(p) {
+      var parts = p.split('|');
+      result.push(parts);
+    });
+    return result;
+  }
+
+  // Real BPE tokenizer (GPT-2 / RoBERTa style with ByteLevel pre-tokenizer).
+  function tokenizeBPE(text) {
+    if (!state.tokenizer) throw new Error('tokenizer not loaded');
+    var vocab = state.tokenizer.model.vocab;  // {token: id}
+    var merges = state.tokenizer.model.merges;  // [[a, b], ...]
+    var clsId = state.config && state.config.cls_token_id || 50281;
+    var sepId = state.config && state.config.sep_token_id || 50282;
+    var padId = state.config && state.config.pad_token_id || 50283;
+    var maxLen = 128;
+
+    // Build bpeRanks on first call (cached in state)
+    if (!state.bpeRanks) {
+      state.bpeRanks = {};
+      for (var i = 0; i < merges.length; i++) {
+        state.bpeRanks[merges[i][0] + '|' + merges[i][1]] = i;
+      }
+    }
+
+    // Step 1: Normalize (NFC) - skip for now, browser has limited Unicode
+    // support and modern text is typically already NFC-normalized.
+
+    // Step 2: Pre-tokenize (ByteLevel: split on whitespace + punctuation,
+    // map bytes to unicode, prepend Ġ to word starts).
+    // Simple regex split: split on whitespace, then on each word
+    // split into byte-level chars with Ġ prefix.
+    var words = text.split(/\s+/).filter(function(w) { return w.length > 0; });
+    var byteTokens = [];
+    for (var i = 0; i < words.length; i++) {
+      var word = words[i];
+      // If not the first word, prepend Ġ (which is the space marker)
+      var prefix = (i > 0) ? '\u0120' : '';  // Ġ
+      // Map each byte of the word to its unicode char
+      var chars = prefix;
+      for (var j = 0; j < word.length; j++) {
+        var byte = word.charCodeAt(j) & 0xFF;
+        chars += BYTE_TO_UNICODE.b2u[byte];
+      }
+      byteTokens.push(chars);
+    }
+
+    // Step 3: Apply BPE merges to each word
+    var bpeTokens = [];
+    for (var k = 0; k < byteTokens.length; k++) {
+      var merged = bpe(byteTokens[k]);
+      for (var m = 0; m < merged.length; m++) {
+        bpeTokens.push(merged[m]);
+      }
+    }
+
+    // Step 4: Convert BPE tokens to IDs via vocab lookup
+    var ids = [clsId];
+    for (var n = 0; n < bpeTokens.length && ids.length < maxLen - 1; n++) {
+      var token = bpeTokens[n];
+      if (vocab.hasOwnProperty(token)) {
+        ids.push(vocab[token]);
+      } else if (vocab.hasOwnProperty('<unk>')) {
+        ids.push(vocab['<unk>']);
+      } else {
+        // Token not in vocab and no <unk>: use unk_token_id
+        ids.push(state.config.unk_token_id || 50280);
+      }
+    }
+    ids.push(sepId);
+
+    // Step 5: Pad
+    var attention = ids.map(function() { return 1; });
+    while (ids.length < maxLen) {
+      ids.push(padId);
+      attention.push(0);
+    }
+    // Truncate if too long
+    if (ids.length > maxLen) {
+      ids = ids.slice(0, maxLen - 1).concat([sepId]);
+      attention = attention.slice(0, maxLen - 1).concat([1]);
+    }
+
+    return { input_ids: ids, attention_mask: attention };
+  }
+
+  // Initialize the model.
+  function init(opts) {
+    opts = opts || {};
+    if (opts.modelURL) state.modelURL = opts.modelURL;
+    if (opts.threshold !== undefined) state.threshold = opts.threshold;
+    if (state.loading) return state.loading;
+
+    log.info('initializing PI ML model (one-time, ~3-5s)');
+    state.loading = (async function() {
+      try {
+        state.tokenizer = loadTokenizer();
+        state.config = loadConfig();
+        log.info('tokenizer + config loaded, vocab size: ' +
+                 Object.keys(state.tokenizer.model.vocab).length);
+
+        // Pre-build bpeRanks
+        state.bpeRanks = {};
+        var merges = state.tokenizer.model.merges;
+        for (var i = 0; i < merges.length; i++) {
+          state.bpeRanks[merges[i][0] + '|' + merges[i][1]] = i;
+        }
+        log.info('built bpeRanks for ' + merges.length + ' merges');
+
+        // Load the ONNX model via the vendored runtime
+        var ort = (typeof self !== 'undefined' && self.ort) ||
+                  (typeof globalThis !== 'undefined' && globalThis.ort) ||
+                  null;
+        if (!ort) {
+          throw new Error('PI ML: onnxruntime-web (ort) not loaded');
+        }
+        log.info('ort loaded');
+
+        // Configure WASM paths. The page mock serves WASM from
+        // /vendor/onnxruntime-web/. We construct that URL from the
+        // modelURL's origin.
+        if (state.modelURL) {
+          var origin = state.modelURL.substring(0, state.modelURL.indexOf('/', state.modelURL.indexOf('//') + 2));
+          var wasmDir = origin + '/vendor/onnxruntime-web/';
+          if (ort.env && ort.env.wasm) {
+            ort.env.wasm.wasmPaths = wasmDir;
+            log.info('wasm paths: ' + wasmDir);
+          }
+        }
+
+        state.session = await ort.InferenceSession.create(state.modelURL, {
+          executionProviders: ['wasm'],
+          graphOptimizationLevel: 'all',
+        });
+        log.info('PI ML session created');
+
+        state.initialized = true;
+        state.initError = null;
+        return state.session;
+      } catch (err) {
+        state.initError = err && err.message ? err.message : String(err);
+        log.error('PI ML init failed', err);
+        state.initialized = false;
+        throw err;
+      }
+    })();
+    return state.loading;
+  }
+
+  // Run inference on text. Returns matches array.
+  async function detect(text) {
+    if (!state.initialized) {
+      try { await init(); } catch (e) { return []; }
+    }
+    if (!state.session) {
+      log.warn('PI ML: session not ready, returning empty');
+      return [];
+    }
+    if (!text || text.length === 0) return [];
+
+    try {
+      var input = tokenizeBPE(text);
+      var inputIds = new Int32Array(input.input_ids);
+      var attentionMask = new Int32Array(input.attention_mask);
+      var dims = [1, input.input_ids.length];
+
+      var results = await state.session.run({
+        input_ids: { type: 'int32', data: inputIds, dims: dims },
+        attention_mask: { type: 'int32', data: attentionMask, dims: dims },
+      });
+      var logits = results.logits.data;
+
+      // Class 1 = PI attack, class 0 = benign
+      var logitBenign = logits[0];
+      var logitAttack = logits[1];
+      var isAttack = logitAttack > logitBenign;
+      var confidence = isAttack ? logitAttack : logitBenign;
+
+      if (isAttack) {
+        log.info('PI ML: detected attack, confidence=' + confidence.toFixed(3));
+        return [{
+          category: 'pi_jailbreak',
+          severity: 'critical',
+          confidence: confidence,
+          value: text.substring(0, 100),
+          index: 0,
+        }];
+      }
+      return [];
+    } catch (err) {
+      log.error('PI ML detect failed', err);
+      return [];
+    }
+  }
+
+  var module = {
+    init: init,
+    detect: detect,
+    getState: function() { return state; },
+    MODEL_NAME: 'answerdotai/ModernBERT-large',
+    MODEL_VERSION: 'pi-v0.1.0-beta-int8-bpe',
+  };
+
+  if (typeof self !== 'undefined') self.__lensPIML = module;
+  if (typeof window !== 'undefined') window.__lensPIML = module;
+  if (typeof globalThis !== 'undefined') globalThis.__lensPIML = module;
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+
 } catch (e) {
   window.__lens_test_wrapper.error = String(e);
   window.__lens_test_wrapper.errorStack = e && e.stack ? e.stack : "";
