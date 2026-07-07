@@ -91,7 +91,7 @@ def _load_model():
 
     _TOKENIZER = AutoTokenizer.from_pretrained(model_name, cache_dir=cache_dir)
     _MODEL = AutoModelForSequenceClassification.from_pretrained(model_name, cache_dir=cache_dir)
-    # _MODEL.eval() # Temporarily disabled per CSP gate - ML not used in v0.1.0-beta
+    _MODEL.eval()
     return _MODEL, _TOKENIZER
 
 
