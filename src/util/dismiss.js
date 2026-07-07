@@ -61,15 +61,26 @@
         }
         chrome.storage.local.get([STORAGE_KEY], function (result) {
           if (chrome.runtime && chrome.runtime.lastError) {
-            log.warn('storage get failed: ' + chrome.runtime.lastError.message);
-            resolve({});
+            var err = chrome.runtime.lastError.message;
+            if (err.includes('Extension context invalidated')) {
+              log.warn('storage get failed: Extension context invalidated (extension reloaded)');
+              resolve({});
+            } else {
+              log.warn('storage get failed: ' + err);
+              resolve({});
+            }
             return;
           }
           resolve(result[STORAGE_KEY] || {});
         });
       } catch (e) {
-        log.error('getAll() threw', e);
-        resolve({});
+        if (e.message && e.message.includes('Extension context invalidated')) {
+          log.warn('getAll() caught: Extension context invalidated');
+          resolve({});
+        } else {
+          log.error('getAll() threw', e);
+          resolve({});
+        }
       }
     });
   }
@@ -85,15 +96,26 @@
         }
         chrome.storage.local.set({ [STORAGE_KEY]: dismissals }, function () {
           if (chrome.runtime && chrome.runtime.lastError) {
-            log.warn('storage set failed: ' + chrome.runtime.lastError.message);
-            resolve(false);
+            var err = chrome.runtime.lastError.message;
+            if (err.includes('Extension context invalidated')) {
+              log.warn('storage set failed: Extension context invalidated (extension reloaded)');
+              resolve(false);
+            } else {
+              log.warn('storage set failed: ' + err);
+              resolve(false);
+            }
             return;
           }
           resolve(true);
         });
       } catch (e) {
-        log.error('saveAll() threw', e);
-        reject(e);
+        if (e.message && e.message.includes('Extension context invalidated')) {
+          log.warn('saveAll() caught: Extension context invalidated');
+          resolve(false);
+        } else {
+          log.error('saveAll() threw', e);
+          reject(e);
+        }
       }
     });
   }
@@ -160,6 +182,10 @@
       }
       return ok;
     } catch (err) {
+      if (err.message && err.message.includes('Extension context invalidated')) {
+        log.warn('dismiss() caught: Extension context invalidated');
+        return false;
+      }
       log.error('dismiss() threw', err);
       return false;
     }
@@ -207,8 +233,14 @@
       return new Promise(function (resolve) {
         chrome.storage.local.remove([STORAGE_KEY], function () {
           if (chrome.runtime && chrome.runtime.lastError) {
-            log.warn('storage remove failed: ' + chrome.runtime.lastError.message);
-            resolve(false);
+            var err = chrome.runtime.lastError.message;
+            if (err.includes('Extension context invalidated')) {
+              log.warn('storage remove failed: Extension context invalidated (extension reloaded)');
+              resolve(false);
+            } else {
+              log.warn('storage remove failed: ' + err);
+              resolve(false);
+            }
             return;
           }
           log.info('cleared all dismissals');
@@ -216,6 +248,10 @@
         });
       });
     } catch (err) {
+      if (err.message && err.message.includes('Extension context invalidated')) {
+        log.warn('clearAll() caught: Extension context invalidated');
+        return false;
+      }
       log.error('clearAll() threw', err);
       return false;
     }

@@ -33,31 +33,381 @@
                 (typeof globalThis !== 'undefined' && globalThis.__lensDismiss) ||
                 null;
 
-  // CSS for the banner. We use a <link> tag to load the CSS file
-  // from the extension's web_accessible_resources. If chrome.runtime
-  // is not available (e.g., in tests), we skip the link injection;
-  // tests don't actually render the banner so the missing CSS is fine.
-  var STYLE_ID = 'aegisgate-lens-banner-styles';
-  var CSS_URL = (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL)
-    ? chrome.runtime.getURL('src/util/banner.css')
-    : null;
+  // CSS for the banner - EMBEDDED directly to ensure styles are always applied
+  // This avoids CORS issues and ensures the banner appears correctly on all sites
+  var CSS_STRING = '' +
+    '[data-aegisgate-lens="banner"] {' +
+      '--lens-bg-primary: #0a0c10;' +
+      '--lens-bg-secondary: #11141d;' +
+      '--lens-bg-tertiary: #1a1f2e;' +
+      '--lens-primary: #38bdf8;' +
+      '--lens-primary-hover: #00c4ec;' +
+      '--lens-primary-glow: rgba(56, 189, 248, 0.15);' +
+      '--lens-secondary: #10b981;' +
+      '--lens-accent: #f43f5e;' +
+      '--lens-text-primary: #f8fafc;' +
+      '--lens-text-secondary: #94a3b8;' +
+      '--lens-text-muted: #64748b;' +
+      '--lens-border-color: rgba(51, 65, 85, 0.5);' +
+      '--lens-glass-bg: rgba(17, 20, 29, 0.7);' +
+      '--lens-radius-sm: 6px;' +
+      '--lens-radius-md: 12px;' +
+      '--lens-font: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, Helvetica, Arial, sans-serif;' +
+      'position: fixed !important;' +
+      'top: 0 !important;' +
+      'left: 0 !important;' +
+      'right: 0 !important;' +
+      'z-index: 2147483647 !important;' +
+      'display: block !important;' +
+      'box-sizing: border-box !important;' +
+      'margin: 0 !important;' +
+      'padding: 0 !important;' +
+      'width: 100% !important;' +
+      'max-width: 100% !important;' +
+      'font-family: var(--lens-font) !important;' +
+      'font-size: 13px !important;' +
+      'line-height: 1.45 !important;' +
+      'color: var(--lens-text-primary) !important;' +
+      'background: var(--lens-glass-bg) !important;' +
+      'backdrop-filter: blur(8px) !important;' +
+      '-webkit-backdrop-filter: blur(8px) !important;' +
+      'border: 1px solid var(--lens-border-color) !important;' +
+      'border-radius: var(--lens-radius-md) !important;' +
+      'box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4) !important;' +
+      'animation: lens-fade-in 200ms ease-out !important;' +
+      'text-align: left !important;' +
+    '}' +
+    '@keyframes lens-fade-in {' +
+      'from { opacity: 0; transform: translateY(-4px); }' +
+      'to   { opacity: 1; transform: translateY(0); }' +
+    '}' +
+    '@keyframes lens-fade-out {' +
+      'from { opacity: 1; transform: translateY(0); }' +
+      'to   { opacity: 0; transform: translateY(-4px); }' +
+    '}' +
+    '[data-aegisgate-lens="banner"].lens-hiding {' +
+      'animation: lens-fade-out 200ms ease-in !important;' +
+      'opacity: 0 !important;' +
+    '}' +
+    '[data-aegisgate-lens="banner"] .lens-header {' +
+      'display: flex !important;' +
+      'align-items: center !important;' +
+      'gap: 8px !important;' +
+      'padding: 10px 14px !important;' +
+      'border-bottom: 1px solid var(--lens-border-color) !important;' +
+    '}' +
+    '[data-aegisgate-lens="banner"] .lens-logo {' +
+      'height: 24px !important;' +
+      'width: auto !important;' +
+      'flex-shrink: 0 !important;' +
+    '}' +
+    '[data-aegisgate-lens="banner"] .lens-logo {' +
+      'height: 24px !important;' +
+      'width: auto !important;' +
+      'flex-shrink: 0 !important;' +
+    '}' +
+    '[data-aegisgate-lens="banner"] .lens-logo-container {' +
+      'display: flex !important;' +
+      'align-items: center !important;' +
+      'gap: 4px !important;' +
+      'flex-shrink: 0 !important;' +
+    '}' +
+    '[data-aegisgate-lens="banner"] .lens-logo-text {' +
+      'font-weight: 700 !important;' +
+      'font-size: 12px !important;' +
+      'color: var(--lens-text-primary) !important;' +
+      'flex-shrink: 0 !important;' +
+    '}' +
+    '[data-aegisgate-lens="banner"] .lens-wordmark {' +
+      'font-weight: 700 !important;' +
+      'font-size: 12px !important;' +
+      'letter-spacing: 0.01em !important;' +
+      'color: var(--lens-text-primary) !important;' +
+      'flex-shrink: 0 !important;' +
+    '}' +
+    '[data-aegisgate-lens="banner"] .lens-count {' +
+      'flex: 1 !important;' +
+      'font-size: 12px !important;' +
+      'color: var(--lens-text-secondary) !important;' +
+      'padding-left: 4px !important;' +
+    '}' +
+    '[data-aegisgate-lens="banner"] .lens-header-actions {' +
+      'display: flex !important;' +
+      'align-items: center !important;' +
+      'gap: 6px !important;' +
+      'flex-shrink: 0 !important;' +
+    '}' +
+    '[data-aegisgate-lens="banner"] .lens-icon-btn {' +
+      'display: inline-flex !important;' +
+      'align-items: center !important;' +
+      'justify-content: center !important;' +
+      'width: 22px !important;' +
+      'height: 22px !important;' +
+      'padding: 0 !important;' +
+      'margin: 0 !important;' +
+      'background: transparent !important;' +
+      'border: none !important;' +
+      'border-radius: var(--lens-radius-sm) !important;' +
+      'color: var(--lens-text-secondary) !important;' +
+      'cursor: pointer !important;' +
+      'font-size: 14px !important;' +
+      'line-height: 1 !important;' +
+    '}' +
+    '[data-aegisgate-lens="banner"] .lens-icon-btn:hover {' +
+      'background: rgba(56, 189, 248, 0.1) !important;' +
+      'color: var(--lens-text-primary) !important;' +
+    '}' +
+    '[data-aegisgate-lens="banner"] .lens-icon-btn svg {' +
+      'width: 14px !important;' +
+      'height: 14px !important;' +
+    '}' +
+    '[data-aegisgate-lens="banner"] .lens-list {' +
+      'padding: 4px 0 !important;' +
+      'max-height: 240px !important;' +
+      'overflow-y: auto !important;' +
+    '}' +
+    '[data-aegisgate-lens="banner"] .lens-item {' +
+      'display: flex !important;' +
+      'align-items: center !important;' +
+      'gap: 8px !important;' +
+      'padding: 6px 14px !important;' +
+      'border-left: 3px solid transparent !important;' +
+      'font-size: 12px !important;' +
+      'color: var(--lens-text-primary) !important;' +
+    '}' +
+    '[data-aegisgate-lens="banner"] .lens-item-critical { border-left-color: var(--lens-accent) !important; }' +
+    '[data-aegisgate-lens="banner"] .lens-item-high     { border-left-color: var(--lens-primary) !important; }' +
+    '[data-aegisgate-lens="banner"] .lens-item-medium   { border-left-color: var(--lens-primary) !important; }' +
+    '[data-aegisgate-lens="banner"] .lens-item-low      { border-left-color: var(--lens-text-muted) !important; }' +
+    '[data-aegisgate-lens="banner"] .lens-item-category {' +
+      'flex: 1 !important;' +
+      'font-weight: 500 !important;' +
+      'text-transform: capitalize !important;' +
+    '}' +
+    '[data-aegisgate-lens="banner"] .lens-pill {' +
+      'display: inline-block !important;' +
+      'padding: 1px 6px !important;' +
+      'border-radius: 4px !important;' +
+      'font-size: 9px !important;' +
+      'font-weight: 700 !important;' +
+      'letter-spacing: 0.04em !important;' +
+      'text-transform: uppercase !important;' +
+      'line-height: 1.4 !important;' +
+      'flex-shrink: 0 !important;' +
+    '}' +
+    '[data-aegisgate-lens="banner"] .lens-pill-critical {' +
+      'background: rgba(244, 63, 94, 0.15) !important;' +
+      'color: var(--lens-accent) !important;' +
+    '}' +
+    '[data-aegisgate-lens="banner"] .lens-pill-high {' +
+      'background: rgba(255, 189, 46, 0.15) !important;' +
+      'color: #d97706 !important;' +
+    '}' +
+    '[data-aegisgate-lens="banner"] .lens-pill-medium {' +
+      'background: rgba(56, 189, 248, 0.15) !important;' +
+      'color: var(--lens-primary) !important;' +
+    '}' +
+    '[data-aegisgate-lens="banner"] .lens-pill-low {' +
+      'background: rgba(100, 116, 139, 0.15) !important;' +
+      'color: var(--lens-text-muted) !important;' +
+    '}' +
+    '[data-aegisgate-lens="banner"] .lens-item-match {' +
+      'font-family: \'SF Mono\', \'Fira Code\', \'Consolas\', monospace !important;' +
+      'font-size: 11px !important;' +
+      'color: var(--lens-text-muted) !important;' +
+      'flex-shrink: 0 !important;' +
+      'max-width: 140px !important;' +
+      'overflow: hidden !important;' +
+      'text-overflow: ellipsis !important;' +
+      'white-space: nowrap !important;' +
+      'direction: ltr !important;' +
+    '}' +
+    '[data-aegisgate-lens="banner"] .lens-privacy {' +
+      'padding: 8px 14px !important;' +
+      'background: rgba(0, 0, 0, 0.2) !important;' +
+      'border-top: 1px solid var(--lens-border-color) !important;' +
+      'font-size: 11px !important;' +
+      'line-height: 1.5 !important;' +
+      'color: var(--lens-text-secondary) !important;' +
+    '}' +
+    '[data-aegisgate-lens="banner"] .lens-privacy strong {' +
+      'color: var(--lens-text-primary) !important;' +
+      'font-weight: 600 !important;' +
+    '}' +
+    '[data-aegisgate-lens="banner"] .lens-privacy a {' +
+      'color: var(--lens-primary) !important;' +
+      'text-decoration: none !important;' +
+    '}' +
+    '[data-aegisgate-lens="banner"] .lens-privacy a:hover {' +
+      'text-decoration: underline !important;' +
+    '}' +
+    '[data-aegisgate-lens="banner"] .lens-actions {' +
+      'display: flex !important;' +
+      'align-items: center !important;' +
+      'gap: 6px !important;' +
+      'padding: 10px 14px !important;' +
+      'border-top: 1px solid var(--lens-border-color) !important;' +
+      'background: rgba(0, 0, 0, 0.15) !important;' +
+    '}' +
+    '[data-aegisgate-lens="banner"] .lens-btn {' +
+      'display: inline-block !important;' +
+      'padding: 5px 12px !important;' +
+      'border-radius: var(--lens-radius-sm) !important;' +
+      'font-size: 12px !important;' +
+      'font-weight: 600 !important;' +
+      'cursor: pointer !important;' +
+      'transition: all 0.15s ease !important;' +
+      'border: none !important;' +
+      'line-height: 1.4 !important;' +
+      'text-align: center !important;' +
+    '}' +
+    '[data-aegisgate-lens="banner"] .lens-btn-secondary {' +
+      'background: var(--lens-bg-tertiary) !important;' +
+      'color: var(--lens-text-primary) !important;' +
+      'border: 1px solid var(--lens-border-color) !important;' +
+    '}' +
+    '[data-aegisgate-lens="banner"] .lens-btn-secondary:hover {' +
+      'background: var(--lens-border-color) !important;' +
+    '}' +
+    '[data-aegisgate-lens="banner"] .lens-btn-primary {' +
+      'background: var(--lens-primary) !important;' +
+      'color: var(--lens-bg-primary) !important;' +
+    '}' +
+    '[data-aegisgate-lens="banner"] .lens-btn-primary:hover {' +
+      'background: var(--lens-primary-hover) !important;' +
+    '}' +
+    '[data-aegisgate-lens="banner"] .lens-btn-ghost {' +
+      'background: transparent !important;' +
+      'color: var(--lens-text-secondary) !important;' +
+      'padding: 5px 10px !important;' +
+    '}' +
+    '[data-aegisgate-lens="banner"] .lens-btn-ghost:hover {' +
+      'color: var(--lens-text-primary) !important;' +
+    '}' +
+    '[data-aegisgate-lens="banner"] .lens-false-positive-link {' +
+      'margin-left: auto !important;' +
+      'font-size: 11px !important;' +
+      'color: var(--lens-text-muted) !important;' +
+      'background: transparent !important;' +
+      'border: none !important;' +
+      'cursor: pointer !important;' +
+      'padding: 4px 8px !important;' +
+      'border-radius: var(--lens-radius-sm) !important;' +
+      'display: inline-flex !important;' +
+      'align-items: center !important;' +
+      'gap: 4px !important;' +
+    '}' +
+    '[data-aegisgate-lens="banner"] .lens-false-positive-link:hover {' +
+      'color: var(--lens-text-secondary) !important;' +
+      'background: rgba(56, 189, 248, 0.05) !important;' +
+    '}' +
+    '[data-aegisgate-lens="banner"] .lens-false-positive-link svg {' +
+      'width: 10px !important;' +
+      'height: 10px !important;' +
+    '}' +
+    '[data-aegisgate-lens="banner"] .lens-dismiss {' +
+      'padding: 10px 14px !important;' +
+      'background: rgba(0, 0, 0, 0.3) !important;' +
+      'border-top: 1px solid var(--lens-border-color) !important;' +
+      'font-size: 12px !important;' +
+    '}' +
+    '[data-aegisgate-lens="banner"] .lens-dismiss-prompt {' +
+      'font-weight: 600 !important;' +
+      'margin-bottom: 8px !important;' +
+      'color: var(--lens-text-primary) !important;' +
+    '}' +
+    '[data-aegisgate-lens="banner"] .lens-dismiss-reasons {' +
+      'display: flex !important;' +
+      'flex-direction: column !important;' +
+      'gap: 4px !important;' +
+      'margin-bottom: 10px !important;' +
+    '}' +
+    '[data-aegisgate-lens="banner"] .lens-dismiss-reasons label {' +
+      'display: flex !important;' +
+      'align-items: flex-start !important;' +
+      'gap: 6px !important;' +
+      'cursor: pointer !important;' +
+      'font-size: 11px !important;' +
+      'color: var(--lens-text-secondary) !important;' +
+      'line-height: 1.4 !important;' +
+    '}' +
+    '[data-aegisgate-lens="banner"] .lens-dismiss-reasons input[type="checkbox"] {' +
+      'margin: 0 !important;' +
+      'flex-shrink: 0 !important;' +
+      'margin-top: 2px !important;' +
+      'accent-color: var(--lens-primary) !important;' +
+    '}' +
+    '[data-aegisgate-lens="banner"] .lens-dismiss-actions {' +
+      'display: flex !important;' +
+      'align-items: center !important;' +
+      'gap: 6px !important;' +
+    '}' +
+    '[data-aegisgate-lens="banner"] .lens-dismiss-transparency {' +
+      'font-size: 10px !important;' +
+      'color: var(--lens-text-muted) !important;' +
+      'margin-top: 8px !important;' +
+      'line-height: 1.4 !important;' +
+    '}' +
+    '[data-aegisgate-lens="banner"] .lens-upgrade {' +
+      'display: flex !important;' +
+      'align-items: center !important;' +
+      'gap: 12px !important;' +
+      'padding: 12px 14px !important;' +
+      'background: var(--lens-primary-glow) !important;' +
+      'border: 1px solid var(--lens-primary) !important;' +
+      'border-radius: var(--lens-radius-md) !important;' +
+      'margin: 8px 0 !important;' +
+    '}' +
+    '[data-aegisgate-lens="banner"] .lens-upgrade-icon {' +
+      'flex-shrink: 0 !important;' +
+      'color: var(--lens-primary) !important;' +
+    '}' +
+    '[data-aegisgate-lens="banner"] .lens-upgrade-content {' +
+      'flex: 1 !important;' +
+    '}' +
+    '[data-aegisgate-lens="banner"] .lens-upgrade-title {' +
+      'font-weight: 700 !important;' +
+      'font-size: 13px !important;' +
+      'color: var(--lens-text-primary) !important;' +
+      'margin-bottom: 2px !important;' +
+    '}' +
+    '[data-aegisgate-lens="banner"] .lens-upgrade-desc {' +
+      'font-size: 11px !important;' +
+      'color: var(--lens-text-secondary) !important;' +
+    '}' +
+    '[data-aegisgate-lens="banner"] .lens-upgrade-btn {' +
+      'display: inline-block !important;' +
+      'padding: 6px 12px !important;' +
+      'background: var(--lens-primary) !important;' +
+      'color: var(--lens-bg-primary) !important;' +
+      'text-decoration: none !important;' +
+      'border-radius: var(--lens-radius-sm) !important;' +
+      'font-size: 12px !important;' +
+      'font-weight: 600 !important;' +
+      'transition: background 0.15s ease !important;' +
+      'border: none !important;' +
+    '}' +
+    '[data-aegisgate-lens="banner"] .lens-upgrade-btn:hover {' +
+      'background: var(--lens-primary-hover) !important;' +
+    '}' +
+    '[data-aegisgate-lens="banner"] .lens-upgrade-btn:visited {' +
+      'color: var(--lens-bg-primary) !important;' +
+    '}' +
+    '[data-aegisgate-lens="banner"] .lens-upgrade { margin-top: 4px !important; }';
 
   function injectStyles() {
     try {
-      if (document.getElementById(STYLE_ID)) return;
-      if (!CSS_URL) {
-        // chrome.runtime.getURL not available (e.g., in tests);
-        // the banner will use default browser styles. Tests don't
-        // render the banner anyway.
-        return;
-      }
-      var link = document.createElement('link');
-      link.id = STYLE_ID;
-      link.rel = 'stylesheet';
-      link.type = 'text/css';
-      link.href = CSS_URL;
-      link.setAttribute('data-aegisgate-lens', 'banner-css');
-      document.head.appendChild(link);
+      if (document.getElementById('aegisgate-lens-banner-styles')) return;
+      
+      // Create a <style> element with the embedded CSS
+      var style = document.createElement('style');
+      style.id = 'aegisgate-lens-banner-styles';
+      style.textContent = CSS_STRING;
+      
+      // Append to documentElement to ensure CSS is loaded
+      (document.documentElement || document.head || document).appendChild(style);
+      
+      log.info('CSS embedded successfully');
     } catch (err) {
       log.error('injectStyles threw', err);
     }
@@ -170,6 +520,21 @@
         '<a href="' + escapeHtml(learnMoreUrl) + '" target="_blank" rel="noopener noreferrer">Learn more</a>.' +
       '</div>';
 
+    // Upgrade CTA for Platform
+    var upgradeHtml =
+      '<div class="lens-upgrade">' +
+        '<div class="lens-upgrade-icon">' +
+          '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+            '<path d="M12 2L15 8H21L16 12L18 18L12 15L6 18L8 12L3 8H9L12 2Z" fill="#4a90d9"/>' +
+          '</svg>' +
+        '</div>' +
+        '<div class="lens-upgrade-content">' +
+          '<div class="lens-upgrade-title">Upgrade to AegisGate Platform</div>' +
+          '<div class="lens-upgrade-desc">Get automated redaction, enterprise features, and custom patterns</div>' +
+        '</div>' +
+        '<a href="https://aegisgatesecurity.io/lens/pricing" target="_blank" class="lens-upgrade-btn">Upgrade</a>' +
+      '</div>';
+
     // Action row
     var actionsHtml =
       '<div class="lens-actions">' +
@@ -182,10 +547,15 @@
         '</button>' +
       '</div>';
 
-    // Header
+    // Header - using AegisGate logo SVG (embedded directly, no external file needed)
     var headerHtml =
       '<div class="lens-header">' +
-        '<span class="lens-shield">' + (icons && icons.ICONS.shield ? icons.ICONS.shield : '') + '</span>' +
+        '<div class="lens-logo-container">' +
+          '<svg class="lens-logo" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+            '<path d="M12 2L15 8H21L16 12L18 18L12 15L6 18L8 12L3 8H9L12 2Z" fill="#38bdf8"/>' +
+          '</svg>' +
+          '<span class="lens-logo-text">AegisGate</span>' +
+        '</div>' +
         '<span class="lens-wordmark">AegisGate Lens</span>' +
         '<span class="lens-count">' + countText + '</span>' +
         '<span class="lens-header-actions">' +
@@ -198,7 +568,7 @@
         '</span>' +
       '</div>';
 
-    return headerHtml + listHtml + privacyHtml + actionsHtml;
+    return headerHtml + listHtml + privacyHtml + upgradeHtml + actionsHtml;
   }
 
   // The dismiss form (expanded). Shown when the user clicks
@@ -422,10 +792,12 @@
       }
       state.parentInput = input;
     } else {
-      // No input provided; fall back to document.body
-      if (state.el.parentNode !== document.body) {
+      // No input provided; append to document.documentElement
+      // With position: fixed and top: 0, it will appear at the top
+      // Using documentElement instead of body to avoid body margin/padding issues
+      if (state.el.parentNode !== document.documentElement) {
         if (state.el.parentNode) state.el.parentNode.removeChild(state.el);
-        document.body.appendChild(state.el);
+        document.documentElement.appendChild(state.el);
       }
     }
     state.isVisible = true;

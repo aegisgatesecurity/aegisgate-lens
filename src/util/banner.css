@@ -11,31 +11,34 @@
  */
 
 [data-aegisgate-lens="banner"] {
-  /* Brand tokens (lifted from the corporate site) */
-  --lens-bg-primary: #0a0c10;
-  --lens-bg-secondary: #11141d;
-  --lens-bg-tertiary: #1a1f2e;
-  --lens-primary: #38bdf8;
-  --lens-primary-hover: #00c4ec;
-  --lens-secondary: #10b981;
-  --lens-accent: #f43f5e;
-  --lens-amber: #ffbd2e;
-  --lens-text-primary: #f8fafc;
-  --lens-text-secondary: #94a3b8;
-  --lens-text-muted: #64748b;
-  --lens-border-color: rgba(51, 65, 85, 0.5);
-  --lens-glass-bg: rgba(17, 20, 29, 0.95);
+  /* Brand tokens - exact match to corporate website colors */
+  --lens-bg-primary: #0a0c10;       /* Deep midnight black-blue */
+  --lens-bg-secondary: #11141d;     /* Subtle lift for cards */
+  --lens-bg-tertiary: #1a1f2e;      /* Elevated surfaces */
+  --lens-primary: #38bdf8;          /* Sophisticated Cyan (Less electric, more steel) */
+  --lens-primary-hover: #00c4ec;    /* Hover state for buttons */
+  --lens-primary-glow: rgba(56, 189, 248, 0.15);
+  --lens-secondary: #10b981;        /* Emerald for success/safety */
+  --lens-accent: #f43f5e;           /* Rose for critical warnings */
+  --lens-text-primary: #f8fafc;     /* Pure, clean white-grey */
+  --lens-text-secondary: #94a3b8;   /* Muted slate for a sophisticated look */
+  --lens-text-muted: #64748b;       /* Deep slate for low-priority info */
+  --lens-border-color: rgba(51, 65, 85, 0.5); /* Transparent borders for glass effect */
+  --lens-glass-bg: rgba(17, 20, 29, 0.7);   /* Semi-transparent backdrop */
   --lens-radius-sm: 6px;
   --lens-radius-md: 12px;
   --lens-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
                Helvetica, Arial, sans-serif;
 
-  /* Layout */
-  position: relative !important;
+  /* Layout - Fixed positioning at top of viewport */
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
   z-index: 2147483647 !important;        /* Max 32-bit signed int */
   display: block !important;
   box-sizing: border-box !important;
-  margin: 0 0 8px 0 !important;
+  margin: 0 !important;
   padding: 0 !important;
   width: 100% !important;
   max-width: 100% !important;
@@ -78,11 +81,10 @@
   border-bottom: 1px solid var(--lens-border-color) !important;
 }
 
-[data-aegisgate-lens="banner"] .lens-shield {
-  width: 18px !important;
-  height: 18px !important;
+[data-aegisgate-lens="banner"] .lens-logo {
+  height: 24px !important;
+  width: auto !important;
   flex-shrink: 0 !important;
-  color: var(--lens-primary) !important;
 }
 
 [data-aegisgate-lens="banner"] .lens-wordmark {
@@ -349,4 +351,64 @@
   color: var(--lens-text-muted) !important;
   margin-top: 8px !important;
   line-height: 1.4 !important;
+}
+
+/* ---- Upgrade CTA ---- */
+
+[data-aegisgate-lens="banner"] .lens-upgrade {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  padding: 12px 14px !important;
+  background: var(--lens-primary-glow) !important;
+  border: 1px solid var(--lens-primary) !important;
+  border-radius: var(--lens-radius-md) !important;
+  margin: 8px 0 !important;
+}
+
+[data-aegisgate-lens="banner"] .lens-upgrade-icon {
+  flex-shrink: 0 !important;
+  color: var(--lens-primary) !important;
+}
+
+[data-aegisgate-lens="banner"] .lens-upgrade-content {
+  flex: 1 !important;
+}
+
+[data-aegisgate-lens="banner"] .lens-upgrade-title {
+  font-weight: 700 !important;
+  font-size: 13px !important;
+  color: var(--lens-text-primary) !important;
+  margin-bottom: 2px !important;
+}
+
+[data-aegisgate-lens="banner"] .lens-upgrade-desc {
+  font-size: 11px !important;
+  color: var(--lens-text-secondary) !important;
+}
+
+[data-aegisgate-lens="banner"] .lens-upgrade-btn {
+  display: inline-block !important;
+  padding: 6px 12px !important;
+  background: var(--lens-primary) !important;
+  color: var(--lens-bg-primary) !important;
+  text-decoration: none !important;
+  border-radius: var(--lens-radius-sm) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  transition: background 0.15s ease !important;
+  border: none !important;
+}
+
+[data-aegisgate-lens="banner"] .lens-upgrade-btn:hover {
+  background: var(--lens-primary-hover) !important;
+}
+
+[data-aegisgate-lens="banner"] .lens-upgrade-btn:visited {
+  color: var(--lens-bg-primary) !important;
+}
+
+/* Ensure action row styling matches */
+[data-aegisgate-lens="banner"] .lens-upgrade {
+  margin-top: 4px !important;
 }

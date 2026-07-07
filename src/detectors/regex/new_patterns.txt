@@ -1,0 +1,64 @@
+    pii_driver_license_international: {
+      severity: "high",
+      re: /(?:Driver's?\s+License|DL|State\s+ID|Permis\s+conduire|Führerschein|Patente|Licencia|Permiso|Brevetto|Korti\s+ajamiso|Dokument\s+tożsamości)\s*(?:#|No\.?)?\s*([A-Z]?[\d\s-]{5,20})\b/gi
+    },
+    pii_bank_account: {
+      severity: "high",
+      re: /(?:Account\s+Number|Bank\s+Account|Account\s+No\.?|IBAN)\s*[:=]\s*(\d{8,17})\b/gi
+    },
+    pii_crypto_btc: {
+      severity: "high",
+      re: /(?:Bitcoin|BTC|btc)\s*(?:address|address\s+for|wallet)?\s*[:=]?\s*(?:[13][a-km-zA-HJ-NP-Z1-9]{25,34}|bc1[qrp][0-9A-Za-z]{39,59})\b/gi
+    },
+    pii_passport_international: {
+      severity: "high",
+      re: /(?:Passport|Passport\s+No\.?|No\.?\s+Passport|Passeport|Reisepass|Pasaporte|Passaporto|Passportnummer)\s*(?:#)?\s*([A-Z]?[\d]{6,9})\b/gi
+    },
+    pii_crypto_eth: {
+      severity: "high",
+      re: /(?:Ethereum|ETH|eth)\s*(?:address|address\s+for|wallet)?\s*[:=]?\s*(0x[a-fA-F0-9]{40})\b/gi
+    },
+    pii_crypto_bnb: {
+      severity: "high",
+      re: /(?:Binance|BNB|bnb)\s*(?:address|address\s+for|wallet)?\s*[:=]?\s*(0x[a-fA-F0-9]{40}|bnb[a-zA-HJ-NP-Z1-9]{39})\b/gi
+    },
+    pii_crypto_ltc: {
+      severity: "high",
+      re: /(?:Litecoin|LTC|ltc)\s*(?:address|address\s+for|wallet)?\s*[:=]?\s*(?:[LM3][a-km-zA-HJ-NP-Z1-9]{26,33})\b/gi
+    },
+    pii_crypto_sol: {
+      severity: "high",
+      re: /(?:Solana|SOL|sol)\s*(?:address|address\s+for|wallet)?\s*[:=]?\s*([1-9A-HJ-NP-Za-km-z]{32,44})\b/gi
+    },
+    pii_digital_paypal: {
+      severity: "high",
+      re: /(?:PayPal|paypal)\s*(?:email|email\s+address)?\s*[:=]?\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\b/gi
+    },
+    pii_digital_stripe: {
+      severity: "high",
+      re: /(?:Stripe|stripe)\s*(?:api\s*key|secret\s*key|publishable\s*key)?\s*[:=]?\s*(?:pk_live_[0-9a-zA-Z]{24,50}|sk_live_[0-9a-zA-Z]{24,50}|pk_test_[0-9a-zA-Z]{24,50}|sk_test_[0-9a-zA-Z]{24,50})\b/gi
+    },
+    pii_digital_venmo: {
+      severity: "high",
+      re: /(?:Venmo|venmo)\s*(?:username|user\s*name|handle)?\s*[:=]?\s*(?:@?[a-zA-Z][a-zA-Z0-9._]{1,30})\b/gi
+    },
+    pii_digital_cashapp: {
+      severity: "high",
+      re: /(?:Cashapp|cashapp|cash\s*app)\s*(?:username|handle)?\s*[:=]?\s*(?:\$?[a-zA-Z0-9][a-zA-Z0-9._-]{1,20})\b/gi
+    },
+    pii_residence_us: {
+      severity: "medium",
+      re: /(?:Address|Address\s+of|Residence|Resident)\s*(?:in\s+the\s+US|in\s+USA|in\s+United\s+States)?\s*[:=]?\s*(\d+\s+[A-Za-z]+\s+(?:Street|St|Avenue|Ave|Boulevard|Blvd|Road|Rd|Drive|Dr|Lane|Ln|Court|Ct|Way|Place|Pl)\.?\s+(?:[A-Za-z]+\s+){0,2}[A-Za-z]+,\s*(?:AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY)|[A-Z]{2}\s+\d{5}(?:-\d{4})?)/gi
+    },
+    pii_residence_ca: {
+      severity: "medium",
+      re: /(?:Address|Address\s+of|Residence|Resident)\s*(?:in\s+Canada|in\s+CA|in\s+Canadian)?\s*[:=]?\s*([A-Za-z]\d[A-Za-z]\s*\d[A-Za-z]\d(?:\s+[A-Za-z]\d[A-Za-z])?|\d+\s+[A-Za-z]+\s+(?:Street|St|Avenue|Ave|Boulevard|Blvd|Road|Rd|Drive|Dr)\.?\s+(?:[A-Za-z]+\s+)*[A-Za-z]+,\s*(?:Alberta|British\s+Columbia|Manitoba|New\s+Brunswick|Newfoundland|Nova\s+Scotia|Ontario|Prince\s+Edward|Quebec|Saskatchewan|Yukon)|[A-Z]{2}\s+\d{3}(?:-\d{3})?)/gi
+    },
+    pii_residence_uk: {
+      severity: "medium",
+      re: /(?:Address|Address\s+of|Residence|Resident)\s*(?:in\s+UK|in\s+United\s+Kingdom|in\s+GB)?\s*[:=]?\s*([A-Za-z]{1,2}\d[A-Za-z\d]?\s*\d[A-Za-z]{2}|\d+\s+[A-Za-z]+\s+(?:Street|St|Avenue|Ave|Boulevard|Blvd|Road|Rd|Drive|Dr)\.?\s+(?:[A-Za-z]+\s+)*[A-Za-z]+,\s*(?:England|Scotland|Wales|Northern\s+Ireland)|[A-Z]{2}\d\s*[A-Z]{2})/gi
+    },
+    pii_visa: {
+      severity: "high",
+      re: /(?:Visa|visa)\s*(?:number|number\s+for|card\s+number)?\s*[:=]?\s*(4[0-9]{15})\b/gi
+    }
