@@ -30,11 +30,6 @@ jobs:
         with:
           node-version: '20'
 
-      - name: "Security: CSP gate - list all JS files"
-        run: |
-          echo "=== CSP gate debug - listing JS files ==="
-          find src -name "*.js" -type f | head -20
-          echo "=== CSP gate debug - done listing files ==="
       - name: "Security: CSP gate"
         run: |
           # CSP gate check: Verify no dangerous code patterns in JS source
