@@ -423,13 +423,95 @@
     try {
       log.info('installed: ' + details.reason);
       if (details.reason === 'install') {
-        chrome.tabs.create({ url: chrome.runtime.getURL('src/welcome/welcome.html') });
+        chrome.tabs.create({ url: chrome.runtime.getURL('welcome/welcome.html') });
       }
     } catch (e) {
       log.error('onInstalled handler threw', e);
     }
     // Try to drain the FP queue on every install/startup
     drainQueue().catch(function (err) { log.warn('startup drain failed', err); });
+  });
+
+  // On tab update: dynamically inject content script for providers
+  // This handles sites with Cloudflare access controls (like perplexity.ai)
+  // that block static content_scripts injection
+  chrome.tabs.onUpdated.addListener(function (tabId, changeInfo, tab) {
+    try {
+      // Only inject on successful navigation (not on background loads)
+      if (changeInfo.status !== 'complete') return;
+      
+      // Get the hostname from the URL
+      var url = tab.url || '';
+      var hostname = '';
+      try {
+        var urlObj = new URL(url);
+        hostname = urlObj.hostname;
+      } catch (e) {
+        return; // Invalid URL
+      }
+      
+      // Check if this is one of our provider domains
+      var providerDomains = [
+        'chat.openai.com', 'chatgpt.com',
+        'claude.ai',
+        'gemini.google.com',
+        'copilot.microsoft.com',
+        'duck.ai',
+        'duckduckgo.com',
+        'perplexity.ai', 'www.perplexity.ai',
+        'grok.com', 'x.com', 'twitter.com',
+        'chat.mistral.ai', 'le-chat.mistral.ai'
+      ];
+      
+      var isProviderDomain = false;
+      for (var i = 0; i < providerDomains.length; i++) {
+        var domain = providerDomains[i];
+        if (hostname === domain || hostname.endsWith('.' + domain)) {
+          isProviderDomain = true;
+          break;
+        }
+      }
+      
+      if (!isProviderDomain) return;
+      
+      // Check if already injected (to avoid duplicate injections)
+      storageGet('aegisgate_lens_injected_tabs').then(function (injectedTabs) {
+        injectedTabs = injectedTabs || {};
+        if (injectedTabs[tabId]) return; // Already injected
+        
+        // Mark as injected
+        injectedTabs[tabId] = Date.now();
+        storageSet('aegisgate_lens_injected_tabs', injectedTabs).then(function () {
+          // Dynamically inject the content script
+          chrome.scripting.executeScript({
+            target: { tabId: tabId },
+            files: [
+              'util/logger.js',
+              'detectors/luhn.js',
+              'detectors/regex/pii.js',
+              'detectors/regex/secrets.js',
+              'detectors/regex/source_xss.js',
+              'detectors/regex/compliance.js',
+              'privacy/schema.js',
+              'privacy/domain_hash.js',
+              'detectors/index.js',
+              'util/selectors.js',
+              'util/prompt-detect.js',
+              'util/banner-icons.js',
+              'util/dismiss.js',
+              'util/banner-ui.js',
+              'content.js'
+            ]
+          }).then(function () {
+            log.info('dynamically injected content script into tab ' + tabId + ' (' + hostname + ')');
+          }).catch(function (err) {
+            log.warn('dynamic injection failed for tab ' + tabId + ': ' + err.message);
+          });
+        });
+      });
+    } catch (e) {
+      log.error('onTabUpdate handler threw', e);
+    }
   });
 
   // On startup (SW reactivated): drain the queue

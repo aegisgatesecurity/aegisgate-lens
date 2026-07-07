@@ -31,8 +31,8 @@
       id: 'chatgpt',
       name: 'ChatGPT',
       hosts: ['chat.openai.com', 'chatgpt.com'],
-      // ChatGPT: contenteditable ProseMirror element
-      inputSelector: 'div#prompt-textarea[contenteditable="true"], div.ProseMirror[contenteditable="true"], textarea#prompt-textarea',
+      // ChatGPT: contenteditable ProseMirror element or textarea
+      inputSelector: 'div#prompt-textarea[contenteditable="true"], div.ProseMirror[contenteditable="true"], textarea#prompt-textarea, textarea[name="userInput"]',
       // Send button (the up-arrow)
       sendSelector: 'button[data-testid="send-button"], button[aria-label*="Send" i]',
       // The bottom composer area
@@ -70,24 +70,24 @@
       id: 'copilot',
       name: 'Microsoft Copilot',
       hosts: ['copilot.microsoft.com', 'copilot.cloud.microsoft'],
-      // Copilot: a textarea
-      inputSelector: 'textarea#userInput, textarea[name="userInput"]',
-      sendSelector: 'button[aria-label*="Send" i], button[aria-label*="Submit" i]',
-      containerSelector: 'form, div.input-container',
+      // Copilot: textarea in the composer area
+      inputSelector: 'textarea#userInput, textarea[name="userInput"], textarea[placeholder*="message" i], textarea[placeholder*="Ask" i], div[contenteditable="true"]',
+      sendSelector: 'button[aria-label*="Send" i], button[aria-label*="Submit" i], button[type="submit"]',
+      containerSelector: 'form, div.input-container, div[role="main"]',
       submitMethod: 'click',
-      isContentEditable: false,
+      isContentEditable: true,
       version: '2026-07'
     },
     {
       id: 'perplexity',
       name: 'Perplexity',
       hosts: ['perplexity.ai', 'www.perplexity.ai'],
-      // Perplexity: a textarea
-      inputSelector: 'textarea[placeholder*="Ask" i], textarea[name="q"]',
-      sendSelector: 'button[aria-label="Submit"], button[type="submit"]',
-      containerSelector: 'div[role="search"], form',
+      // Perplexity: textarea in the search/composer area
+      inputSelector: 'textarea[placeholder*="message" i], textarea[placeholder*="Ask" i], textarea[placeholder*="search" i], textarea[name="q"], textarea[name="prompt"], div[contenteditable="true"]',
+      sendSelector: 'button[aria-label*="Submit" i], button[type="submit"], button[aria-label*="Search" i]',
+      containerSelector: 'div[role="search"], form, div[role="main"]',
       submitMethod: 'click',
-      isContentEditable: false,
+      isContentEditable: true,
       version: '2026-07'
     },
     {
@@ -95,21 +95,21 @@
       name: 'DuckDuckGo AI Chat',
       hosts: ['duckduckgo.com', 'duck.co'],
       // DDG AI Chat (legacy): textarea in the AI chat overlay
-      inputSelector: 'textarea[name="user-prompt"], textarea[placeholder*="Ask" i]',
-      sendSelector: 'button[aria-label*="Send" i]',
-      containerSelector: 'div.iso_chat, form',
+      inputSelector: 'textarea[name="user-prompt"], textarea[name="prompt"], textarea[placeholder*="Ask" i], textarea[placeholder*="message" i], div[contenteditable="true"]',
+      sendSelector: 'button[aria-label*="Send" i], button[type="submit"]',
+      containerSelector: 'div.iso_chat, form, div[role="main"]',
       submitMethod: 'enter',
-      isContentEditable: false,
+      isContentEditable: true,
       version: '2026-07'
     },
     {
       id: 'duck_ai',
       name: 'Duck.ai',
       hosts: ['duck.ai'],
-      // Duck.ai: new chat interface
-      inputSelector: 'textarea[name="user-prompt"], textarea[placeholder*="Ask" i], div[contenteditable="true"]',
-      sendSelector: 'button[type="submit"], button[aria-label*="Send" i]',
-      containerSelector: 'main, form',
+      // Duck.ai: new chat interface - updated selectors based on actual DOM
+      inputSelector: 'textarea[placeholder*="message" i], textarea[placeholder*="Ask" i], div[contenteditable="true"]',
+      sendSelector: 'button[type="submit"], button[aria-label*="Send" i], button[aria-label*="Submit" i]',
+      containerSelector: 'main, form, div[role="main"]',
       submitMethod: 'enter',
       isContentEditable: true,
       version: '2026-07'
@@ -118,10 +118,10 @@
       id: 'grok',
       name: 'Grok (x.com)',
       hosts: ['grok.com', 'x.com', 'twitter.com'],
-      // Grok: textarea in the Grok tab
-      inputSelector: 'textarea[placeholder*="Ask" i], div[contenteditable="true"]',
-      sendSelector: 'button[aria-label*="Send" i], button[aria-label*="Post" i]',
-      containerSelector: 'form, div[role="group"]',
+      // Grok: textarea in the Grok tab, x.com post composer
+      inputSelector: 'textarea[placeholder*="message" i], textarea[placeholder*="Ask" i], textarea[placeholder*="Post" i], textarea[placeholder*="Create" i], div[contenteditable="true"]',
+      sendSelector: 'button[aria-label*="Send" i], button[aria-label*="Post" i], button[type="submit"]',
+      containerSelector: 'form, div[role="group"], div[role="textbox"]',
       submitMethod: 'enter',
       isContentEditable: true,
       version: '2026-07'

@@ -1,112 +1,360 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Welcome to AegisGate Lens</title>
+  <title>AegisGate Lens — Installed</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    /* CSP-compliant: no inline scripts, no eval, no remote resources. */
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      max-width: 640px;
-      margin: 40px auto;
-      padding: 0 24px;
-      color: #1a1a1a;
-      line-height: 1.5;
+    /* -----------------------------------------------------------------------
+       AegisGate Lens - Welcome Page Styles
+       Visual language matches https://aegisgatesecurity.io exactly:
+         --bg-primary:     #0a0c10 (deep midnight black-blue)
+         --bg-secondary:   #11141d (subtle lift for cards)
+         --bg-tertiary:    #1a1f2e (elevated surfaces)
+         --primary:        #38bdf8 (sophisticated cyan)
+         --secondary:      #10b981 (emerald for success)
+         --accent:         #f43f5e (rose for critical)
+         --text-primary:   #f8fafc (clean white-grey)
+         --text-secondary: #94a3b8 (muted slate)
+         --text-muted:     #64748b (deep slate)
+         --border-color:   rgba(51, 65, 85, 0.5) (transparent for glass effect)
+         --glass-bg:       rgba(17, 20, 29, 0.7)
+         --font-sans:      'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif
+       ----------------------------------------------------------------------- */
+    :root {
+      --bg-primary:     #0a0c10;
+      --bg-secondary:   #11141d;
+      --bg-tertiary:    #1a1f2e;
+      --primary:        #38bdf8;
+      --primary-glow:   rgba(56, 189, 248, 0.15);
+      --secondary:      #10b981;
+      --accent:         #f43f5e;
+      --text-primary:   #f8fafc;
+      --text-secondary: #94a3b8;
+      --text-muted:     #64748b;
+      --border-color:   rgba(51, 65, 85, 0.5);
+      --glass-bg:       rgba(17, 20, 29, 0.7);
+      --font-sans:      'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     }
-    h1 { color: #1a3a5c; margin-top: 0; }
-    h2 { color: #1a3a5c; margin-top: 32px; }
-    .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; background: #e8f0f8; color: #1a3a5c; font-size: 12px; font-weight: 600; }
-    .card { background: #f7f9fc; border: 1px solid #d8e0e8; border-radius: 8px; padding: 16px; margin: 16px 0; }
-    .card.warning { background: #fff4e6; border-color: #f0c87c; }
-    .card.danger { background: #fce8e8; border-color: #e89b9b; }
-    .privacy { background: #e8f5e8; border-color: #a8d4a8; }
-    code { background: #f0f0f0; padding: 2px 4px; border-radius: 3px; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; }
-    .actions { display: flex; gap: 12px; margin-top: 32px; }
-    button {
-      padding: 10px 20px;
-      border-radius: 6px;
-      border: 1px solid #1a3a5c;
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { background: var(--bg-primary); color: var(--text-primary); font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
+    body {
+      min-height: 100vh;
+      background:
+        radial-gradient(ellipse 800px 600px at 0% 0%, var(--primary-glow) 0%, transparent 60%),
+        radial-gradient(ellipse 600px 400px at 100% 100%, var(--accent) 0%, transparent 60%),
+        var(--bg-primary);
+      background-attachment: fixed;
+      line-height: 1.55;
+      font-size: 15px;
+      letter-spacing: -0.005em;
+    }
+
+    /* Layout ---------------------------------------------- */
+    .container {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 64px 32px 48px;
+    }
+
+    /* Header ---------------------------------------------- */
+    .header {
+      margin-bottom: 48px;
+    }
+    .header .tag {
+      font-family: 'Inter', monospace;
+      font-size: 11px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 12px;
+      display: inline-block;
+    }
+    .header h1 {
+      font-size: 36px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin: 0;
+      background: linear-gradient(135deg, var(--text-primary) 0%, rgba(248, 250, 252, 0.7) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* Cards ---------------------------------------------- */
+    .card {
+      background: var(--bg-panel);
+      border: 1px solid var(--hairline);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+    .card.warning {
+      background: rgba(245, 158, 11, 0.08);
+      border: 1px solid rgba(245, 158, 11, 0.2);
+    }
+    .card.danger {
+      background: rgba(244, 63, 94, 0.08);
+      border: 1px solid rgba(244, 63, 94, 0.2);
+    }
+    .card.upgrade {
+      background: var(--primary-glow);
+      border: 1px solid var(--primary);
+    }
+    .card h2 {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: var(--text-primary);
+    }
+    .card p {
+      color: var(--text-secondary);
+      margin-bottom: 12px;
+      line-height: 1.6;
+    }
+    .card p strong {
+      color: var(--text-primary);
+    }
+    .card ul {
+      list-style: none;
+      padding-left: 0;
+      margin: 12px 0;
+    }
+    .card li {
+      padding: 6px 0;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+    .card li::before {
+      content: '✓';
+      color: var(--accent);
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .card li.cross::before {
+      content: '✗';
+      color: var(--critical);
+    }
+    .card li.no::before {
+      content: '✕';
+      color: var(--critical);
+    }
+
+    /* Upgrade CTA ---------------------------------------------- */
+    .upgrade-cta .features {
+      margin: 16px 0;
+    }
+    .upgrade-cta .features li {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+    .upgrade-cta .features li.check::before {
+      content: '✓';
+      color: var(--success);
+      font-weight: 700;
+      flex-shrink: 0;
+      margin-right: 8px;
+    }
+    .upgrade-btn {
+      display: inline-block;
+      padding: 12px 24px;
+      background: var(--accent);
+      color: var(--bg-deep);
+      text-decoration: none;
+      border-radius: 10px;
+      font-weight: 600;
+      transition: all 0.2s ease;
+    }
+    .upgrade-btn:hover {
+      background: var(--accent-dim);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(56, 189, 248, 0.2);
+    }
+
+    /* Features list ---------------------------------------------- */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+      margin: 24px 0;
+    }
+    .feature-item {
+      background: var(--bg-panel);
+      border: 1px solid var(--hairline);
+      border-radius: 12px;
+      padding: 16px;
+    }
+    .feature-item h3 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--accent);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .feature-item p {
+      color: var(--text-secondary);
+      font-size: 13px;
+      margin-bottom: 0;
+    }
+
+    /* Buttons ---------------------------------------------- */
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 32px;
+    }
+    .actions button {
+      padding: 12px 24px;
+      border-radius: 10px;
       font-size: 14px;
       font-weight: 600;
       cursor: pointer;
+      transition: all 0.2s ease;
+      border: 1px solid var(--hairline);
+      color: var(--text-primary);
+      background: transparent;
     }
-    button.primary { background: #1a3a5c; color: white; }
-    button.secondary { background: white; color: #1a3a5c; }
-    .small { font-size: 12px; color: #666; margin-top: 8px; }
+    .actions button:hover {
+      background: var(--hairline);
+      transform: translateY(-2px);
+    }
+    .actions button.primary {
+      background: var(--accent);
+      color: var(--bg-deep);
+      border: none;
+    }
+    .actions button.primary:hover {
+      background: var(--accent-dim);
+    }
+    .actions button.secondary {
+      border: 1px solid var(--text-muted);
+      color: var(--text-muted);
+    }
+    .actions button.secondary:hover {
+      border-color: var(--text-secondary);
+      color: var(--text-secondary);
+    }
+    .actions .upgrade-btn {
+      margin-left: auto;
+    }
+
+    /* Small text ---------------------------------------------- */
+    .small {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 16px;
+    }
+    .small.center {
+      text-align: center;
+      margin-top: 32px;
+    }
+    code {
+      font-family: 'Inter', ui-monospace, 'SF Mono', Menlo, monospace;
+      background: rgba(248, 250, 252, 0.1);
+      color: var(--accent);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+
+    /* Section spacing ---------------------------------------------- */
+    section {
+      margin-bottom: 48px;
+    }
+    section h2 {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--hairline);
+    }
+    section ul {
+      list-style: none;
+      padding-left: 0;
+    }
+    section li {
+      padding: 8px 0;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+    section li strong {
+      color: var(--text-primary);
+    }
+
+    /* Responsive ---------------------------------------------- */
+    @media (max-width: 768px) {
+      .container { padding: 40px 20px; }
+      .header h1 { font-size: 28px; }
+      .actions { flex-direction: column; }
+      .actions button { width: 100%; }
+    }
   </style>
 </head>
 <body>
-  <h1><span class="tag">v0.1.0-beta</span> AegisGate Lens</h1>
-  <p>
-    AegisGate Lens is a privacy-first browser extension that detects
-    <strong>prompt injection</strong>, <strong>PII</strong>,
-    <strong>secrets</strong>, and <strong>toxicity</strong> before they
-    reach AI tools like ChatGPT, Claude, and Gemini.
-  </p>
+  <div class="container">
+    <div class="header">
+      <span class="tag">v0.1.0-beta</span>
+      <h1>AegisGate Lens</h1>
+    </div>
 
-  <div class="card privacy">
-    <h2>Privacy promise</h2>
-    <p>
-      <strong>No prompt content</strong> ever leaves your browser. Not
-      for debugging. Not for support. Not ever.
-    </p>
-    <p>
-      The Lens is a privacy product. The default is <strong>OFF</strong>
-      for telemetry. You must explicitly opt in to share anonymized
-      threat-intel signals.
+    <section>
+      <h2>What gets checked</h2>
+      <ul>
+        <li><strong>Prompt injection</strong> — the content of the page or document you paste into the AI, not just what you typed</li>
+        <li><strong>PII</strong> — SSNs, emails, phone numbers, credit cards, addresses, etc.</li>
+        <li><strong>Secrets</strong> — API keys, OAuth tokens, private keys, database connection strings</li>
+        <li><strong>Toxicity</strong> — hate, threats, self-harm</li>
+      </ul>
+    </section>
+
+    <div class="card warning">
+      <h2>Privacy promise</h2>
+      <p><strong>No prompt content</strong> ever leaves your browser. Not for debugging. Not for support. Not ever.</p>
+      <p>The Lens is a privacy product. The default is <strong>OFF</strong> for telemetry. You must explicitly opt in to share anonymized threat-intel signals.</p>
+    </div>
+
+    <div class="card upgrade">
+      <h2>AegisGate Platform</h2>
+      <p>AegisGate Lens is free and privacy-first, but the <strong>AegisGate Platform</strong> adds:</p>
+      <div class="upgrade-cta">
+        <ul class="features">
+          <li class="check">Automated redaction (auto-strip sensitive data)</li>
+          <li class="check">Enterprise-grade telemetry & reporting</li>
+          <li class="check">Custom detection patterns & rules</li>
+          <li class="check">Enterprise SSO & audit logging</li>
+        </ul>
+        <a href="https://aegisgatesecurity.io/lens/pricing" target="_blank" class="upgrade-btn">Upgrade to Platform</a>
+      </div>
+    </div>
+
+    <section>
+      <h2>Opting in to threat intel (optional)</h2>
+      <p>If you opt in, the Lens sends a small, anonymous "I detected X category Y" signal back to AegisGate. This helps the AegisGate Gateway (our enterprise product) become smarter over time. The signal contains:</p>
+      <ul>
+        <li>A <strong>hashed</strong> version of the page domain (e.g. <code>a3f1c8d2b9e07456</code>) — not the URL, not the path, not any page content</li>
+        <li>The <strong>category</strong> that was detected (e.g. <code>pii_email</code>) — not the value</li>
+        <li>The <strong>severity</strong> and your <strong>action</strong> (send, redact, cancel)</li>
+      </ul>
+      <p class="small">See <code>docs/PRIVACY-POLICY.md</code> for the full policy.</p>
+    </section>
+
+    <div class="actions">
+      <button class="primary" id="opt-in">Opt in to threat intel</button>
+      <button class="secondary" id="dismiss">Stay in detect-only mode</button>
+    </div>
+    <p class="small center">
+      You can change this any time from the extension popup (click the AegisGate icon in the toolbar).
     </p>
   </div>
-
-  <h2>What gets checked</h2>
-  <ul>
-    <li><strong>Prompt injection</strong> &mdash; the content of the
-      page or document you paste into the AI, not just what you typed</li>
-    <li><strong>PII</strong> &mdash; SSNs, emails, phone numbers, credit
-      cards, addresses, etc.</li>
-    <li><strong>Secrets</strong> &mdash; API keys, OAuth tokens, private
-      keys, database connection strings</li>
-    <li><strong>Toxicity</strong> &mdash; hate, threats, self-harm</li>
-  </ul>
-
-  <div class="card warning">
-    <h2>Default: off</h2>
-    <p>
-      The Lens is in <strong>detect-only mode</strong> by default. It
-      will show you a warning banner before you send a prompt that
-      contains something sensitive &mdash; but it will not send any
-      data anywhere.
-    </p>
-  </div>
-
-  <h2>Opting in to threat intel (optional)</h2>
-  <p>
-    If you opt in, the Lens sends a small, anonymous "I detected X
-    category Y" signal back to AegisGate. This helps the AegisGate
-    Gateway (our enterprise product) become smarter over time. The
-    signal contains:
-  </p>
-  <ul>
-    <li>A <strong>hashed</strong> version of the page domain
-      (e.g. <code>a3f1c8d2b9e07456</code>) &mdash; not the URL, not
-      the path, not any page content</li>
-    <li>The <strong>category</strong> that was detected
-      (e.g. <code>pii_email</code>) &mdash; not the value</li>
-    <li>The <strong>severity</strong> and your <strong>action</strong>
-      (send, redact, cancel)</li>
-  </ul>
-  <p class="small">
-    See <code>docs/PRIVACY-POLICY.md</code> for the full policy.
-  </p>
-
-  <div class="actions">
-    <button class="primary" id="opt-in">Opt in to threat intel</button>
-    <button class="secondary" id="dismiss">Stay in detect-only mode</button>
-  </div>
-  <p class="small">
-    You can change this any time from the extension popup (click the
-    AegisGate icon in the toolbar).
-  </p>
 
   <script src="welcome.js"></script>
 </body>

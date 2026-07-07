@@ -17,12 +17,18 @@
     h1 { font-size: 16px; color: #1a3a5c; margin: 0 0 12px 0; }
     .status { background: #e8f5e8; border: 1px solid #a8d4a8; border-radius: 6px; padding: 8px 12px; margin-bottom: 12px; }
     .status.off { background: #fff4e6; border-color: #f0c87c; }
+    .status.upgrade { background: #e8f0ff; border: 1px solid #4a90d9; }
     .row { display: flex; justify-content: space-between; padding: 4px 0; }
     .label { color: #666; }
     .value { font-weight: 600; }
     a { color: #1a3a5c; text-decoration: none; }
     a:hover { text-decoration: underline; }
+    a.upgrade-btn { display: block; margin-top: 8px; padding: 8px 12px; background: #1a3a5c; color: white; text-decoration: none; border-radius: 4px; font-size: 13px; text-align: center; }
     .small { font-size: 12px; color: #666; margin-top: 12px; }
+    .small.center { text-align: center; }
+    .features { margin-top: 8px; padding-top: 8px; border-top: 1px solid #ddd; }
+    .features li { margin: 4px 0; color: #4a4; font-size: 12px; }
+    .features li.no { color: #d66; }
   </style>
 </head>
 <body>
@@ -41,8 +47,28 @@
     <span class="label">Telemetry</span>
     <span class="value" id="telemetry-value">Loading...</span>
   </div>
+  
+  <!-- Upgrade CTA -->
+  <div id="upgrade-banner" class="status upgrade" style="display: none;">
+    <div class="row">
+      <span class="label">Upgrade to Platform</span>
+      <span class="value">Pro features</span>
+    </div>
+    <div class="features">
+      <ul>
+        <li>✅ Automated redaction</li>
+        <li>✅ Enterprise telemetry</li>
+        <li>✅ Custom detection patterns</li>
+      </ul>
+    </div>
+    <a href="https://aegisgatesecurity.io/lens/pricing" target="_blank" class="upgrade-btn">Upgrade to Platform</a>
+  </div>
+  
   <div class="small">
     Privacy policy: see <a href="https://aegisgatesecurity.io/lens/privacy" target="_blank">aegisgatesecurity.io</a>.
+  </div>
+  <div class="small center">
+    <a href="https://aegisgatesecurity.io/lens" target="_blank">Return to AegisGate</a>
   </div>
   <script src="popup.js"></script>
 </body>

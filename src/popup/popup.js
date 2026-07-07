@@ -3,6 +3,8 @@
 // the lens version. Full settings (facet toggles, threat-intel feed,
 // EP transparency) come in 3j.
 //
+// Includes upgrade CTA to AegisGate Platform.
+//
 // Apache 2.0. Copyright 2026 AegisGate Security, LLC.
 
 (function () {
@@ -48,6 +50,14 @@
     if (el) el.textContent = text;
   }
 
+  function setUpgradeBanner() {
+    // Show upgrade banner for Lens users (free tier)
+    var banner = document.getElementById('upgrade-banner');
+    if (banner) {
+      banner.style.display = 'block';
+    }
+  }
+
   function onLoad() {
     readOptIn().then(function (opt) {
       if (opt.enabled) {
@@ -58,6 +68,8 @@
         document.getElementById('status') && document.getElementById('status').classList.add('off');
         setTelemetry('Off (opt-in available)');
       }
+      // Show upgrade CTA for all Lens users
+      setUpgradeBanner();
     }).catch(function (err) {
       setStatus('Error');
       setTelemetry('Storage unavailable');

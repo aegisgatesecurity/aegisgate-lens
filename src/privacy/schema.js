@@ -35,7 +35,18 @@
       'pii_ssn', 'pii_email', 'pii_phone', 'pii_credit_card',
       'pii_address', 'pii_dob', 'pii_driver_license', 'pii_passport',
       'pii_bip39_seed',
-      'pii_tax_id', 'pii_bank_account', 'pii_ip_address'
+      'pii_tax_id', 'pii_bank_account', 'pii_ip_address',
+      'pii_nhs_uk', 'pii_tfn_au',
+      'pii_aadhaar_in', 'pii_cpf_br', 'pii_sin_ca',
+      'pii_driver_license_international', 'pii_iban', 'pii_visa',
+      'pii_passport_au', 'pii_passport_ca', 'pii_passport_de',
+      'pii_passport_eu', 'pii_passport_fr', 'pii_passport_uk',
+      'pii_residence_ca', 'pii_residence_uk', 'pii_residence_us',
+      'pii_digital_paypal', 'pii_digital_stripe', 'pii_digital_venmo',
+      'pii_digital_cashapp', 'pii_nid_de', 'pii_nid_es',
+      'pii_nid_fr', 'pii_nid_it', 'pii_nid_jp',
+      'pii_crypto_btc', 'pii_crypto_eth', 'pii_crypto_bnb',
+      'pii_crypto_ltc', 'pii_crypto_sol'
     ],
     secrets: [
       'secret_aws_key', 'secret_github_token', 'secret_gcp_key',
@@ -43,7 +54,14 @@
       'secret_jwt', 'secret_api_key_generic', 'secret_db_connection_string',
       'secret_slack_token', 'secret_stripe_key', 'secret_twilio_key',
       'secret_sendgrid_key', 'secret_mailgun_key', 'secret_openai_key',
-      'secret_anthropic_key', 'secret_heroku_key'
+      'secret_anthropic_key', 'secret_heroku_key',
+      'secret_aws_account_id', 'secret_github_actions_token',
+      'secret_github_finegrained', 'secret_gitlab_token', 'secret_gitlab_pat',
+      'secret_linode_token', 'secret_digitalocean_token', 'secret_rackspace_token',
+      'secret_salesforce_token', 'secret_shopify_token', 'secret_travis_token',
+      'secret_jenkins_token', 'secret_circleci_token', 'secret_bitbucket_token',
+      'secret_wordpress_token', 'secret_npm_token', 'secret_pypi_token',
+      'secret_internal_api_key', 'secret_supabase', 'secret_db_url_with_password'
     ],
     xss: [
       'xss_script_tag', 'xss_event_handler', 'xss_javascript_url',

@@ -6,22 +6,22 @@
   "author": "AegisGate Security, LLC",
   "homepage_url": "https://aegisgatesecurity.io/lens",
   "icons": {
-    "16": "src/icons/icon-16.png",
-    "32": "src/icons/icon-32.png",
-    "48": "src/icons/icon-48.png",
-    "128": "src/icons/icon-128.png"
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
   },
   "action": {
-    "default_popup": "src/popup/popup.html",
+    "default_popup": "popup/popup.html",
     "default_title": "AegisGate Lens",
     "default_icon": {
-      "16": "src/icons/icon-16.png",
-      "32": "src/icons/icon-32.png",
-      "48": "src/icons/icon-48.png"
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png"
     }
   },
   "background": {
-    "service_worker": "src/background.js"
+    "service_worker": "background.js"
   },
   "content_scripts": [
     {
@@ -34,34 +34,41 @@
         "https://duck.ai/*",
         "https://duckduckgo.com/*",
         "https://perplexity.ai/*",
+        "https://www.perplexity.ai/*",
         "https://grok.com/*",
-        "https://x.com/*"
+        "https://x.com/*",
+        "https://chat.mistral.ai/*",
+        "https://le-chat.mistral.ai/*",
+        "https://mistral.ai/*"
       ],
       "js": [
-        "src/util/logger.js",
-        "src/detectors/luhn.js",
-        "src/detectors/regex/pii.js",
-        "src/detectors/regex/secrets.js",
-        "src/detectors/regex/source_xss.js",
-        "src/detectors/regex/compliance.js",
-        "src/privacy/schema.js",
-        "src/privacy/domain_hash.js",
-        "src/detectors/index.js",
-        "src/util/selectors.js",
-        "src/util/prompt-detect.js",
-        "src/util/banner-icons.js",
-        "src/util/dismiss.js",
-        "src/util/banner-ui.js",
-        "src/content.js"
+        "util/logger.js",
+        "detectors/luhn.js",
+        "detectors/regex/pii.js",
+        "detectors/regex/secrets.js",
+        "detectors/regex/source_xss.js",
+        "detectors/regex/compliance.js",
+        "privacy/schema.js",
+        "privacy/domain_hash.js",
+        "detectors/index.js",
+        "util/selectors.js",
+        "util/prompt-detect.js",
+        "util/banner-icons.js",
+        "util/dismiss.js",
+        "util/banner-ui.js",
+        "content.js"
       ],
       "run_at": "document_idle",
-      "all_frames": false
+      "all_frames": false,
+      "world": "MAIN"
     }
   ],
   "permissions": [
     "storage",
     "alarms",
-    "unlimitedStorage"
+    "unlimitedStorage",
+    "scripting",
+    "activeTab"
   ],
   "host_permissions": [
     "https://lens.aegisgatesecurity.io/*"
@@ -69,7 +76,8 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "src/util/banner.css"
+        "util/banner.css",
+        "icons/logo.png"
       ],
       "matches": [
         "<all_urls>"
