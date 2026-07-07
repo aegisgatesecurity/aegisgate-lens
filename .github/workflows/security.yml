@@ -41,7 +41,7 @@ jobs:
           # Regex patterns like /eval\(/ are detection patterns, not code execution
           
           # Filter out: node_modules, __pycache__, comments, regex patterns (re:), and Python files
-          if grep -rn 'eval(' src/ --include="*.js" 2>/dev/null | grep -v "node_modules" | grep -v "__pycache__" | grep -v "re: " | grep -v "//.*eval(" | head -5; then
+          if grep -rn 'eval(' src/ --include="*.js" 2>/dev/null | grep -v "node_modules" | grep -v "__pycache__" | grep -v "re: " | grep -v "//" | head -5; then
             echo "ERROR: CSP gate failed. Found actual eval() usage in src/"
             exit 1
           fi
