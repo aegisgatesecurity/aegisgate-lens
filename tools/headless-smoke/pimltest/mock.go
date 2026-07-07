@@ -97,7 +97,19 @@ func (m *mockServer) start() error {
 		// r.URL.Path is /detectors/ml/FILENAME
 		// LENS_ML_DIR already ends in /detectors/ml, so strip the prefix
 		name := strings.TrimPrefix(r.URL.Path, "/detectors/ml/")
+		// Security: validate path to prevent directory traversal attacks
+		if strings.Contains(name, "..") {
+			http.Error(w, "Invalid path", http.StatusBadRequest)
+			return
+		}
 		full := filepath.Join(mlDir, name)
+		// Security: ensure resolved path is within mlDir
+		absFull, _ := filepath.Abs(full)
+		absMLDir, _ := filepath.Abs(mlDir)
+		if !strings.HasPrefix(absFull, absMLDir) {
+			http.Error(w, "Access denied", http.StatusBadRequest)
+			return
+		}
 		http.ServeFile(w, r, full)
 	})
 	// Serve the onnxruntime-web files (ort-wasm.wasm etc.) from the dist
@@ -110,7 +122,19 @@ func (m *mockServer) start() error {
 			return
 		}
 		rel := r.URL.Path[len("/"):]  // vendor/onnxruntime-web/ort-wasm.wasm
+		// Security: validate path to prevent directory traversal attacks
+		if strings.Contains(rel, "..") {
+			http.Error(w, "Invalid path", http.StatusBadRequest)
+			return
+		}
 		full := filepath.Join(distDir, rel)
+		// Security: ensure resolved path is within distDir
+		absFull, _ := filepath.Abs(full)
+		absDistDir, _ := filepath.Abs(distDir)
+		if !strings.HasPrefix(absFull, absDistDir) {
+			http.Error(w, "Access denied", http.StatusBadRequest)
+			return
+		}
 		http.ServeFile(w, r, full)
 	})
 
