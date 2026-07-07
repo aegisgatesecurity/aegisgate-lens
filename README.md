@@ -30,7 +30,7 @@ chatbots and evaluates it through 6 detection facets:
 3. **Source / XSS** — accidental source-code leaks, XSS payloads.
 4. **Compliance** — OWASP LLM Top 10, MITRE ATLAS, EU AI Act, etc.
 5. **Toxicity** — regex first, then a lazy-loaded ML model.
-6. **Prompt injection** — a lazy-loaded ML model (ModernBERT-base), with
+a. **Prompt injection** — regex patterns for common injection attacks.
    a long-context model (Longformer-base) loaded on demand for prompts
    over 8K characters.
 
