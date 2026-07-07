@@ -30,11 +30,6 @@ jobs:
         with:
           node-version: '20'
 
-      - name: "Security: CSP gate debug - show what eval() matches"
-        run: |
-          echo "=== CSP gate debug - showing eval() matches ==="
-          grep -rn 'eval(' src/ 2>/dev/null | head -20
-          echo "=== CSP gate debug - done ==="
       - name: "Security: CSP gate"
         run: |
           # Check for actual eval()/Function()/innerHTML usage (not regex patterns or comments)
