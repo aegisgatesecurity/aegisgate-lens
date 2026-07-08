@@ -413,13 +413,13 @@ test('banner: show() with no events is a no-op', () => {
   assert.equal(b.isVisible(), false);
 });
 
-test('banner: show() with null input falls back to document.body', () => {
+test('banner: show() with null input falls back to document.documentElement', () => {
   loadAll();
   var b = globalThis.__lensBannerUI;
   b.show([{facet:'pii',category:'pii_ssn',severity:'critical',count:1,sample:'123'}], { input: null });
   var el = b.getElement();
   assert.ok(el, 'banner exists');
-  assert.ok(el.parent === globalThis.document.body, 'parent is body');
+  assert.ok(el.parentNode === globalThis.document.documentElement, 'parentNode is documentElement (per manifest position: fixed)');
   b.hide();
 });
 

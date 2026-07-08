@@ -24,6 +24,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const LENS_ROOT = join(__dirname, '..', '..');
 
@@ -83,12 +84,20 @@ class MockRuntime {
 class MockTabs {
   constructor() { this.tabs = []; }
   create(opts) { this.tabs.push(opts); return Promise.resolve({ id: this.tabs.length }); }
+  onUpdated = { _listeners: [], addListener(fn) { this._listeners.push(fn); } };
+  onRemoved = { _listeners: [], addListener(fn) { this._listeners.push(fn); } };
+  onActivated = { _listeners: [], addListener(fn) { this._listeners.push(fn); } };
+  query() { return Promise.resolve(this.tabs); }
+  get() { return Promise.resolve(this.tabs[0]); }
+  update() { return Promise.resolve(); }
+  remove() { return Promise.resolve(); }
 }
 
 class MockChrome {
   constructor() {
     this.storage = { local: new MockStorage() };
-    this.runtime = new MockRuntime();
+    
+      this.runtime = new MockRuntime();
     this.tabs = new MockTabs();
   }
 }

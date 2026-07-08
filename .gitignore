@@ -106,3 +106,16 @@ test/headless-smoke/headless-smoke-bin
 test/headless-smoke/logs/
 test/headless-smoke/reports/
 test/headless-smoke/piml-runner
+
+# --- Private Lens development directories (per user directive 2026-07-07) ---
+# /.plans/ — repo for Lens plans, lessons, retrospectives (gitignored parent per user)
+# /.workingdirectory/ — AI working directory (not /tmp/ per Standing Rule 2.1)
+.plans/
+.workingdirectory/
+
+# Benchmark data + results (private, gitignored per standing rule)
+test/benchmarks/
+test/benchmarks/corpus/
+test/benchmarks/results/
+test/benchmarks/reports/
+test/benchmarks/qa-logs/

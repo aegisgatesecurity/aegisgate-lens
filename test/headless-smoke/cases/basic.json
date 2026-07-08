@@ -19,5 +19,26 @@
     "expected_category": null,
     "expected_severity": null,
     "notes": "Benign prompt - no detection expected"
+  },
+  {
+    "input": "My credit card number is 4111-1111-1111-1111 and the CVV is 123",
+    "expected_match": "4111-1111-1111-1111",
+    "expected_category": "pii_credit_card",
+    "expected_severity": "high",
+    "notes": "Credit card with dashes - Luhn-valid"
+  },
+  {
+    "input": "charge card 4111 1111 1111 1111 with exp 12/25",
+    "expected_match": "4111 1111 1111 1111",
+    "expected_category": "pii_credit_card",
+    "expected_severity": "high",
+    "notes": "Credit card with spaces - Luhn-valid"
+  },
+  {
+    "input": "My card is 1234-5678-9012-3456 please help",
+    "expected_match": null,
+    "expected_category": null,
+    "expected_severity": null,
+    "notes": "Invalid Luhn - should NOT be detected"
   }
 ]

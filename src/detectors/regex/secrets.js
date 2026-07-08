@@ -182,10 +182,6 @@
       severity: 'critical',
       re: /(?:INTERNAL[_-]?API[_-]?KEY|INTERNAL[_-]?KEY|INTERNAL[_-]?TOKEN)\s*[:=]\s*['"]?([A-Za-z0-9_\-]{20,})['"]?/gi
     },
-    secret_jenkins_token: {
-      severity: 'critical',
-      re: /(?:JENKINS_TOKEN|JENKINS_PAT)\s*[:=]\s*xr[pous][A-Za-z0-9_]{32,255}/g
-    }
   };
 
   function postProcess(category, match) {

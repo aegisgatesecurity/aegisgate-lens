@@ -226,6 +226,30 @@
   color: var(--lens-primary) !important;
   text-decoration: none !important;
 }
+
+/* Platform CTA - drives TOFU traffic from the free Lens to the paid Platform. */
+[data-aegisgate-lens="banner"] .lens-platform-cta {
+  display: block !important;
+  margin: 12px 16px !important;
+  padding: 10px 14px !important;
+  background: var(--lens-primary-glow) !important;
+  border: 1px solid var(--lens-primary) !important;
+  border-radius: var(--lens-radius-sm) !important;
+  color: var(--lens-primary) !important;
+  font-size: 13px !important;
+  text-decoration: none !important;
+  text-align: center !important;
+  font-weight: 500 !important;
+  transition: all 0.15s ease !important;
+}
+[data-aegisgate-lens="banner"] .lens-platform-cta:hover {
+  background: var(--lens-primary) !important;
+  color: var(--lens-bg-primary) !important;
+}
+[data-aegisgate-lens="banner"] .lens-platform-cta strong {
+  font-weight: 700 !important;
+}
+
 [data-aegisgate-lens="banner"] .lens-privacy a:hover {
   text-decoration: underline !important;
 }

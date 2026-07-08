@@ -131,6 +131,86 @@
     }
   }
 
+  // Replace each detected value with [REDACTED:<category>] in the input
+  // element. Operates on the LIVE input value (in case the user typed more
+  // between the detect and the click) and replaces at the original index
+  // positions reported in the events.
+  //
+  // Strategy:
+  //   1. Read the current value of the input.
+  //   2. Sort events by index descending so we replace from end to start
+  //      (each replacement doesn't shift earlier indexes).
+  //   3. For each event, splice the value at [index, index+len] with
+  //      [REDACTED:<category>].
+  //   4. Use selectors.setInputValue to write back, which dispatches the
+  //      'input' event so the provider's framework sees the change.
+  //   5. If anything goes wrong, log and let the user edit manually.
+  function redactInput(events) {
+    try {
+      if (!events || events.length === 0) {
+        log.info('redactInput: no events; nothing to do');
+        return;
+      }
+      var input = selectors && state.provider ?
+        selectors.findInput(state.provider) : null;
+      if (!input || !selectors) {
+        log.warn('redactInput: no input element available; user must edit manually');
+        return;
+      }
+      var current = selectors.getInputValue(input);
+      if (!current || current.length === 0) {
+        log.info('redactInput: input is empty; nothing to do');
+        return;
+      }
+      // Sort events by index descending so we can replace from end to start.
+      // Each event has .index (start position) and .value (matched text).
+      // We trust .index and .value, but if .index is missing, fall back to
+      // string match from the value.
+      var sorted = events.slice().sort(function (a, b) {
+        return (b.index || 0) - (a.index || 0);
+      });
+      var out = current;
+      var redactedCount = 0;
+      for (var i = 0; i < sorted.length; i++) {
+        var ev = sorted[i];
+        if (!ev || !ev.value) continue;
+        var start = typeof ev.index === 'number' ? ev.index : -1;
+        var len = ev.value.length;
+        if (start < 0 || start + len > out.length) {
+          // Index invalid (user typed more, or detection was on a different
+          // snapshot). Fall back to a string replace for this event.
+          var replacement = '[REDACTED:' + (ev.category || 'PII') + ']';
+          if (out.indexOf(ev.value) >= 0) {
+            out = out.replace(ev.value, replacement);
+            redactedCount++;
+          }
+        } else {
+          // Verify the slice matches the event value (sanity check)
+          if (out.substr(start, len) === ev.value) {
+            var rep = '[REDACTED:' + (ev.category || 'PII') + ']';
+            out = out.slice(0, start) + rep + out.slice(start + len);
+            redactedCount++;
+          } else {
+            // Mismatch (e.g., user typed more). Fall back to string replace.
+            var rep2 = '[REDACTED:' + (ev.category || 'PII') + ']';
+            if (out.indexOf(ev.value) >= 0) {
+              out = out.replace(ev.value, rep2);
+              redactedCount++;
+            }
+          }
+        }
+      }
+      if (redactedCount === 0) {
+        log.info('redactInput: no values matched the current input; user must edit manually');
+        return;
+      }
+      selectors.setInputValue(input, out);
+      log.info('redactInput: redacted ' + redactedCount + ' of ' + events.length + ' detections');
+    } catch (err) {
+      log.error('redactInput threw', err);
+    }
+  }
+
   // Handle banner action. The banner has 3 main actions (cancel,
   // redact, send) and a 4th: dismiss_optin (the "Submit & dismiss"
   // opt-in path). For 3f, the actual send/cancel/re-dispatch
@@ -142,9 +222,13 @@
         // The prompt-detect onSendClick already preventDefault'd.
         // Just log; user can edit the input.
       } else if (action === 'redact') {
-        // TODO(3g): implement the redaction (replace values
-        // with [REDACTED] in the input via selectors.setInputValue)
-        log.info('user chose redact (' + (payload && payload.events ? payload.events.length : 0) + ' events)');
+        // Wire the redaction: replace each detected value with [REDACTED:
+        // <category>] in the input element. We rebuild the input value
+        // from the current text (in case the user typed more between the
+        // detect and the click) and replace at the original index positions.
+        // We process events in reverse index order so earlier positions are
+        // not affected by later replacements.
+        redactInput(payload && payload.events ? payload.events : []);
       } else if (action === 'send') {
         // The send was preventDefault'd by onSendClick. For now,
         // log only. The user can re-press Enter / click send to

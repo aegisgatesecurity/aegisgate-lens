@@ -32,14 +32,12 @@
         "https://gemini.google.com/*",
         "https://copilot.microsoft.com/*",
         "https://duck.ai/*",
-        "https://duckduckgo.com/*",
         "https://perplexity.ai/*",
         "https://www.perplexity.ai/*",
         "https://grok.com/*",
-        "https://x.com/*",
+        "https://www.grok.com/*",
         "https://chat.mistral.ai/*",
-        "https://le-chat.mistral.ai/*",
-        "https://mistral.ai/*"
+        "https://le-chat.mistral.ai/*"
       ],
       "js": [
         "util/logger.js",
@@ -59,8 +57,7 @@
         "content.js"
       ],
       "run_at": "document_idle",
-      "all_frames": false,
-      "world": "MAIN"
+      "all_frames": false
     }
   ],
   "permissions": [
@@ -77,7 +74,11 @@
     {
       "resources": [
         "util/banner.css",
-        "icons/logo.png"
+        "icons/logo.png",
+        "icons/icon-48.png",
+        "icons/icon-32.png",
+        "icons/icon-16.png",
+        "icons/icon-128.png"
       ],
       "matches": [
         "<all_urls>"
