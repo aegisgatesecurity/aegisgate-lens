@@ -91,18 +91,6 @@
       version: '2026-07'
     },
     {
-      id: 'duckduckgo',
-      name: 'DuckDuckGo AI Chat',
-      hosts: ['duckduckgo.com', 'duck.co'],
-      // DDG AI Chat (legacy): textarea in the AI chat overlay
-      inputSelector: 'textarea[name="user-prompt"], textarea[name="prompt"], textarea[placeholder*="Ask" i], textarea[placeholder*="message" i], div[contenteditable="true"]',
-      sendSelector: 'button[aria-label*="Send" i], button[type="submit"]',
-      containerSelector: 'div.iso_chat, form, div[role="main"]',
-      submitMethod: 'enter',
-      isContentEditable: true,
-      version: '2026-07'
-    },
-    {
       id: 'duck_ai',
       name: 'Duck.ai',
       hosts: ['duck.ai'],
@@ -138,18 +126,6 @@
       isContentEditable: false,
       version: '2026-07'
     },
-    {
-      id: 'huggingchat',
-      name: 'HuggingChat',
-      hosts: ['huggingface.co', 'hf.co'],
-      // HuggingChat: textarea
-      inputSelector: 'textarea[placeholder*="Ask" i], textarea[name="input"]',
-      sendSelector: 'button[type="submit"]',
-      containerSelector: 'form',
-      submitMethod: 'enter',
-      isContentEditable: false,
-      version: '2026-07'
-    }
   ];
 
   // Identify which provider matches the current page.

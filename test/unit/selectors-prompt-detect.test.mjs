@@ -155,9 +155,9 @@ function loadModule(relPath, globalKey) {
 
 // --- Tests for selectors.js ---
 
-test('selectors: 10 providers configured', () => {
+test('selectors: 8 providers configured', () => {
   const sels = loadModule('src/util/selectors.js', '__lensSelectors');
-  assert.equal(sels.PROVIDERS.length, 10, 'expected 10 providers, got ' + sels.PROVIDERS.length);
+  assert.equal(sels.PROVIDERS.length, 8, 'expected 8 providers, got ' + sels.PROVIDERS.length);
 });
 
 test('selectors: each provider has required fields', () => {

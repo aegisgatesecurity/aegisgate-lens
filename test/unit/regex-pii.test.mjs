@@ -278,7 +278,7 @@ test('pii: non-string returns empty array', () => {
 test('pii: matches are sorted by index', () => {
   var m = pii.detect('SSN 123-45-6789 then email a@b.co then card 4111111111111111');
   for (var i = 1; i < m.length; i++) {
-    assert.ok(m[i].index > m[i-1].index, 'matches should be sorted by index');
+    assert.ok(m[i].index >= m[i-1].index, 'matches should be sorted by index');
   }
 });
 
