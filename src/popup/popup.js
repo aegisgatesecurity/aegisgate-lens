@@ -7,6 +7,10 @@
 //
 // Apache 2.0. Copyright 2026 AegisGate Security, LLC.
 
+/**
+ * @module LensPopup
+ * @type {{init: () => void, version: string}}
+ */
 (function () {
   'use strict';
 

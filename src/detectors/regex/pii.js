@@ -811,5 +811,8 @@
 
   if (typeof self !== 'undefined') self.__lensPII = module;
   if (typeof window !== 'undefined') window.__lensPII = module;
+  /**
+   * @type {import("./typedefs").LensDetector}
+   */
   if (typeof globalThis !== 'undefined') globalThis.__lensPII = module;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

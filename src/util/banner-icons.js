@@ -44,5 +44,8 @@
 
   if (typeof self !== 'undefined') self.__lensBannerIcons = module;
   if (typeof window !== 'undefined') window.__lensBannerIcons = module;
+  /**
+   * @type {{SHIELD: string, CLOSE: string, HELP: string, CHEVRON_DOWN: string, REDACT: string, ICONS: Object<string, string>}}
+   */
   if (typeof globalThis !== 'undefined') globalThis.__lensBannerIcons = module;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

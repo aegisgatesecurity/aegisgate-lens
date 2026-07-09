@@ -41,6 +41,7 @@
       ],
       "js": [
         "util/constants.js",
+        "util/typedefs.js",
         "util/logger.js",
         "detectors/luhn.js",
         "detectors/regex/pii.js",
