@@ -314,6 +314,9 @@
     isValidUserAction: isValidUserAction
   };
 
+  /**
+   * @type {import("./typedefs").LensSchema}
+   */
   if (typeof self !== 'undefined') self.__lensSchema = schema;
   if (typeof window !== 'undefined') window.__lensSchema = schema;
   if (typeof globalThis !== 'undefined') globalThis.__lensSchema = schema;

@@ -327,6 +327,9 @@
 
   if (typeof self !== 'undefined') self.__lensPromptDetect = module;
   if (typeof window !== 'undefined') window.__lensPromptDetect = module;
+  /**
+   * @type {import("./typedefs").LensPromptDetect}
+   */
   if (typeof globalThis !== 'undefined') globalThis.__lensPromptDetect = module;
   if (typeof globalThis !== 'undefined' && globalThis.__lensConstants) module.__lensConstants = globalThis.__lensConstants;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

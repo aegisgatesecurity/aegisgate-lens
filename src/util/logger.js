@@ -86,6 +86,9 @@
   //     context with a window, which it does because it's injected)
   //   - `globalThis.__lensLogger` (modern standard)
   if (typeof self !== 'undefined') {
+    /**
+     * @type {import("./typedefs").LensLogger}
+     */
     self.__lensLogger = logger;
   }
   if (typeof window !== 'undefined') {

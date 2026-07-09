@@ -228,5 +228,8 @@
 
   if (typeof self !== 'undefined') self.__lensSecrets = module;
   if (typeof window !== 'undefined') window.__lensSecrets = module;
+  /**
+   * @type {import("./typedefs").LensDetector}
+   */
   if (typeof globalThis !== 'undefined') globalThis.__lensSecrets = module;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

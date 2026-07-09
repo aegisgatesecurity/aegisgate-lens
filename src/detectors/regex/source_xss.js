@@ -138,5 +138,8 @@
 
   if (typeof self !== 'undefined') self.__lensXSS = module;
   if (typeof window !== 'undefined') window.__lensXSS = module;
+  /**
+   * @type {import("./typedefs").LensDetector}
+   */
   if (typeof globalThis !== 'undefined') globalThis.__lensXSS = module;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

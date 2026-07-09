@@ -508,6 +508,9 @@
 
   if (typeof self !== 'undefined') self.__lensBannerUI = module;
   if (typeof window !== 'undefined') window.__lensBannerUI = module;
+  /**
+   * @type {import("./typedefs").LensBannerUI}
+   */
   if (typeof globalThis !== 'undefined') globalThis.__lensBannerUI = module;
   if (typeof globalThis !== 'undefined' && globalThis.__lensConstants) module.__lensConstants = globalThis.__lensConstants;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

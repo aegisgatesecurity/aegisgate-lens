@@ -162,6 +162,9 @@
   };
 
   if (typeof globalThis !== 'undefined') {
+    /**
+     * @type {import("./typedefs").LensConstants}
+     */
     globalThis.__lensConstants = module;
   }
   if (typeof module !== 'undefined' && module.exports) {

@@ -283,6 +283,9 @@
 
   if (typeof self !== 'undefined') self.__lensDismiss = module;
   if (typeof window !== 'undefined') window.__lensDismiss = module;
+  /**
+   * @type {import("./typedefs").LensDismiss}
+   */
   if (typeof globalThis !== 'undefined') globalThis.__lensDismiss = module;
   if (typeof globalThis !== 'undefined' && globalThis.__lensConstants) module.__lensConstants = globalThis.__lensConstants;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
