@@ -119,3 +119,24 @@ test/benchmarks/corpus/
 test/benchmarks/results/
 test/benchmarks/reports/
 test/benchmarks/qa-logs/
+
+
+# --- Large untracked directories that must NEVER be scanned or committed ---
+# These existed at runtime but bloat the working tree; they are loaded by
+# separate download scripts in tools/ if needed, never checked in.
+models/ministral-3-3b/
+models/pi-v0.1.0-beta/
+models/toxicity-v0.1.0-beta/
+models/gemma-2b/
+models/embeddedgemma-2b/
+
+# --- Heavy corpora and headless-smoke runtime artifacts ---
+# (corpora is on-demand downloaded by tools/train/; keep out of CI scans)
+corpora/
+
+# --- Build / cache artifacts ---
+.cache/
+node_modules/
+*.log
+*.tmp
+*.bak

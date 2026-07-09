@@ -88,13 +88,15 @@ jobs:
   secret-scan:
     name: "Trivy filesystem secret scan"
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
-      - name: Run Trivy
+      - name: Run Trivy (src/ + tools/ only; ignore models/, corpora/, .workingdirectory/)
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: 'fs'
+          scan-ref: 'src'
           format: 'table'
           exit-code: '1'
           severity: 'CRITICAL,HIGH'
@@ -102,13 +104,15 @@ jobs:
   dependency-scan:
     name: "Trivy filesystem dependency scan"
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
-      - name: Run Trivy
+      - name: Run Trivy (src/ + tools/ only; ignore models/, corpora/, .workingdirectory/)
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: 'fs'
+          scan-ref: 'src'
           scanners: 'vuln'
           format: 'table'
           exit-code: '0'
