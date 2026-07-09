@@ -89,11 +89,12 @@ The 8 supported providers are matched via `hostname`. When a page loads, the con
 
 ## Installation
 
-1. Download the latest release: `lens-0.1.0-lens-sr.zip` from the [Releases page](https://github.com/aegisgatesecurity/aegisgate-lens/releases)
-2. Open `chrome://extensions/` in Chrome 116+
-3. Enable **Developer mode** (top right)
-4. Click **Load unpacked** and select the extracted folder
-5. Navigate to any supported AI chat tool and start typing
+1. **Chrome Web Store:** submission is **pending**. We are completing the CWS review process and expect the extension to be publicly available within 1–3 business days of submission. *(This line is a placeholder during the v0.1.0-beta pre-launch window; remove once the listing is live.)*
+2. **Manual install (developer / power-user):** download the latest release: `lens-0.1.0-lens-sr.zip` from the [Releases page](https://github.com/aegisgatesecurity/aegisgate-lens/releases)
+3. Open `chrome://extensions/` in Chrome 116+
+4. Enable **Developer mode** (top right)
+5. Click **Load unpacked** and select the extracted folder
+6. Navigate to any supported AI chat tool and start typing
 
 For source builds, see [CONTRIBUTING.md](./CONTRIBUTING.md).
 
@@ -124,3 +125,14 @@ See the [in-product CTA](#how-it-works) or visit [aegisgatesecurity.io/platform]
 Copyright © 2024-2026 AegisGate Security, LLC. Apache 2.0. See [LICENSE](./LICENSE).
 
 For commercial support, enterprise deployment, or to report a vulnerability, see [SECURITY.md](./SECURITY.md).
+
+
+---
+
+<sub align="center">
+
+**AegisGate Security, LLC** — [aegisgatesecurity.io](https://aegisgatesecurity.io)
+
+Built with 🖤 by security professionals, for security professionals.
+
+</sub>
