@@ -225,6 +225,11 @@ function loadAll() {
   loadModule('src/util/selectors.js', '__lensSelectors');
   loadModule('src/util/banner-icons.js', '__lensBannerIcons');
   loadModule('src/util/dismiss.js', '__lensDismiss');
+  // Load the 3 banner-ui sub-files FIRST, then the aggregator.
+  // This mirrors the production content_scripts.js load order in manifest.json.
+  loadModule('src/util/banner-ui-formatters.js',  '__lensBannerUI_formatters');
+  loadModule('src/util/banner-ui-html.js',        '__lensBannerUI_html');
+  loadModule('src/util/banner-ui-lifecycle.js',   '__lensBannerUI_lifecycle');
   loadModule('src/util/banner-ui.js', '__lensBannerUI');
 }
 
