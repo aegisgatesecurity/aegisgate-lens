@@ -65,6 +65,14 @@ const luhn = (function() {
 })();
 assert.ok(luhn, 'luhn must load first (production order)');
 
+// Load the 4 PII sub-files FIRST, then pii.js (the aggregator).
+// This mirrors the production content_scripts.js load order in manifest.json.
+const pii_us_core = (function() { eval(readFileSync(join(LENS_ROOT, 'src/detectors/regex/pii-us-core.js'), 'utf8')); return globalThis.__lensPII_us_core; })();
+const pii_us_extended = (function() { eval(readFileSync(join(LENS_ROOT, 'src/detectors/regex/pii-us-extended.js'), 'utf8')); return globalThis.__lensPII_us_extended; })();
+const pii_international_id = (function() { eval(readFileSync(join(LENS_ROOT, 'src/detectors/regex/pii-international-id.js'), 'utf8')); return globalThis.__lensPII_international_id; })();
+const pii_financial = (function() { eval(readFileSync(join(LENS_ROOT, 'src/detectors/regex/pii-financial.js'), 'utf8')); return globalThis.__lensPII_financial; })();
+assert.ok(pii_us_core && pii_us_extended && pii_international_id && pii_financial, 'all 4 PII sub-files must load before pii.js');
+
 const pii = (function() {
   const src = readFileSync(join(LENS_ROOT, 'src/detectors/regex/pii.js'), 'utf8');
   (0, eval)(src);
