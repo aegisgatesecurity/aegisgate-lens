@@ -3196,7 +3196,7 @@ try {
     var actionsHtml =
       '<div class="lens-actions">' +
         '<button type="button" class="lens-btn lens-btn-secondary" data-action="cancel">Cancel send</button>' +
-        '<button type="button" class="lens-btn lens-btn-primary" data-action="redact">Edit &amp; redact</button>' +
+        '<button type="button" class="lens-btn lens-btn-primary" data-action="redact">Edit manually</button>' +
         '<button type="button" class="lens-btn lens-btn-ghost" data-action="send">Send anyway</button>' +
         '<button type="button" class="lens-false-positive-link" data-action="false-positive">' +
           (icons && icons.ICONS.chevronDown ? icons.ICONS.chevronDown : '') +

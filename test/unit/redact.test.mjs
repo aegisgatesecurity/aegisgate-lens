@@ -1,5 +1,5 @@
 // AegisGate Lens — test/unit/redact.test.mjs
-// Unit tests for the "Edit & redact" button behavior.
+// Unit tests for the "Edit manually" button behavior.
 //
 // The redact logic in content.js is: for each detection event (with
 // .index, .value, .category), replace the value at the index with

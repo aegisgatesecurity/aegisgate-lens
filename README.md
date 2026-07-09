@@ -41,7 +41,7 @@ The detector is **4 regex facets, 120 patterns, sub-1ms latency** — no network
 | **PII facet precision** | **76.51%** | When the detector fires, 77% of the time it's real PII |
 | **Latency p50** | 0.156ms | Per-keystroke detection |
 | **Latency p99** | **0.847ms** | 60× better than the 50ms target |
-| **Unit tests** | **325/325 passing** | 11 .mjs test files in `test/unit/` |
+| **Unit tests** | **326/326 passing** | 11 .mjs test files in `test/unit/` |
 | **Headless smoke** | **6/6 PASS** | Real Chromium 149 in `test/headless-smoke/` |
 | **Patterns** | **120 total** | 54 PII + 41 Secrets + 12 XSS + 24 Compliance |
 | **Providers** | **8** | chatgpt, claude, gemini, copilot, perplexity, duck_ai, grok, mistral |
