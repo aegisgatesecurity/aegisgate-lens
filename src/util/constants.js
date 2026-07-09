@@ -53,7 +53,8 @@
     USER_ACTIONS: 'aegisgate_lens_user_actions',
     FP_REPORTS_QUEUE: 'aegisgate_lens_fp_reports_queue',
     OPT_IN: 'aegisgate_lens_opt_in',
-    SESSION_DISMISS: 'aegisgate_lens_session_dismiss'
+    SESSION_DISMISS: 'aegisgate_lens_session_dismiss',
+    ONBOARDED: 'aegisgate_lens_onboarded'
   });
 
   // === Telemetry / dismissal ===
