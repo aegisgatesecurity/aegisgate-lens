@@ -7,14 +7,9 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
+import { loadModule } from '../helpers/load-module.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const LENS_ROOT = join(__dirname, '..', '..');
-
-function loadModule(relPath, globalKey) {
-  const src = readFileSync(join(LENS_ROOT, relPath), 'utf8');
-  (0, eval)(src);
-  return globalThis[globalKey];
-}
 
 const xss = loadModule('src/detectors/regex/source_xss.js', '__lensXSS');
 if (!xss) throw new Error('Failed to load xss module');
