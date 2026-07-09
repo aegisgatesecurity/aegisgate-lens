@@ -87,6 +87,25 @@ The 8 supported providers are matched via `hostname`. When a page loads, the con
 
 **The core differentiator:** we are the only tool where the privacy guarantee is **enforced by what we cannot do**, not what we promise. No server, no logs, no prompt content ever crosses a wire. For SOC 2 / HIPAA / GDPR / EU AI Act compliance, that architectural fact matters.
 
+## Why AegisGate Lens and Not Chrome's Built-in Sensitive Content Detection?
+
+Chrome 130+ has a built-in **Sensitive Content Detection** feature. Here's how AegisGate Lens differs, and why a security-conscious user or enterprise team would prefer the Lens:
+
+| Concern | Chrome's built-in | AegisGate Lens |
+|---|---|---|
+| **Where detection runs** | Inside Chrome's native UI, but the rules are defined by Google | Inside our open-source extension code, auditable by anyone |
+| **Who sees the data** | Google (the rule matches are logged to chrome://components) | Nobody — no telemetry, no logs, no sync |
+| **Which providers it covers** | Only the browser's built-in input surfaces (Google Search, AI experiments) | 8 of the top consumer AI chat tools (chatgpt.com, claude.ai, gemini.google.com, copilot.microsoft.com, perplexity.ai, duck.ai, grok.com, chat.mistral.ai) |
+| **What it detects** | Credit cards, mostly | 120 patterns across 4 facets: PII, Secrets, XSS / source-code risks, Compliance (OWASP / MITRE ATLAS / EU AI Act / NIST CSF / ISO 27001 / CCPA / LGPD / PIPEDA / POPIA) |
+| **False positives** | Some — the banner shows a generic alert, no remediation guidance | Tuned to 7.40% FPR on 30,000 real user prompts; banner explains the category, severity, and mask; offers Cancel / Edit manually / Send anyway / False positive |
+| **Customization** | None — Google's rules are fixed | Open source. You (or your security team) can read every regex. |
+| **Auditability** | Closed-source native code | Apache 2.0; threat model published at [`docs/THREAT-MODEL.md`](docs/THREAT-MODEL.md); 326 unit tests, 6 headless smoke tests, 100K-prompt benchmark |
+| **Compliance posture** | "Trust us" — Google does not publish a threat model or privacy policy for this feature | "Verify us" — 9.5/10 threat-model score; CC-BY-4.0 threat model; SOC 2 / HIPAA / GDPR / EU AI Act / OWASP LLM Top 10 / MITRE ATLAS / NIST CSF / ISO 27001 mapped in `docs/THREAT-MODEL.md` |
+| **Pricing** | Free (bundled with Chrome) | Free, forever (Apache 2.0, no telemetry, no "Pro" tier, no "Enterprise" upsell on the Lens itself) |
+| **Platform integration** | None | AegisGate Platform (server-side enforcement, automated redaction, custom patterns, SSO) when your team is ready. The Lens is the TOFU; the Platform is the BOFU. |
+
+**The short version:** Chrome's built-in feature is fine for a single user on Google Search. AegisGate Lens is for anyone who pastes regulated, sensitive, or proprietary content into AI tools and wants a **verified, auditable, zero-telemetry** warning before they hit send.
+
 ## Installation
 
 1. **Chrome Web Store:** submission is **pending**. We are completing the CWS review process and expect the extension to be publicly available within 1–3 business days of submission. *(This line is a placeholder during the v0.1.0-beta pre-launch window; remove once the listing is live.)*
