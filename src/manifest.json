@@ -62,6 +62,9 @@
         "util/prompt-detect.js",
         "util/banner-icons.js",
         "util/dismiss.js",
+        "util/banner-ui-formatters.js",
+        "util/banner-ui-html.js",
+        "util/banner-ui-lifecycle.js",
         "util/banner-ui.js",
         "content.js"
       ],
