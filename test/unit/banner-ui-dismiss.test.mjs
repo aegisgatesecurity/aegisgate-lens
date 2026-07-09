@@ -211,6 +211,11 @@ function loadModule(relPath, globalKey) {
 function loadAll() {
   loadModule('src/util/logger.js', '__lensLogger');
   loadModule('src/detectors/luhn.js', '__lensLuhn');
+  // Load the 4 PII sub-files FIRST, then pii.js (the aggregator).
+  loadModule('src/detectors/regex/pii-us-core.js',          '__lensPII_us_core');
+  loadModule('src/detectors/regex/pii-us-extended.js',      '__lensPII_us_extended');
+  loadModule('src/detectors/regex/pii-international-id.js', '__lensPII_international_id');
+  loadModule('src/detectors/regex/pii-financial.js',        '__lensPII_financial');
   loadModule('src/detectors/regex/pii.js', '__lensPII');
   loadModule('src/detectors/regex/secrets.js', '__lensSecrets');
   loadModule('src/detectors/regex/source_xss.js', '__lensXSS');
