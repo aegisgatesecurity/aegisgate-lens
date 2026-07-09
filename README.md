@@ -129,10 +129,10 @@ For commercial support, enterprise deployment, or to report a vulnerability, see
 
 ---
 
-<sub align="center">
+<p align="center">
 
 **AegisGate Security, LLC** — [aegisgatesecurity.io](https://aegisgatesecurity.io)
 
 Built with 🖤 by security professionals, for security professionals.
 
-</sub>
+</p>
