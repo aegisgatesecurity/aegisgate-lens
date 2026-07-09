@@ -12,6 +12,10 @@
 (function (global) {
   'use strict';
 
+  var constants = (typeof self !== 'undefined' && self.__lensConstants) ||
+                       (typeof globalThis !== 'undefined' && globalThis.__lensConstants) ||
+                       null;
+
   var log = (typeof self !== 'undefined' && self.__lensLogger) ||
             (typeof globalThis !== 'undefined' && globalThis.__lensLogger) ||
             { info: function(m){ try { console.log('[AegisGate Lens] ' + m); } catch (e) {} },
@@ -192,7 +196,7 @@
     if (state.attached) return;
     if (!state.input) return;
     try {
-      var debouncedInput = debounce(onInput, 250);
+      var debouncedInput = debounce(onInput, (constants && constants.DEBOUNCE_MS) || 250);
       state.input.addEventListener('input', debouncedInput, true);
       state.input.addEventListener('keyup', debouncedInput, true);
       state.input.addEventListener('keydown', onKeyDown, true);
@@ -324,4 +328,5 @@
   if (typeof self !== 'undefined') self.__lensPromptDetect = module;
   if (typeof window !== 'undefined') window.__lensPromptDetect = module;
   if (typeof globalThis !== 'undefined') globalThis.__lensPromptDetect = module;
+  if (typeof globalThis !== 'undefined' && globalThis.__lensConstants) module.__lensConstants = globalThis.__lensConstants;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

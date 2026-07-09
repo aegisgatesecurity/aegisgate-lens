@@ -35,7 +35,7 @@
   top: 0 !important;
   left: 0 !important;
   right: 0 !important;
-  z-index: 2147483647 !important;        /* Max 32-bit signed int */
+  z-index: 2147483647 !important;        /* BANNER_Z_INDEX from src/util/constants.js (max 32-bit signed int) */
   display: block !important;
   box-sizing: border-box !important;
   margin: 0 !important;

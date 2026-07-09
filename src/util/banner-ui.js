@@ -19,6 +19,10 @@
 (function (global) {
   'use strict';
 
+  var constants = (typeof self !== 'undefined' && self.__lensConstants) ||
+                       (typeof globalThis !== 'undefined' && globalThis.__lensConstants) ||
+                       null;
+
   var log = (typeof self !== 'undefined' && self.__lensLogger) ||
             (typeof globalThis !== 'undefined' && globalThis.__lensLogger) ||
             { info: function(m){ try { console.log('[AegisGate Lens] ' + m); } catch (e) {} },
@@ -104,7 +108,8 @@
     if (typeof category !== 'string') return '';
     var s = category;
     // Strip known prefixes
-    var prefixes = ['pii_', 'secret_', 'xss_', 'owasp_', 'atlas_', 'eu_ai_act_', 'anp_', 'cu_', 'toxicity_', 'pi_'];
+    var prefixes = (constants && constants.CATEGORY_PREFIXES) ||
+      ['pii_', 'secret_', 'xss_', 'owasp_', 'atlas_', 'eu_ai_act_', 'anp_', 'cu_', 'toxicity_', 'pi_'];
     for (var i = 0; i < prefixes.length; i++) {
       if (s.indexOf(prefixes[i]) === 0) {
         s = s.substring(prefixes[i].length);
@@ -151,7 +156,7 @@
 
     // Build the detection list HTML
     var listHtml = '<div class="lens-list">';
-    var maxItems = 8;
+    var maxItems = (constants && constants.BANNER_MAX_ITEMS) || 8;
     for (var i = 0; i < events.length && i < maxItems; i++) {
       var ev = events[i];
       listHtml += '<div class="lens-item lens-item-' + ev.severity + '">';
@@ -171,7 +176,7 @@
 
     // Privacy footer
     var learnMoreUrl = opts.learnMoreUrl ||
-      'https://github.com/aegisgatesecurity/aegisgate-lens#readme';
+      ((constants && constants.URLS && constants.URLS.LEARN_MORE) || 'https://github.com/aegisgatesecurity/aegisgate-lens#readme');
     var privacyHtml =
       '<div class="lens-privacy">' +
         '<strong>These items are visible to the AI provider when you send.</strong> ' +
@@ -184,7 +189,7 @@
     // enterprise SSO, compliance modules. Per the pricing doctrine in
     // AEGISGATE-LENS-PIVOT-2026-06-18.md.)
     var platformUrl = opts.platformUrl ||
-      'https://aegisgatesecurity.io/platform/pricing';
+      ((constants && constants.URLS && constants.URLS.PLATFORM_CTA) || 'https://aegisgatesecurity.io/platform/pricing');
     var platformHtml =
       '<a class="lens-platform-cta" href="' + escapeHtml(platformUrl) + '" target="_blank" rel="noopener noreferrer">' +
         'Get automated redaction, enterprise features, and custom patterns with ' +
@@ -504,4 +509,5 @@
   if (typeof self !== 'undefined') self.__lensBannerUI = module;
   if (typeof window !== 'undefined') window.__lensBannerUI = module;
   if (typeof globalThis !== 'undefined') globalThis.__lensBannerUI = module;
+  if (typeof globalThis !== 'undefined' && globalThis.__lensConstants) module.__lensConstants = globalThis.__lensConstants;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
