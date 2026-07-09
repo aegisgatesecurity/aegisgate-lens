@@ -57,6 +57,8 @@
         "privacy/domain_hash.js",
         "detectors/index.js",
         "util/selectors.js",
+        "util/prompt-detect-dom.js",
+        "util/prompt-detect-lifecycle.js",
         "util/prompt-detect.js",
         "util/banner-icons.js",
         "util/dismiss.js",

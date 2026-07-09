@@ -263,6 +263,11 @@ function loadWithDeps() {
   loadModule('src/detectors/index.js', '__lensDispatcher');
   loadModule('src/util/selectors.js', '__lensSelectors');
 
+  // Load the 2 prompt-detect sub-files FIRST, then the aggregator.
+  // This mirrors the production content_scripts.js load order in manifest.json.
+  loadModule('src/util/prompt-detect-dom.js',       '__lensPromptDetect_dom');
+  loadModule('src/util/prompt-detect-lifecycle.js', '__lensPromptDetect_lifecycle');
+
   // Now load prompt-detect
   return loadModule('src/util/prompt-detect.js', '__lensPromptDetect');
 }
