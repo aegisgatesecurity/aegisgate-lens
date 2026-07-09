@@ -14,6 +14,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
+import { loadModule } from '../helpers/load-module.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const LENS_ROOT = join(__dirname, '..', '..');
 
@@ -144,14 +145,6 @@ globalThis.MutationObserver = class {
 globalThis.setTimeout = setTimeout;
 globalThis.clearTimeout = clearTimeout;
 globalThis.Event = class { constructor(type, init) { this.type = type; Object.assign(this, init); } };
-
-function loadModule(relPath, globalKey) {
-  const src = readFileSync(join(LENS_ROOT, relPath), 'utf8');
-  // Wrap so 'this' is globalThis
-  var wrapped = '(function() { ' + src + ' })()';
-  (0, eval)(wrapped);
-  return globalThis[globalKey];
-}
 
 // --- Tests for selectors.js ---
 

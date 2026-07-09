@@ -14,18 +14,9 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
+import { loadModule } from '../helpers/load-module.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const LENS_ROOT = join(__dirname, '..', '..');
-
-function loadModule(srcPath, globalKey) {
-  const src = readFileSync(join(LENS_ROOT, srcPath), 'utf8');
-  // Each module does (function(global) { ...; globalThis.__lensFoo = module; })(globalThis)
-  // We eval it in a scope where globalThis is the Node global, then
-  // read back the exposed module.
-  // eslint-disable-next-line no-eval
-  (0, eval)(src);
-  return globalThis[globalKey];
-}
 
 const secretsModule = loadModule('src/detectors/regex/secrets.js', '__lensSecrets');
 const patternRegexes = secretsModule.patterns;

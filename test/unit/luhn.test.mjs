@@ -6,27 +6,19 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { loadModule } from '../helpers/load-module.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const LENS_ROOT = join(__dirname, '..', '..');
 
-// Load the luhn module by sourcing it into the global scope.
-// The luhn.js is a classic-script that exposes `__lensLuhn` on
-// globalThis. In a browser, globalThis is window; in Node, it's
-// the Node global. We use eval to run the script in the current
-// scope (NOT inside a wrapper IIFE, which would shadow the `module`
-// variable with Node's CommonJS `module`).
-function loadLuhn() {
-  const src = readFileSync(join(LENS_ROOT, 'src/detectors/luhn.js'), 'utf8');
-  // eslint-disable-next-line no-eval
-  (0, eval)(src);
-  return globalThis.__lensLuhn;
-}
-
-const luhn = loadLuhn();
+// Load the luhn module via the shared test helper. See
+// test/helpers/load-module.js for the eval-based loader
+// and test/helpers/mock-chrome.js for the chrome.* shim
+// (luhn.js doesn't use chrome.*, but the helper is the
+// same shape).
+const luhn = loadModule('src/detectors/luhn.js', '__lensLuhn');
 if (!luhn) {
   throw new Error('Failed to load luhn module: globalThis.__lensLuhn is undefined');
 }
