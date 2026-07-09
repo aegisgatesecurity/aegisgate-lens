@@ -87,6 +87,24 @@
     }
     listHtml += '</div>';
 
+    // v0.1.1 item C (first-run onboarding):
+    // When opts.showPrimer is true, render a small primer line above
+    // the privacy footer explaining what the banner is. The line is
+    // dismissable (× button); clicking × calls the onPrimerDismiss
+    // callback in opts which writes the ONBOARDED flag to storage.
+    var primerHtml = '';
+    if (opts && opts.showPrimer) {
+      var primerUrl = (constants && constants.URLS && constants.URLS.WELCOME_PAGE) || 'welcome/welcome.html';
+      primerHtml =
+        '<div class="lens-primer" role="note" aria-live="polite">' +
+          '<span class="lens-primer-text">' +
+            '🛡️ <strong>Welcome to AegisGate Lens.</strong> This banner is local-only — your prompt never leaves your browser. ' +
+            '<a href="' + formatters.escapeHtml(primerUrl) + '" target="_blank" rel="noopener noreferrer">Learn more</a>.' +
+          '</span>' +
+          '<button type="button" class="lens-primer-dismiss" data-action="primer-dismiss" aria-label="Dismiss this welcome message">×</button>' +
+        '</div>';
+    }
+
     // Privacy footer
     var learnMoreUrl = opts.learnMoreUrl ||
       ((constants && constants.URLS && constants.URLS.LEARN_MORE) || 'https://github.com/aegisgatesecurity/aegisgate-lens#readme');
@@ -137,7 +155,7 @@
         '</span>' +
       '</div>';
 
-    return headerHtml + listHtml + privacyHtml + platformHtml + actionsHtml;
+    return headerHtml + listHtml + primerHtml + privacyHtml + platformHtml + actionsHtml;
   }
 
   // The dismiss form (expanded). Shown when the user clicks

@@ -520,3 +520,55 @@
   font-size: 12px !important;
   line-height: 1 !important;
 }
+
+/* =========================================================================
+   First-run onboarding primer (v0.1.1 item C).
+   A small, dismissable note that appears on the FIRST banner
+   render of a session for new users. After dismissal (or after
+   the first render in the session), it doesn't appear again.
+   Fails open: if storage is unavailable, the primer still
+   shows (helpful, not harmful).
+   ========================================================================= */
+[data-aegisgate-lens="banner"] .lens-primer {
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 8px !important;
+  padding: 8px 12px !important;
+  margin: 4px 0 8px 0 !important;
+  background: rgba(56, 189, 248, 0.08) !important;
+  border: 1px solid rgba(56, 189, 248, 0.3) !important;
+  border-radius: 6px !important;
+  font-size: 12px !important;
+  line-height: 1.4 !important;
+  color: var(--lens-text-primary) !important;
+}
+[data-aegisgate-lens="banner"] .lens-primer-text {
+  flex: 1 1 auto !important;
+}
+[data-aegisgate-lens="banner"] .lens-primer-text a {
+  color: var(--lens-primary) !important;
+  text-decoration: underline !important;
+  text-underline-offset: 2px !important;
+}
+[data-aegisgate-lens="banner"] .lens-primer-dismiss {
+  flex: 0 0 auto !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  background: transparent !important;
+  border: 0 !important;
+  color: var(--lens-text-muted) !important;
+  cursor: pointer !important;
+  font-size: 18px !important;
+  line-height: 1 !important;
+  padding: 0 4px !important;
+  margin: 0 !important;
+  border-radius: 3px !important;
+}
+[data-aegisgate-lens="banner"] .lens-primer-dismiss:hover {
+  color: var(--lens-text-primary) !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+[data-aegisgate-lens="banner"] .lens-primer-dismiss:focus-visible {
+  outline: 2px solid var(--lens-primary) !important;
+  outline-offset: 2px !important;
+}

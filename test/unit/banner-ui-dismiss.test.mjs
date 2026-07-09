@@ -366,6 +366,26 @@ test('banner: buildBannerHTML includes 3 main action buttons', () => {
   assert.ok(html.includes('data-action="dismiss"'), 'dismiss × button');
 });
 
+// v0.1.1 item C: first-run onboarding primer.
+test('banner: buildBannerHTML omits primer by default', () => {
+  loadAll();
+  var b = globalThis.__lensBannerUI;
+  var html = b.buildBannerHTML(
+    [{facet:'pii',category:'pii_ssn',severity:'critical',count:1}], {});
+  assert.equal(html.indexOf('lens-primer'), -1, 'no .lens-primer by default');
+});
+
+test('banner: buildBannerHTML includes primer when opts.showPrimer', () => {
+  loadAll();
+  var b = globalThis.__lensBannerUI;
+  var html = b.buildBannerHTML(
+    [{facet:'pii',category:'pii_ssn',severity:'critical',count:1}],
+    { showPrimer: true });
+  assert.ok(html.indexOf('lens-primer') !== -1, '.lens-primer present');
+  assert.ok(html.indexOf('Welcome to AegisGate Lens') !== -1, 'primer text present');
+  assert.ok(html.indexOf('data-action="primer-dismiss"') !== -1, 'dismiss button');
+});
+
 test('banner: buildBannerHTML includes severity-colored rows', () => {
   loadAll();
   var b = globalThis.__lensBannerUI;

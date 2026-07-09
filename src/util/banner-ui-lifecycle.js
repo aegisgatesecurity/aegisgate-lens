@@ -25,6 +25,9 @@
             { info: function(m){ try { console.log('[AegisGate Lens] ' + m); } catch (e) {} },
               warn: function(m){ try { console.warn('[AegisGate Lens] ' + m); } catch (e) {} },
               error: function(m,e){ try { console.error('[AegisGate Lens] ' + m, e); } catch (e) {} } };
+  var constants = (typeof self !== 'undefined' && self.__lensConstants) ||
+                  (typeof globalThis !== 'undefined' && globalThis.__lensConstants) ||
+                  null;
   var dismiss = (typeof self !== 'undefined' && self.__lensDismiss) ||
                (typeof globalThis !== 'undefined' && globalThis.__lensDismiss) ||
                null;
@@ -57,8 +60,81 @@
     currentOpts: null,         // the opts used to show the banner
     parentInput: null,         // the input element the banner is anchored to
     inserting: false,          // are we currently in the middle of attaching?
-    isVisible: false
+    isVisible: false,
+    // v0.1.1 item C (first-run onboarding):
+    // 'unknown' until the first show() reads chrome.storage.session
+    // (no chrome.* in tests), then 'pending' / 'done' / 'failed'.
+    // 'pending' means "show the primer line on the next banner".
+    // 'done' means "skip the primer".
+    // 'failed' means "storage read errored; show the primer
+    // (fail-open: the user gets a helpful message even if the
+    // read fails)".
+    onboardStatus: 'unknown'
   };
+
+  // Read the ONBOARDED flag from chrome.storage.session.
+  // Returns 'done' if the user has been onboarded, 'pending' if not.
+  // Returns 'failed' if storage is unavailable or the read errors.
+  // This is sync-friendly: we cache the result in state.onboardStatus
+  // and the show() function reads it synchronously.
+  function readOnboardedFlag() {
+    var KEY = (constants && constants.STORAGE_KEYS && constants.STORAGE_KEYS.ONBOARDED) || 'aegisgate_lens_onboarded';
+    try {
+      if (typeof chrome === 'undefined' || !chrome.storage) {
+        return 'failed';  // tests: storage not available, skip primer
+      }
+      var area = null;
+      if (chrome.storage.session) area = chrome.storage.session;
+      else if (chrome.storage.local) area = chrome.storage.local;
+      if (!area) return 'failed';
+      // Chrome storage API is callback-based; we use the sync-shim
+      // pattern of checking last-set value via a module-level cache.
+      // The cache is populated by the first call (async) and used
+      // by subsequent calls (sync). For first-call, we return
+      // 'pending' and let the show() render the primer once.
+      if (onboardedFlagCache !== null) return onboardedFlagCache;
+      // First call: kick off an async read, return 'pending' for now.
+      try {
+        area.get([KEY], function (result) {
+          try {
+            if (chrome.runtime && chrome.runtime.lastError) {
+              onboardedFlagCache = 'failed';
+              return;
+            }
+            onboardedFlagCache = (result && result[KEY]) ? 'done' : 'pending';
+          } catch (e) { onboardedFlagCache = 'failed'; }
+        });
+      } catch (e) { onboardedFlagCache = 'failed'; }
+      return 'pending';
+    } catch (e) {
+      return 'failed';
+    }
+  }
+
+  // Write the ONBOARDED flag = true. Called after the banner's
+  // first show(), so the next time the user types the primer is
+  // skipped.
+  function writeOnboardedFlag() {
+    var KEY = (constants && constants.STORAGE_KEYS && constants.STORAGE_KEYS.ONBOARDED) || 'aegisgate_lens_onboarded';
+    try {
+      if (typeof chrome === 'undefined' || !chrome.storage) return;
+      var area = null;
+      if (chrome.storage.session) area = chrome.storage.session;
+      else if (chrome.storage.local) area = chrome.storage.local;
+      if (!area) return;
+      area.set({ [KEY]: true }, function () {
+        if (chrome.runtime && chrome.runtime.lastError) {
+          log.warn('onboarded set failed: ' + chrome.runtime.lastError.message);
+        }
+      });
+    } catch (e) {
+      log.warn('writeOnboardedFlag threw', e);
+    }
+  }
+
+  // Module-level cache for the ONBOARDED flag read.
+  // Populated by the first readOnboardedFlag() async call.
+  var onboardedFlagCache = null;
 
   // -------------------------------------------------------------------------
   // Internal helpers
@@ -238,6 +314,21 @@
       showDismissForm(opts);
       return;
     }
+    // v0.1.1 item C: primer-dismiss writes the ONBOARDED flag
+    // and hides the primer line, but does NOT hide the banner
+    // itself. The user is still looking at the detection.
+    if (action === 'primer-dismiss') {
+      writeOnboardedFlag();
+      onboardedFlagCache = 'done';
+      // Remove just the primer line from the DOM
+      if (state.el) {
+        var primerEl = state.el.querySelector('.lens-primer');
+        if (primerEl && primerEl.parentNode) {
+          primerEl.parentNode.removeChild(primerEl);
+        }
+      }
+      return;
+    }
     // All other actions hide the banner and call onAction
     if (action === 'dismiss') {
       // Dismiss for 24h on the same domain + category
@@ -267,7 +358,26 @@
     }
     state.currentEvents = events;
     state.currentOpts = opts;
-    state.el.innerHTML = html.buildBannerHTML(events, opts);
+    // v0.1.1 item C (first-run onboarding): decide whether to
+    // show the primer line. The primer appears on the FIRST
+    // banner render of a session for a new user. After that
+    // (or if the user clicks the × dismiss), the primer is
+    // skipped. Fail-open: if storage is unavailable we show
+    // the primer (it's helpful, not harmful).
+    var onboardStatus = readOnboardedFlag();
+    state.onboardStatus = onboardStatus;
+    var showPrimer = (onboardStatus === 'pending' || onboardStatus === 'failed');
+    // The HTML builder reads opts.showPrimer
+    var renderOpts = showPrimer ? Object.assign({}, opts, { showPrimer: true }) : opts;
+    state.el.innerHTML = html.buildBannerHTML(events, renderOpts);
+    // If we showed the primer, write the flag immediately so
+    // the next banner doesn't show it. (We don't wait for the
+    // user to click × first; the primer is more like a "splash"
+    // than a modal.)
+    if (showPrimer) {
+      writeOnboardedFlag();
+      onboardedFlagCache = 'done';
+    }
     state.el.style.display = '';
 
     // Attach the banner above the input
