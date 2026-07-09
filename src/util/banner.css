@@ -436,3 +436,15 @@
 [data-aegisgate-lens="banner"] .lens-upgrade {
   margin-top: 4px !important;
 }
+
+/* =========================================================================
+   Lens-item-overflow: the "+ N more" message shown when there are more
+   detections than BANNER_MAX_ITEMS. Muted text, italic, no left border
+   accent. Extracted from an inline `style="..."` attribute in
+   banner-ui.js for v0.1.1.
+   ========================================================================= */
+[data-aegisgate-lens="banner"] .lens-item-overflow {
+  color: var(--lens-text-muted) !important;
+  font-style: italic !important;
+  border-left-color: transparent !important;
+}

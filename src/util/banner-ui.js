@@ -168,7 +168,7 @@
       listHtml += '</div>';
     }
     if (events.length > maxItems) {
-      listHtml += '<div class="lens-item" style="color: var(--lens-text-muted); font-style: italic; border-left-color: transparent;">';
+      listHtml += '<div class="lens-item lens-item-overflow">';
       listHtml += '+ ' + (events.length - maxItems) + ' more';
       listHtml += '</div>';
     }
