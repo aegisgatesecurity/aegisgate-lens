@@ -4,6 +4,13 @@
   <meta charset="utf-8">
   <title>AegisGate Lens</title>
   <style>
+    /* -----------------------------------------------------------------
+       Inline CSS (intentional, per v0.1.1 item 6 decision).
+       The popup is a standalone extension page (chrome-extension:// URL);
+       external CSS would require an additional web_accessible_resources
+       entry and is not the standard pattern for Chrome extension
+       pages of this size. Keep this <style> inlined.
+       ----------------------------------------------------------------- */
     /* CSP-compliant: no inline scripts, no remote resources. */
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
