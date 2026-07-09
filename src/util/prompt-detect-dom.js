@@ -33,6 +33,52 @@
     state.sendButton = selectors.findSendButton(state.provider);
   }
 
+  // v0.1.1 item 19: on-page "Lens active" indicator.
+  // Renders a small, unobtrusive chip in the input area so the
+  // user knows the Lens is running. The chip is a <span> with
+  // [data-aegisgate-lens="indicator"]; the CSS in banner.css
+  // positions it absolutely at the bottom-right of the input
+  // container. Clicking the chip shows a console.info message
+  // (and can be extended to open a small "what this is" popover
+  // in v0.2.0).
+  function injectIndicator(state) {
+    if (typeof document === 'undefined') return;
+    if (document.querySelector('[data-aegisgate-lens="indicator"]')) return;
+    if (!state.input) return;
+    var container = state.input.parentNode;
+    if (!container || container.nodeType !== 1) return;
+    var indicator = document.createElement('span');
+    indicator.setAttribute('data-aegisgate-lens', 'indicator');
+    indicator.setAttribute('role', 'status');
+    indicator.setAttribute('aria-label', 'AegisGate Lens is active on this page');
+    indicator.title = 'AegisGate Lens is active — click for details';
+    indicator.innerHTML = '<span class="lens-indicator-shield" aria-hidden="true">🛡️</span> Lens active';
+    indicator.addEventListener('click', function (e) {
+      try {
+        e.preventDefault();
+        if (typeof console !== 'undefined' && console.info) {
+          console.info('AegisGate Lens is watching this prompt for PII, secrets, and compliance issues. ' +
+                       'Click the banner for details. ' +
+                       'Opt out: click the dismiss icon on the banner for 24h.');
+        }
+      } catch (e2) { /* ignore */ }
+    }, true);
+    // Make sure the container is positioned so the absolute
+    // indicator positions relative to it.
+    var containerStyle = (typeof window !== 'undefined' && window.getComputedStyle) ?
+                         window.getComputedStyle(container) : null;
+    if (containerStyle && containerStyle.position === 'static') {
+      container.style.position = 'relative';
+    }
+    container.appendChild(indicator);
+  }
+
+  function removeIndicator() {
+    if (typeof document === 'undefined') return;
+    var el = document.querySelector('[data-aegisgate-lens="indicator"]');
+    if (el && el.parentNode) el.parentNode.removeChild(el);
+  }
+
   // The onInput handler: read the current value, run detection
   // (caller passes in detectPrompt so we can stay decoupled from
   // the aggregator's internal API).
@@ -135,20 +181,26 @@
     findElements: findElements,
     onInput: onInput,
     onSendClick: onSendClick,
-    onKeyDown: onKeyDown
+    onKeyDown: onKeyDown,
+    injectIndicator: injectIndicator,
+    removeIndicator: removeIndicator
   };
   if (typeof window !== 'undefined') window.__lensPromptDetect_dom = {
     findElements: findElements,
     onInput: onInput,
     onSendClick: onSendClick,
-    onKeyDown: onKeyDown
+    onKeyDown: onKeyDown,
+    injectIndicator: injectIndicator,
+    removeIndicator: removeIndicator
   };
   if (typeof globalThis !== 'undefined') {
     globalThis.__lensPromptDetect_dom = {
       findElements: findElements,
       onInput: onInput,
       onSendClick: onSendClick,
-      onKeyDown: onKeyDown
+      onKeyDown: onKeyDown,
+      injectIndicator: injectIndicator,
+      removeIndicator: removeIndicator
     };
   }
 })(typeof self !== 'undefined' ? self : (typeof globalThis !== 'undefined' ? globalThis : this));

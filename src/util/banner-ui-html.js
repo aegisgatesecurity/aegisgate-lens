@@ -105,15 +105,14 @@
       ((constants && constants.URLS && constants.URLS.PLATFORM_CTA) || 'https://aegisgatesecurity.io/platform/pricing');
     var platformHtml =
       '<a class="lens-platform-cta" href="' + formatters.escapeHtml(platformUrl) + '" target="_blank" rel="noopener noreferrer">' +
-        'Get automated redaction, enterprise features, and custom patterns with ' +
-        '<strong>AegisGate Platform</strong> →' +
+        'When your team needs server-side enforcement, custom patterns, audit logs, or SSO, upgrade to <strong>AegisGate Platform</strong> →' +
       '</a>';
 
     // Action row
     var actionsHtml =
       '<div class="lens-actions">' +
         '<button type="button" class="lens-btn lens-btn-secondary" data-action="cancel">Cancel send</button>' +
-        '<button type="button" class="lens-btn lens-btn-primary" data-action="redact">Edit &amp; redact</button>' +
+        '<button type="button" class="lens-btn lens-btn-primary" data-action="redact">Edit manually</button>' +
         '<button type="button" class="lens-btn lens-btn-ghost" data-action="send">Send anyway</button>' +
         '<button type="button" class="lens-false-positive-link" data-action="false-positive">' +
           (icons && icons.ICONS.chevronDown ? icons.ICONS.chevronDown : '') +
@@ -129,10 +128,10 @@
         '<span class="lens-wordmark">AegisGate Lens</span>' +
         '<span class="lens-count">' + countText + '</span>' +
         '<span class="lens-header-actions">' +
-          '<button type="button" class="lens-icon-btn" data-action="help" aria-label="Help">' +
+          '<button type="button" class="lens-icon-btn" data-action="help" aria-label="Help" title="Help: what this banner does">' +
             (icons && icons.ICONS.help ? icons.ICONS.help : '?') +
           '</button>' +
-          '<button type="button" class="lens-icon-btn" data-action="dismiss" aria-label="Dismiss for 24 hours">' +
+          '<button type="button" class="lens-icon-btn" data-action="dismiss" aria-label="Dismiss for 24 hours" title="Dismiss for 24 hours">' +
             (icons && icons.ICONS.close ? icons.ICONS.close : '×') +
           '</button>' +
         '</span>' +

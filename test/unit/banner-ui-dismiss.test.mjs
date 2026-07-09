@@ -5,7 +5,7 @@
 //   - Header (shield + wordmark + count + help + ×)
 //   - Detection list (severity-colored rows, masked values)
 //   - Privacy footer ("we never sent your prompt")
-//   - Action row (Cancel / Edit & redact / Send anyway / False positive link)
+//   - Action row (Cancel send / Edit manually / Send anyway / False positive link)
 //   - Dismiss form (expanded on click, 3 reasons, 2 submit paths)
 //
 // These tests run in Node with a minimal DOM mock. We do NOT

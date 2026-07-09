@@ -172,6 +172,42 @@
         log.error('click handler threw', err);
       }
     }, true);
+    // v0.1.1 item 21: keyboard navigation support.
+    //   - Esc closes the banner (default: cancel action).
+    //   - Tab / Shift-Tab is trapped within the banner so a
+    //     keyboard user can't tab past the last button and lose
+    //     focus into the page below.
+    el.addEventListener('keydown', function (e) {
+      try {
+        if (e.key === 'Escape' || e.keyCode === 27) {
+          e.preventDefault();
+          e.stopPropagation();
+          handleAction('cancel', opts);
+          return;
+        }
+        if (e.key === 'Tab' || e.keyCode === 9) {
+          // Trap focus within the banner. The first focusable
+          // element is the auto-focus target; the last is the
+          // dismiss button.
+          var focusables = el.querySelectorAll(
+            'button, [href], input, [tabindex]:not([tabindex="-1"])'
+          );
+          if (focusables.length === 0) return;
+          var first = focusables[0];
+          var last = focusables[focusables.length - 1];
+          var active = el.ownerDocument && el.ownerDocument.activeElement;
+          if (e.shiftKey && active === first) {
+            e.preventDefault();
+            last.focus();
+          } else if (!e.shiftKey && active === last) {
+            e.preventDefault();
+            first.focus();
+          }
+        }
+      } catch (err) {
+        log.error('keydown handler threw', err);
+      }
+    }, true);
   }
 
   // Show the dismiss form inline (replaces the action row)
@@ -253,6 +289,18 @@
       }
     }
     state.isVisible = true;
+    // v0.1.1 item 21: auto-focus the banner so keyboard users can
+    // navigate it immediately and screen readers announce it. We
+    // focus the first focusable element (the Help button, the
+    // first button in the header). We use a small setTimeout to
+    // let the DOM settle after the innerHTML assignment.
+    setTimeout(function () {
+      try {
+        if (!state.el) return;
+        var firstBtn = state.el.querySelector('button, [href], [tabindex="0"]');
+        if (firstBtn && typeof firstBtn.focus === 'function') firstBtn.focus();
+      } catch (e) { /* ignore focus errors */ }
+    }, 0);
     log.info('banner shown with ' + events.length + ' events');
   }
 

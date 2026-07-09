@@ -55,6 +55,11 @@
       }
       state._debouncedInput = debouncedInput;
       state.attached = true;
+      // v0.1.1 item 19: render the on-page indicator chip so the
+      // user can see that the Lens is running. Remove any prior
+      // indicator first to handle re-attach.
+      try { dom.removeIndicator(); } catch (e3) { /* ignore */ }
+      try { dom.injectIndicator(state); } catch (e3) { log.warn('injectIndicator threw', e3); }
       log.info('attached to input' + (state.sendButton ? ' + send button' : ''));
     } catch (err) {
       log.error('attach() threw', err);
@@ -77,6 +82,9 @@
         state.sendButton.removeEventListener('click', function (e) { dom.onSendClick(e, state, arguments.callee && arguments.callee.prototype); }, true);
       }
       state.attached = false;
+      // v0.1.1 item 19: remove the on-page indicator when the
+      // content script detaches (e.g., during a navigation).
+      try { dom.removeIndicator(); } catch (e3) { /* ignore */ }
       log.info('detached from input');
     } catch (err) {
       log.error('detach() threw', err);
