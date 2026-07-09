@@ -24,15 +24,19 @@
 (function (global) {
   'use strict';
 
+  var constants = (typeof self !== 'undefined' && self.__lensConstants) ||
+                       (typeof globalThis !== 'undefined' && globalThis.__lensConstants) ||
+                       null;
+
   var log = (typeof self !== 'undefined' && self.__lensLogger) ||
             (typeof globalThis !== 'undefined' && globalThis.__lensLogger) ||
             { info: function(m){ try { console.log('[AegisGate Lens] ' + m); } catch (e) {} },
               warn: function(m){ try { console.warn('[AegisGate Lens] ' + m); } catch (e) {} },
               error: function(m,e){ try { console.error('[AegisGate Lens] ' + m, e); } catch (e) {} } };
 
-  var STORAGE_KEY = 'aegisgate_lens_dismissals';
-  var TTL_MS = 24 * 60 * 60 * 1000;  // 24 hours
-  var SCHEMA_VERSION = '0.1.0-beta';
+  var STORAGE_KEY = (constants && constants.STORAGE_KEYS && constants.STORAGE_KEYS.DISMISSALS) || 'aegisgate_lens_dismissals';
+  var TTL_MS = (constants && constants.DISMISS_TTL_MS) || (24 * 60 * 60 * 1000);  // 24h (from constants.js)
+  var SCHEMA_VERSION = (constants && constants.STORAGE_SCHEMA_VERSION) || '0.1.0-beta';
 
   // The 3 reason codes. These match the design spec.
   var REASON_TEST_DATA = 'test_data';
@@ -280,4 +284,5 @@
   if (typeof self !== 'undefined') self.__lensDismiss = module;
   if (typeof window !== 'undefined') window.__lensDismiss = module;
   if (typeof globalThis !== 'undefined') globalThis.__lensDismiss = module;
+  if (typeof globalThis !== 'undefined' && globalThis.__lensConstants) module.__lensConstants = globalThis.__lensConstants;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

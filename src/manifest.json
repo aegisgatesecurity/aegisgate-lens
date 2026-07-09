@@ -40,6 +40,7 @@
         "https://le-chat.mistral.ai/*"
       ],
       "js": [
+        "util/constants.js",
         "util/logger.js",
         "detectors/luhn.js",
         "detectors/regex/pii.js",
