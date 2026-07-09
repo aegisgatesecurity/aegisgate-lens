@@ -40,7 +40,7 @@
 </head>
 <body>
   <h1>AegisGate Lens</h1>
-  <div id="status" class="status">
+  <div id="status" class="status" role="status" aria-live="polite">
     <div class="row">
       <span class="label">Status</span>
       <span class="value" id="status-value">Loading...</span>
@@ -52,11 +52,12 @@
   </div>
   <div class="row">
     <span class="label">Telemetry</span>
-    <span class="value" id="telemetry-value">Loading...</span>
+    <span class="value" id="telemetry-value" aria-live="polite">Loading...</span>
   </div>
   
   <!-- Upgrade CTA -->
-  <div id="upgrade-banner" class="status upgrade" style="display: none;">
+  <div id="upgrade-banner" class="status upgrade" role="complementary" aria-labelledby="upgrade-heading" style="display: none;">
+    <h2 id="upgrade-heading" class="sr-only" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;">AegisGate Platform upgrade</h2>
     <div class="row">
       <span class="label">AegisGate Platform</span>
       <span class="value">Server-side enforcement</span>

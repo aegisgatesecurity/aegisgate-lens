@@ -357,10 +357,10 @@
     </section>
 
     <div class="actions">
-      <button class="primary" id="opt-in">Opt in to threat intel</button>
-      <button class="secondary" id="dismiss">Stay in detect-only mode</button>
+      <button class="primary" id="opt-in" aria-describedby="optin-explainer">Opt in to threat intel</button>
+      <button class="secondary" id="dismiss" aria-describedby="optin-explainer">Stay in detect-only mode</button>
     </div>
-    <p class="small center">
+    <p id="optin-explainer" class="small center" aria-live="polite">
       You can change this any time from the extension popup (click the AegisGate icon in the toolbar).
     </p>
   </div>
