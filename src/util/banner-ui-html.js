@@ -56,7 +56,7 @@
     el.setAttribute('data-aegisgate-lens', 'banner');
     el.setAttribute('role', 'alert');
     el.setAttribute('aria-live', 'polite');
-    el.style.display = 'none';
+    el.classList.add('hidden');
     return el;
   }
 
@@ -132,7 +132,7 @@
         '<button type="button" class="lens-btn lens-btn-secondary" data-action="cancel">Cancel send</button>' +
         '<button type="button" class="lens-btn lens-btn-primary" data-action="redact">Edit manually</button>' +
         '<button type="button" class="lens-btn lens-btn-ghost" data-action="send">Send anyway</button>' +
-        '<button type="button" class="lens-false-positive-link" data-action="false-positive">' +
+        '<button type="button" class="lens-false-positive-link" data-action="false-positive" aria-label="Mark this detection as a false positive and report it">' +
           (icons && icons.ICONS.chevronDown ? icons.ICONS.chevronDown : '') +
           'This is a false positive' +
         '</button>' +
@@ -141,7 +141,11 @@
     // Header
     var headerHtml =
       '<div class="lens-header">' +
-        '<img class="lens-shield-img" src="' + getRuntimeUrlRef('icons/icon-48.png') + '" alt="AegisGate Lens"/>' +
+        '<picture>' +
+        '  <source media="(min-resolution: 3dppx)" srcset="' + getRuntimeUrlRef('icons/banner-3x.png') + '"/>' +
+        '  <source media="(min-resolution: 2dppx)" srcset="' + getRuntimeUrlRef('icons/banner-2x.png') + '"/>' +
+        '  <img class="lens-shield-img" src="' + getRuntimeUrlRef('icons/banner-2x.png') + '" alt="AegisGate Lens" width="24" height="24"/>' +
+        '</picture>' +
           '<span class="lens-shield-fallback">' + (icons && icons.ICONS.shield ? icons.ICONS.shield : '') + '</span>' +
         '<span class="lens-wordmark">AegisGate Lens</span>' +
         '<span class="lens-count">' + countText + '</span>' +

@@ -31,6 +31,7 @@
         "https://claude.ai/*",
         "https://gemini.google.com/*",
         "https://copilot.microsoft.com/*",
+        "https://copilot.cloud.microsoft/*",
         "https://duck.ai/*",
         "https://perplexity.ai/*",
         "https://www.perplexity.ai/*",
@@ -74,10 +75,8 @@
   ],
   "permissions": [
     "storage",
-    "alarms",
     "unlimitedStorage",
-    "scripting",
-    "activeTab"
+    "scripting"
   ],
   "host_permissions": [
     "https://lens.aegisgatesecurity.io/*"
