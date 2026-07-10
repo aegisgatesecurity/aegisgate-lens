@@ -141,19 +141,14 @@ jobs:
             cat smoke-report.json 2>/dev/null || echo "(no report file)"
             exit $EXIT
           fi
-          # Show the summary
-          python3 -c "
-          import json
-          r = json.load(open('smoke-report.json'))
-          print('total:', r['total'])
-          print('passed:', r['passed'])
-          print('failed:', r['failed'])
-          print('gate:', r['gate'])
-          for x in r['results']:
-            status = 'PASS' if x['passed'] else 'FAIL'
-                        print("  [" + str(status) + "] " + str(x["name"]))
-          "
-
+          # Show the summary (uses the dedicated tools/ci/smoke-summary.py
+          # script which reads smoke-report.json and prints a human-readable
+          # summary. Exits non-zero if the gate is false, which will fail
+          # the CI step. The earlier attempts to embed Python via
+          # python3 -c "..." broke because the YAML leading whitespace
+          # leaked into the Python source, causing IndentationError.
+          # A separate committed script avoids that entirely.)
+          python3 tools/ci/smoke-summary.py
       - name: Upload smoke report
         # Save the report as a workflow artifact (retained for 7 days)
         # so failures can be investigated even after the run finishes.
