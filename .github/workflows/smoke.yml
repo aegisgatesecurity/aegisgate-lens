@@ -84,13 +84,19 @@ jobs:
         # The Go binary is built from tools/headless-smoke/flow/.
         # The output is the test/headless-smoke/headless-smoke-bin
         # which the runner will execute.
+        #
+        # IMPORTANT: `go build -o` resolves the output path relative to
+        # the CURRENT working directory (which after `cd` is
+        # tools/headless-smoke/flow/). To get the binary to the right
+        # place, we use ${GITHUB_WORKSPACE} (the absolute path to the
+        # repo root on the runner, set by GitHub Actions) as the
+        # prefix for -o.
         run: |
           cd tools/headless-smoke/flow
-          go build -o test/headless-smoke/headless-smoke-bin .
-          cd ../../../
-          # Verify the binary was built
-          test -f test/headless-smoke/headless-smoke-bin && echo "Binary built OK"
-          ls -la test/headless-smoke/headless-smoke-bin
+          go build -o ${GITHUB_WORKSPACE}/test/headless-smoke/headless-smoke-bin .
+          # Verify the binary was built (also at the absolute path)
+          test -f ${GITHUB_WORKSPACE}/test/headless-smoke/headless-smoke-bin && echo "Binary built OK" || (echo "Binary NOT built"; exit 1)
+          ls -la ${GITHUB_WORKSPACE}/test/headless-smoke/headless-smoke-bin
 
       - name: Build the test bundle
         # The smoke loads test/headless-smoke/dist/ which is the SHIP-READY
