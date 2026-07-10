@@ -63,7 +63,6 @@
   ],
   "permissions": [
     "storage",
-    "alarms",
     "unlimitedStorage"
   ],
   "host_permissions": [
