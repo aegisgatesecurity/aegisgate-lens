@@ -95,14 +95,15 @@
   // BIP39 wordlist verification); everything else passes through.
   // -------------------------------------------------------------------------
   function postProcess(category, match) {
-    if (category === 'pii_credit_card') {
+    if (category === 'pii_credit_card' || category === 'pii_credit_card_loose') {
+      // v0.1.3 B1 fix: also Luhn-validate the loose variant. Previously
+      // pii_credit_card_loose (which matches \b\d{12,19}\b) was NOT
+      // Luhn-checked, so any 12-19 digit run (including non-CC numbers
+      // like long IBAN bodies) generated a false positive. The smoke
+      // test flow-pii-credit-card-luhn-invalid surfaced this; the
+      // invalid CC "1234-5678-9012-3456" (16 digits) was being flagged.
       var luhn = getLuhn();
       if (!luhn) {
-        // Luhn module unavailable. Without Luhn validation, every
-        // 13-19 digit run would be flagged as a credit card — too
-        // many false positives. Drop the match. The logger, if
-        // available, will note this so the user knows CC detection
-        // is degraded.
         var log = (typeof self !== 'undefined' && self.__lensLogger) ||
                   (typeof globalThis !== 'undefined' && globalThis.__lensLogger) ||
                   null;
@@ -112,8 +113,7 @@
         return null;
       }
       var v = luhn.validateCard(match.value);
-      if (!v.valid) return null;  // drop false positive
-      // Attach the card type for the dispatcher
+      if (!v.valid) return null;  // drop false positive (Luhn-invalid number)
       match.cardType = v.type;
     }
     if (category === 'pii_phone_intl_loose') {
@@ -124,8 +124,17 @@
       //   - 4-6 digit matches (too short to be a phone)
       //   - matches that are entirely inside a date (YYYY-MM-DD = 8 digits)
       var digits = (match.value.match(/\d/g) || []).length;
-      if (digits < 7 || digits > 15) return null;
+      if (digits < 7 || digits > 13) return null;
       if (digits === 9) return null;  // SSN shape, not phone
+      // v0.1.3 B1 fix: lowered the upper bound from 15 to 13 to
+      // reject IBAN body matches. The IBAN body (e.g., "60161331926819"
+      // in "GB29 NWBK 6016 1331 9268 19") is 14-16 unseparated digits
+      // and was matching as pii_phone_intl_loose. Real international
+      // phones are 7-13 digits unseparated (US=10-11, UK=12, EU=11-13);
+      // anything with 14+ digits is almost always a non-phone number
+      // (IBAN body, SNILS, credit-card body, etc.). 13 is a safe upper
+      // bound; +86-138-0013-4567 unseparated = 13 digits and is the
+      // longest legitimate international phone.
       // Reject pure date-like matches (8 digits in 4-2-2 or 2-2-4 pattern)
       if (digits === 8 && /^\d{4}[-.\s]\d{1,2}[-.\s]\d{1,2}$/.test(match.value)) return null;
     }
