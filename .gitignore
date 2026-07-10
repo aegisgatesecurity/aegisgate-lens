@@ -151,3 +151,7 @@ docs/VERIFICATION-3*
 # v0.1.2 F-5: burned-down v0.2.0 research artifacts
 docs/TRAINING-RUN-1*
 smoke-report.json
+
+# v0.1.3 cleanup: moved to .plans/v0.2-burndown/
+docs/PHASE-0B-*
+docs/PHASE-6-*
