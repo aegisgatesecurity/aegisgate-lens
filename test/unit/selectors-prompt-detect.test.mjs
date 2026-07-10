@@ -14,6 +14,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
+import { loadModule } from '../helpers/load-module.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const LENS_ROOT = join(__dirname, '..', '..');
 
@@ -145,14 +146,6 @@ globalThis.setTimeout = setTimeout;
 globalThis.clearTimeout = clearTimeout;
 globalThis.Event = class { constructor(type, init) { this.type = type; Object.assign(this, init); } };
 
-function loadModule(relPath, globalKey) {
-  const src = readFileSync(join(LENS_ROOT, relPath), 'utf8');
-  // Wrap so 'this' is globalThis
-  var wrapped = '(function() { ' + src + ' })()';
-  (0, eval)(wrapped);
-  return globalThis[globalKey];
-}
-
 // --- Tests for selectors.js ---
 
 test('selectors: 8 providers configured', () => {
@@ -250,6 +243,11 @@ function loadWithDeps() {
   // Load deps (order matters: facets first, then schema, then dispatcher)
   loadModule('src/util/logger.js', '__lensLogger');
   loadModule('src/detectors/luhn.js', '__lensLuhn');
+  // Load the 4 PII sub-files FIRST, then pii.js (the aggregator).
+  loadModule('src/detectors/regex/pii-us-core.js',          '__lensPII_us_core');
+  loadModule('src/detectors/regex/pii-us-extended.js',      '__lensPII_us_extended');
+  loadModule('src/detectors/regex/pii-international-id.js', '__lensPII_international_id');
+  loadModule('src/detectors/regex/pii-financial.js',        '__lensPII_financial');
   loadModule('src/detectors/regex/pii.js', '__lensPII');
   loadModule('src/detectors/regex/secrets.js', '__lensSecrets');
   loadModule('src/detectors/regex/source_xss.js', '__lensXSS');
@@ -257,6 +255,11 @@ function loadWithDeps() {
   loadModule('src/privacy/schema.js', '__lensSchema');
   loadModule('src/detectors/index.js', '__lensDispatcher');
   loadModule('src/util/selectors.js', '__lensSelectors');
+
+  // Load the 2 prompt-detect sub-files FIRST, then the aggregator.
+  // This mirrors the production content_scripts.js load order in manifest.json.
+  loadModule('src/util/prompt-detect-dom.js',       '__lensPromptDetect_dom');
+  loadModule('src/util/prompt-detect-lifecycle.js', '__lensPromptDetect_lifecycle');
 
   // Now load prompt-detect
   return loadModule('src/util/prompt-detect.js', '__lensPromptDetect');

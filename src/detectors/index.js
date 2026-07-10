@@ -247,5 +247,8 @@
 
   if (typeof self !== 'undefined') self.__lensDispatcher = module;
   if (typeof window !== 'undefined') window.__lensDispatcher = module;
+  /**
+   * @type {import("./typedefs").LensDispatcher}
+   */
   if (typeof globalThis !== 'undefined') globalThis.__lensDispatcher = module;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

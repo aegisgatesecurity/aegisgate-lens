@@ -175,5 +175,8 @@
 
   if (typeof self !== 'undefined') self.__lensDomainHash = module;
   if (typeof window !== 'undefined') window.__lensDomainHash = module;
+  /**
+   * @type {import("./typedefs").LensDomainHash}
+   */
   if (typeof globalThis !== 'undefined') globalThis.__lensDomainHash = module;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

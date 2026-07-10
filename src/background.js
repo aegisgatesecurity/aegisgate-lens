@@ -28,6 +28,11 @@
   };
 
   log.info('background.js loaded; service worker ready');
+  // Constants from src/util/constants.js (loaded via globalThis)
+  var C = (typeof self !== 'undefined' && self.__lensConstants) ||
+           (typeof globalThis !== 'undefined' && globalThis.__lensConstants) ||
+           null;
+
 
   // Load the messages module. In the SW context, scripts are
   // loaded via importScripts() OR by being in the same JS file
@@ -333,7 +338,7 @@
         timestamp: p.timestamp
       });
       // Cap at last 100 actions to keep storage small
-      if (actions.length > 100) actions = actions.slice(-100);
+      if (actions.length > ((C && C.MAX_USER_ACTIONS) || 100)) actions = actions.slice(-((C && C.MAX_USER_ACTIONS) || 100));
       return storageSet('aegisgate_lens_user_actions', actions);
     });
     sendResponse({ type: M.TYPE.ACK, version: msg.version, payload: { ok: true } });

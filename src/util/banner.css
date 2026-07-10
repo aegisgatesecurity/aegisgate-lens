@@ -35,7 +35,7 @@
   top: 0 !important;
   left: 0 !important;
   right: 0 !important;
-  z-index: 2147483647 !important;        /* Max 32-bit signed int */
+  z-index: 2147483647 !important;        /* BANNER_Z_INDEX from src/util/constants.js (max 32-bit signed int) */
   display: block !important;
   box-sizing: border-box !important;
   margin: 0 !important;
@@ -435,4 +435,140 @@
 /* Ensure action row styling matches */
 [data-aegisgate-lens="banner"] .lens-upgrade {
   margin-top: 4px !important;
+}
+
+/* =========================================================================
+   Lens-item-overflow: the "+ N more" message shown when there are more
+   detections than BANNER_MAX_ITEMS. Muted text, italic, no left border
+   accent. Extracted from an inline `style="..."` attribute in
+   banner-ui.js for v0.1.1.
+   ========================================================================= */
+[data-aegisgate-lens="banner"] .lens-item-overflow {
+  color: var(--lens-text-muted) !important;
+  font-style: italic !important;
+  border-left-color: transparent !important;
+}
+
+/* =========================================================================
+   Prefers-reduced-motion support (v0.1.1 item 22).
+   When the user has "reduce motion" enabled in their OS, disable
+   the banner's animations and transitions. The banner still
+   appears/disappears (it has to), but it does so instantly
+   without the fade-in/fade-out or hover transitions.
+   Per WCAG 2.1 SC 2.3.3 (Animation from Interactions).
+   ========================================================================= */
+@media (prefers-reduced-motion: reduce) {
+  [data-aegisgate-lens="banner"] {
+    animation: none !important;
+  }
+  [data-aegisgate-lens="banner"] .lens-btn,
+  [data-aegisgate-lens="banner"] .lens-icon-btn,
+  [data-aegisgate-lens="banner"] .lens-false-positive-link {
+    transition: none !important;
+  }
+}
+
+/* =========================================================================
+   Focus ring (v0.1.1 item 21).
+   Per WCAG 2.1 SC 2.4.7 (Focus Visible). Without an explicit rule,
+   some browsers (especially in cross-origin iframes on some
+   providers like Perplexity) strip the default focus ring. We
+   re-add it for the banner's interactive elements, scoped to
+   the banner so we don't affect the page underneath.
+   ========================================================================= */
+[data-aegisgate-lens="banner"] :focus-visible {
+  outline: 2px solid var(--lens-primary) !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.25) !important;
+}
+
+/* =========================================================================
+   On-page "Lens active" indicator (v0.1.1 item 19).
+   A small, unobtrusive chip that appears near the prompt input
+   when the content script attaches. Tells the user "the Lens
+   is running" without occupying prime screen real estate. The
+   chip is removed when the banner is dismissed for 24h (the
+   user has opted out for that domain+category pair).
+   ========================================================================= */
+[data-aegisgate-lens="indicator"] {
+  position: absolute !important;
+  bottom: 8px !important;
+  right: 8px !important;
+  z-index: 2147483646 !important;  /* just below the banner (2147483647) */
+  padding: 4px 10px !important;
+  background: rgba(56, 189, 248, 0.10) !important;
+  border: 1px solid rgba(56, 189, 248, 0.4) !important;
+  border-radius: 12px !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  color: #38bdf8 !important;
+  cursor: pointer !important;
+  user-select: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  text-decoration: none !important;
+  transition: all 0.15s ease !important;
+}
+[data-aegisgate-lens="indicator"]:hover {
+  background: rgba(56, 189, 248, 0.20) !important;
+  border-color: rgba(56, 189, 248, 0.6) !important;
+}
+[data-aegisgate-lens="indicator"] .lens-indicator-shield {
+  display: inline-block !important;
+  font-size: 12px !important;
+  line-height: 1 !important;
+}
+
+/* =========================================================================
+   First-run onboarding primer (v0.1.1 item C).
+   A small, dismissable note that appears on the FIRST banner
+   render of a session for new users. After dismissal (or after
+   the first render in the session), it doesn't appear again.
+   Fails open: if storage is unavailable, the primer still
+   shows (helpful, not harmful).
+   ========================================================================= */
+[data-aegisgate-lens="banner"] .lens-primer {
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 8px !important;
+  padding: 8px 12px !important;
+  margin: 4px 0 8px 0 !important;
+  background: rgba(56, 189, 248, 0.08) !important;
+  border: 1px solid rgba(56, 189, 248, 0.3) !important;
+  border-radius: 6px !important;
+  font-size: 12px !important;
+  line-height: 1.4 !important;
+  color: var(--lens-text-primary) !important;
+}
+[data-aegisgate-lens="banner"] .lens-primer-text {
+  flex: 1 1 auto !important;
+}
+[data-aegisgate-lens="banner"] .lens-primer-text a {
+  color: var(--lens-primary) !important;
+  text-decoration: underline !important;
+  text-underline-offset: 2px !important;
+}
+[data-aegisgate-lens="banner"] .lens-primer-dismiss {
+  flex: 0 0 auto !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  background: transparent !important;
+  border: 0 !important;
+  color: var(--lens-text-muted) !important;
+  cursor: pointer !important;
+  font-size: 18px !important;
+  line-height: 1 !important;
+  padding: 0 4px !important;
+  margin: 0 !important;
+  border-radius: 3px !important;
+}
+[data-aegisgate-lens="banner"] .lens-primer-dismiss:hover {
+  color: var(--lens-text-primary) !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+[data-aegisgate-lens="banner"] .lens-primer-dismiss:focus-visible {
+  outline: 2px solid var(--lens-primary) !important;
+  outline-offset: 2px !important;
 }

@@ -1,5 +1,5 @@
 // AegisGate Lens — test/unit/redact.test.mjs
-// Unit tests for the "Edit & redact" button behavior.
+// Unit tests for the "Edit manually" button behavior.
 //
 // The redact logic in content.js is: for each detection event (with
 // .index, .value, .category), replace the value at the index with
@@ -23,6 +23,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { loadModule, loadChain } from '../helpers/load-module.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const LENS_ROOT = join(__dirname, '..', '..');
@@ -57,19 +58,20 @@ function redactText(current, events) {
 }
 
 // Load detectors in PRODUCTION order: luhn.js first, then pii.js
-// (mirrors background.js dynamic injection order)
-const luhn = (function() {
-  const src = readFileSync(join(LENS_ROOT, 'src/detectors/luhn.js'), 'utf8');
-  (0, eval)(src);
-  return globalThis.__lensLuhn;
-})();
+// (mirrors background.js dynamic injection order).
+// Using the shared loadModule/loadChain helper (v0.1.1 item 9).
+const luhn = loadModule('src/detectors/luhn.js', '__lensLuhn');
 assert.ok(luhn, 'luhn must load first (production order)');
 
-const pii = (function() {
-  const src = readFileSync(join(LENS_ROOT, 'src/detectors/regex/pii.js'), 'utf8');
-  (0, eval)(src);
-  return globalThis.__lensPII;
-})();
+// Load the 4 PII sub-files FIRST, then pii.js (the aggregator).
+// This mirrors the production content_scripts.js load order in manifest.json.
+const pii = loadChain([
+  'src/detectors/regex/pii-us-core.js',
+  'src/detectors/regex/pii-us-extended.js',
+  'src/detectors/regex/pii-international-id.js',
+  'src/detectors/regex/pii-financial.js',
+  'src/detectors/regex/pii.js'
+], '__lensPII');
 assert.ok(pii, 'pii must load after luhn');
 
 // ============================================================
