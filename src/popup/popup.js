@@ -18,6 +18,19 @@
     return (typeof chrome !== 'undefined') ? chrome : null;
   }
 
+  // v0.1.2 F-2: the canonical storage key for the opt-in state. Was
+  // a bare 'opt_in' key that conflicted with the SW's
+  // 'aegisgate_lens_opt_in' key. Now unified on the constants.js
+  // STORAGE_KEYS.OPT_IN key. The popup still reads storage directly
+  // here (F-10 will switch this to a chrome.runtime.sendMessage
+  // GET_OPT_IN_STATE call to the SW).
+  function getOptInStorageKey() {
+    return (typeof globalThis !== 'undefined' && globalThis.__lensConstants &&
+            globalThis.__lensConstants.STORAGE_KEYS &&
+            globalThis.__lensConstants.STORAGE_KEYS.OPT_IN) ||
+            'aegisgate_lens_opt_in';
+  }
+
   function readOptIn() {
     return new Promise(function (resolve, reject) {
       var cr = getChrome();
@@ -25,20 +38,26 @@
         reject(new Error('chrome.storage.local not available'));
         return;
       }
-      cr.storage.local.get(['opt_in'], function (result) {
+      var key = getOptInStorageKey();
+      cr.storage.local.get([key], function (result) {
         if (cr.runtime && cr.runtime.lastError) {
           reject(new Error(cr.runtime.lastError.message || 'unknown chrome.storage error'));
           return;
         }
-        var opt = result && result.opt_in;
+        var opt = result && result[key];
         if (!opt) {
           resolve({ enabled: false, lastChangedAt: null, lensVersion: null });
-        } else {
+        } else if (typeof opt === 'boolean') {
+          // v0.1.0-beta backwards-compat: bare boolean. Treat as enabled.
+          resolve({ enabled: opt === true, lastChangedAt: null, lensVersion: null });
+        } else if (typeof opt === 'object') {
           resolve({
             enabled: opt.enabled === true,
-            lastChangedAt: opt.last_changed_at || null,
-            lensVersion: opt.lens_version || null
+            lastChangedAt: typeof opt.last_changed_at === 'number' ? opt.last_changed_at : null,
+            lensVersion: typeof opt.lens_version === 'string' ? opt.lens_version : null
           });
+        } else {
+          resolve({ enabled: false, lastChangedAt: null, lensVersion: null });
         }
       });
     });
