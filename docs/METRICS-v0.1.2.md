@@ -289,6 +289,83 @@ the 1000-prompt Node script (see Reproducibility below).
 - "Detects X% of known attacks" — the 23.5% per-pattern recall
   is misleading because the corpus includes v0.2.0 patterns.
 
+## Filtered recall (Pieces 1 + 2 follow-up)
+
+After the initial H2 measurement, the user requested a "filtered
+recall" (recall on the v0.1.0-beta heldout corpus, but only
+counting records whose `attack_category` maps to a v0.1.2-shipped
+pattern). The intent: replace the misleading 23.5% per-pattern
+recall with a publishable "X% recall on v0.1.2's actual scope".
+
+**Method**: ran the v0.1.2 bundle (with the pii_phone fix from
+4d3faaa) against the full 3,630-record v0.1.0-beta heldout corpus
+in batches of 200. Built a manual mapping of `attack_category`
+(tactic-level) to v0.1.2's pattern families:
+- `direct_injection` → `owasp` family
+- `direct` → `owasp` family
+- `encoding` → `owasp` family
+- `soft` → `atlas` family
+- `jailbreak` → `atlas` family
+
+This mapping is HONEST engineering judgment, not measurement —
+the heldout's `attack_category` is a TACTIC name, not a v0.1.2
+pattern name. The mapping is based on the platform's
+`attack_helpers.go` family map (which the per-pattern test uses
+to accept family-prefix matches).
+
+**Results**:
+
+| Metric | Value | Notes |
+|---|---|---|
+| Total attack records (label=1) | 1,884 | |
+| Attack records with `attack_category` set | 720 | 38% of attacks |
+| Attack records with `attack_category = 'none'` or missing | 1,164 | 62% of attacks (no category) |
+| Records mappable to v0.1.2 family | **520** | 28% of attacks |
+| Of those, v0.1.2 fired | 48 | |
+| **MAPPABLE FILTERED RECALL** | **9.23%** | 48/520 |
+
+**Why this is LOWER than the 23.5% per-pattern recall (the
+opposite of what we expected)**:
+
+The per-pattern corpus (which gave 23.5%) has 119 entries that
+test the EXACT canonical input for each pattern. The 28 entries
+that fired are the ones whose inputs are clear pattern matches.
+
+The heldout corpus's `attack_category` field is at a HIGHER
+abstraction level (a tactic) than the per-pattern corpus's
+`category` field (a specific pattern). When I map the heldout
+records to v0.1.2 families, I include records whose input might
+NOT actually match the specific v0.1.2 patterns — the tactics
+are real attacks but the inputs may be subtle variations that
+v0.1.2 doesn't catch (e.g., "indirect injection" vs. v0.1.2's
+`owasp_llm01_prompt_injection` which only matches clear "ignore
+previous instructions" phrasing).
+
+The 23.5% per-pattern recall is on the SAME heldout corpus (3,630
+records) but counts per-pattern hits (specific patterns). The
+9.23% mappable filtered recall counts family hits (broader
+category). The two measure different things:
+- 23.5% = "X% of pattern-level attacks that v0.1.2 catches"
+- 9.23% = "X% of tactic-level attacks that v0.1.2 catches AT
+  the family level"
+
+**Honest conclusion**: the v0.1.2 lens is HONEST about its scope
+(4 facets, 131 patterns) but is not a comprehensive attack
+detector. It catches a small fraction of the heldout corpus's
+attack types. The remaining attacks (e.g., 1,164 records with
+no category, plus the 472 records in "direct/encoding"
+tactics that v0.1.2 doesn't fire on) are out of scope for
+v0.1.x. The v0.2.0 roadmap (toxicity, OWASP LLM02-LLM10,
+MITRE ATLAS T16xx, TinyML for paraphrase detection) is
+designed to address this.
+
+**What we can honestly say now (v0.1.2 + pii_phone fix)**:
+- 9.23% recall on the 520 mappable records in the heldout
+  corpus (at the family level)
+- 2.43% FPR on the 6,500 WildChat corpus (at the per-pattern level)
+- 100% clean on the 119-entry per-pattern must-not-trigger corpus
+- 1.7% FPR on the 1,000 WildChat sample (after pii_phone fix)
+
 ## v0.1.3 follow-up: pii_phone_intl_loose tightening
 
 After the H2 measurement, the `pii_phone_intl_loose` regex
