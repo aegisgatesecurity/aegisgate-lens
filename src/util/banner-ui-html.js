@@ -141,7 +141,11 @@
     // Header
     var headerHtml =
       '<div class="lens-header">' +
-        '<img class="lens-shield-img" src="' + getRuntimeUrlRef('icons/icon-48.png') + '" alt="AegisGate Lens"/>' +
+        '<picture>' +
+        '  <source media="(min-resolution: 3dppx)" srcset="' + getRuntimeUrlRef('icons/banner-3x.png') + '"/>' +
+        '  <source media="(min-resolution: 2dppx)" srcset="' + getRuntimeUrlRef('icons/banner-2x.png') + '"/>' +
+        '  <img class="lens-shield-img" src="' + getRuntimeUrlRef('icons/banner-2x.png') + '" alt="AegisGate Lens" width="24" height="24"/>' +
+        '</picture>' +
           '<span class="lens-shield-fallback">' + (icons && icons.ICONS.shield ? icons.ICONS.shield : '') + '</span>' +
         '<span class="lens-wordmark">AegisGate Lens</span>' +
         '<span class="lens-count">' + countText + '</span>' +
