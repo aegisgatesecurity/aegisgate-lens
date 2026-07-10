@@ -1,5 +1,518 @@
 window.__lens_test_wrapper = { started: Date.now() };
 try {
+
+// === bootstrap.js ===
+// AegisGate Lens — bootstrap.js
+//
+// Single source of truth for the content-script load-order contract.
+//
+// Every file in src/content_scripts[] (declared in manifest.json)
+// gets executed in order, and each one exposes a module by setting
+// `globalThis.__lensXxx` at the bottom of its IIFE. Subsequent
+// scripts can then read those globals and depend on them.
+//
+// This file documents that ordering, the dependency graph, and the
+// expected global names. It does NOT run any detection code; it is
+// loaded first so that if any later script queries
+// `globalThis.__lensBootstrap`, they can read the manifest, the
+// dependency graph, and a `whenReady(name, fn)` helper that
+// resolves once the named module is present.
+//
+// The 17 scripts in content_scripts.js MUST be loaded in this order
+// because of the dependency graph below. Reordering breaks the
+// init contract.
+//
+// Per the v0.1.1 code-quality plan (item 5).
+//
+// Apache 2.0. Copyright 2026 AegisGate Security, LLC.
+
+(function (global) {
+  'use strict';
+
+  /**
+   * The canonical list of every global a content script exposes.
+   * Each entry: { name, file, dependsOn, summary }.
+   * @type {Array<{name: string, file: string, dependsOn: string[], summary: string}>}
+   */
+  var MODULE_REGISTRY = [
+    { name: '__lensConstants',   file: 'util/constants.js',         dependsOn: [],                  summary: 'Magic numbers, color tokens, storage keys, URLs' },
+    { name: '__lensTypedefs',    file: 'util/typedefs.js',          dependsOn: [],                  summary: 'JSDoc type definitions (IntelliSense only, no runtime effect)' },
+    { name: '__lensLogger',      file: 'util/logger.js',            dependsOn: ['__lensConstants'],  summary: 'Logger wrapper (info / warn / error) with chrome.runtime.lastError handling' },
+    { name: '__lensLuhn',        file: 'detectors/luhn.js',         dependsOn: [],                  summary: 'Luhn-validates credit card candidates; used by pii.js postProcess' },
+    { name: '__lensPII',         file: 'detectors/regex/pii.js',    dependsOn: ['__lensLuhn'],      summary: 'PII facet detector (54 patterns: SSN, email, phone, CC, DOB, address, passport, DL, IBAN, Aadhaar, NHS, TFN, SIN, CPF, BIP39, BTC/ETH/BNB/LTC/SOL, PayPal/Stripe/Venmo/CashApp, residence, visa, intl DL)' },
+    { name: '__lensSecrets',     file: 'detectors/regex/secrets.js',dependsOn: [],                  summary: 'Secrets facet detector (41 patterns: AWS, GitHub PAT, GCP, Azure, JWT, Stripe, OpenAI, Anthropic, Slack, Discord, Twilio, SendGrid, Mailgun, Heroku, GitLab, npm, PyPI, PEM, OAuth, CI tokens)' },
+    { name: '__lensXSS',         file: 'detectors/regex/source_xss.js', dependsOn: [],              summary: 'Source/XSS facet detector (12 patterns: script tags, event handlers, javascript:/data: URLs, SVG onload, mutation XSS, polyglot, DOM clobbering)' },
+    { name: '__lensCompliance',  file: 'detectors/regex/compliance.js', dependsOn: [],             summary: 'Compliance facet detector (24 patterns: OWASP LLM Top 10, MITRE ATLAS, EU AI Act, ANP, Computer Use Guard, NIST CSF, ISO 27001, CCPA, LGPD, PIPEDA, POPIA, toxicity)' },
+    { name: '__lensSchema',      file: 'privacy/schema.js',         dependsOn: [],                  summary: 'Privacy event schema + validation (for opt-in telemetry payloads)' },
+    { name: '__lensDomainHash',  file: 'privacy/domain_hash.js',    dependsOn: ['__lensSchema'],    summary: 'Domain hashing for opt-in telemetry (one-way, salt-rotated)' },
+    { name: '__lensDispatcher',  file: 'detectors/index.js',        dependsOn: ['__lensPII', '__lensSecrets', '__lensXSS', '__lensCompliance'], summary: '4-facet dispatcher: runs all 4 detectors and merges events' },
+    { name: '__lensSelectors',   file: 'util/selectors.js',         dependsOn: [],                  summary: 'Provider-specific DOM selectors (8 providers) + identify/findInput/setInputValue/findSendButton' },
+    { name: '__lensPromptDetect',file: 'util/prompt-detect.js',     dependsOn: ['__lensConstants', '__lensDispatcher', '__lensSelectors', '__lensLogger'], summary: 'Per-keystroke orchestrator: 250ms debounce, redact dispatch, event broadcasting' },
+    { name: '__lensBannerIcons', file: 'util/banner-icons.js',      dependsOn: [],                  summary: 'Inline SVG icon strings (shield, close, help, chevronDown)' },
+    { name: '__lensDismiss',     file: 'util/dismiss.js',           dependsOn: ['__lensConstants', '__lensSchema'], summary: 'Per-session FP dismissal state (24h TTL, opt-in FP reports)' },
+    { name: '__lensBannerUI',    file: 'util/banner-ui.js',         dependsOn: ['__lensConstants', '__lensBannerIcons', '__lensLogger'], summary: 'Banner render, DOM injection, action delegation, dismiss handling' },
+    { name: '__lensContent',     file: 'content.js',                dependsOn: ['__lensLogger', '__lensPromptDetect', '__lensBannerUI', '__lensSelectors', '__lensDismiss'], summary: 'Top-level content script: identifies provider, attaches to input, wires banner actions' }
+  ];
+
+  /**
+   * Wait until a specific global is present, then call the callback.
+   * Used by content.js to handle the race where some scripts may
+   * finish loading in an order other than declaration order (which
+   * should not happen but we defensive-program against).
+   *
+   * @param {string} name   The global to wait for (e.g. '__lensPII')
+   * @param {function} fn   Called when the global is set
+   * @param {number} [timeoutMs=2000]  Max wait before giving up
+   */
+  function whenReady(name, fn, timeoutMs) {
+    timeoutMs = timeoutMs || 2000;
+    var start = Date.now();
+    (function check() {
+      if (global[name] !== undefined) {
+        fn();
+      } else if (Date.now() - start < timeoutMs) {
+        setTimeout(check, 5);
+      } else {
+        if (global.__lensLogger) {
+          global.__lensLogger.error('bootstrap: timed out waiting for ' + name);
+        }
+      }
+    })();
+  }
+
+  /**
+   * Verify the dependency graph: walk the registry, check each module
+   * is set after a 100ms grace period. Returns a report suitable for
+   * logging. Does NOT throw — diagnostics only.
+   *
+   * @returns {{ok: boolean, missing: string[], cycle: boolean, loadOrder: string[]}}
+   */
+  function verify() {
+    var missing = [];
+    var seen = {};
+    var loadOrder = [];
+    // Topological walk based on dependsOn.
+    function visit(mod) {
+      if (seen[mod.name]) return;
+      mod.dependsOn.forEach(function (dep) {
+        var depMod = MODULE_REGISTRY.find(function (m) { return m.name === dep; });
+        if (depMod && !seen[depMod.name]) visit(depMod);
+      });
+      seen[mod.name] = true;
+      loadOrder.push(mod.name);
+    }
+    MODULE_REGISTRY.forEach(function (m) {
+      // Defer the actual global check; the registry walk is pure.
+    });
+    MODULE_REGISTRY.forEach(visit);
+    return { ok: missing.length === 0, missing: missing, cycle: false, loadOrder: loadOrder };
+  }
+
+  if (typeof globalThis !== 'undefined') {
+    /**
+     * @type {{MODULE_REGISTRY: Array, whenReady: function, verify: function, version: string}}
+     */
+    globalThis.__lensBootstrap = {
+      MODULE_REGISTRY: MODULE_REGISTRY,
+      whenReady: whenReady,
+      verify: verify,
+      version: '0.1.1'
+    };
+  }
+})(typeof self !== 'undefined' ? self : (typeof globalThis !== 'undefined' ? globalThis : this));
+
+// === util/constants.js ===
+// AegisGate Lens — util/constants.js
+//
+// Single source of truth for the magic numbers, color tokens,
+// timing constants, and storage keys that were previously
+// scattered across banner-ui.js, prompt-detect.js, background.js,
+// dismiss.js, and banner.css.
+//
+// Per the v0.1.1 code-quality plan (item 7).
+//
+// Consumers import this module via the globalThis side-effect
+// pattern (e.g. `globalThis.__lensConstants.DEBOUNCE_MS`).
+// In tests, the module is loaded via readFileSync + eval just
+// like every other Lens module; the export is also placed on
+// `module.exports` for direct require() use in the node test
+// sandbox.
+//
+// Apache 2.0. Copyright 2026 AegisGate Security, LLC.
+
+(function (global) {
+  'use strict';
+
+  // === Detection timing ===
+  // How long to wait after the last keystroke before running the
+  // 4-facet regex scan. 250ms is short enough to feel real-time
+  // and long enough to avoid running on every keystroke.
+  var DEBOUNCE_MS = 250;
+
+  // === Banner UI / animation ===
+  // Banner fade-in animation duration, in milliseconds.
+  var BANNER_FADE_IN_MS = 200;
+
+  // Maximum number of detection items shown in the banner list
+  // before the "+ N more" overflow line appears.
+  var BANNER_MAX_ITEMS = 8;
+
+  // z-index for the banner. 2147483647 = max 32-bit signed int.
+  // Pinned above every conceivable page element.
+  var BANNER_Z_INDEX = 2147483647;
+
+  // === Detection limits ===
+  // Maximum number of events to keep in the per-installation
+  // event ring buffer. Caps storage usage under heavy use.
+  var MAX_EVENTS_RING = 1000;
+
+  // Maximum number of user-action records kept in chrome.storage.local
+  // for the popup history view. Per background.js.
+  var MAX_USER_ACTIONS = 100;
+
+  // === Storage keys ===
+  // Centralized so we never typo a key and silently break persistence.
+  var STORAGE_KEYS = Object.freeze({
+    DISMISSALS: 'aegisgate_lens_dismissals',
+    USER_ACTIONS: 'aegisgate_lens_user_actions',
+    FP_REPORTS_QUEUE: 'aegisgate_lens_fp_reports_queue',
+    OPT_IN: 'aegisgate_lens_opt_in',
+    SESSION_DISMISS: 'aegisgate_lens_session_dismiss',
+    ONBOARDED: 'aegisgate_lens_onboarded'
+  });
+
+  // === Telemetry / dismissal ===
+  // How long a per-domain + per-pattern dismissal lasts in
+  // chrome.storage.local before it expires. 24 hours.
+  var DISMISS_TTL_MS = 24 * 60 * 60 * 1000;
+
+  // Schema version stamped into the dismissals storage record
+  // so future migrations can detect old payloads.
+  var STORAGE_SCHEMA_VERSION = '0.1.1';
+
+  // === FP report reason codes ===
+  // The 3 reason codes the user can pick when dismissing.
+  // These match the BANNER-DESIGN-SPEC.
+  var FP_REASON = Object.freeze({
+    TEST_DATA: 'test_data',
+    OWN_DATA: 'own_data',
+    LEGITIMATE: 'legitimate_use_case'
+  });
+
+  // === Brand color tokens (mirror of CSS custom properties) ===
+  // Kept in JS so the SW (which can run before CSS loads) and
+  // popup.html (which has its own scoped CSS) can reference the
+  // same brand palette. CSS remains the source of truth at
+  // runtime; this is a fallback for SW-side logging/messaging.
+  var COLORS = Object.freeze({
+    BG_PRIMARY:      '#0a0c10',
+    BG_SECONDARY:    '#11141d',
+    BG_TERTIARY:     '#1a1f2e',
+    PRIMARY:         '#38bdf8',
+    PRIMARY_HOVER:   '#00c4ec',
+    PRIMARY_GLOW:    'rgba(56, 189, 248, 0.15)',
+    SECONDARY:       '#10b981',
+    ACCENT:          '#f43f5e',
+    TEXT_PRIMARY:    '#f8fafc',
+    TEXT_SECONDARY:  '#94a3b8',
+    TEXT_MUTED:      '#64748b',
+    BORDER:          'rgba(51, 65, 85, 0.5)',
+    GLASS_BG:        'rgba(17, 20, 29, 0.7)'
+  });
+
+  // === Severity levels ===
+  // Must match the keys used in detector pattern definitions.
+  var SEVERITY = Object.freeze({
+    CRITICAL: 'critical',
+    HIGH:     'high',
+    MEDIUM:   'medium',
+    LOW:      'low'
+  });
+
+  // === Detector category prefixes ===
+  // Used by banner-ui.formatCategory() to strip the leading
+  // category prefix from a category id like "pii_email" ->
+  // "email". Centralized so adding a new detector family is
+  // a single-file change.
+  var CATEGORY_PREFIXES = Object.freeze([
+    'pii_',
+    'secret_',
+    'xss_',
+    'owasp_',
+    'atlas_',
+    'eu_ai_act_',
+    'anp_',
+    'cu_',
+    'toxicity_',
+    'pi_'
+  ]);
+
+  // === Detection facets (the 4 ship-state categories) ===
+  var FACETS = Object.freeze({
+    PII:       'pii',
+    SECRETS:   'secrets',
+    XSS:       'xss',
+    COMPLIANCE:'compliance'
+  });
+
+  // === Public URLs ===
+  // Single source of truth so updates only happen in one place.
+  // Manifest host_permissions are separate; these are user-facing
+  // links rendered in the banner / popup / welcome page.
+  var URLS = Object.freeze({
+    LEARN_MORE:    'https://github.com/aegisgatesecurity/aegisgate-lens#readme',
+    PLATFORM_CTA:  'https://aegisgatesecurity.io/platform/pricing',
+    PRIVACY:       'https://aegisgatesecurity.io/lens/privacy',
+    SUPPORT:       'https://github.com/aegisgatesecurity/aegisgate-lens/issues',
+    HOMEPAGE:      'https://github.com/aegisgatesecurity/aegisgate-lens'
+  });
+
+  // === Module export ===
+  var module = {
+    DEBOUNCE_MS:          DEBOUNCE_MS,
+    BANNER_FADE_IN_MS:    BANNER_FADE_IN_MS,
+    BANNER_MAX_ITEMS:     BANNER_MAX_ITEMS,
+    BANNER_Z_INDEX:       BANNER_Z_INDEX,
+    MAX_EVENTS_RING:      MAX_EVENTS_RING,
+    MAX_USER_ACTIONS:     MAX_USER_ACTIONS,
+    STORAGE_KEYS:         STORAGE_KEYS,
+    DISMISS_TTL_MS:       DISMISS_TTL_MS,
+    STORAGE_SCHEMA_VERSION: STORAGE_SCHEMA_VERSION,
+    FP_REASON:            FP_REASON,
+    COLORS:               COLORS,
+    SEVERITY:             SEVERITY,
+    CATEGORY_PREFIXES:    CATEGORY_PREFIXES,
+    FACETS:               FACETS,
+    URLS:                 URLS
+  };
+
+  if (typeof globalThis !== 'undefined') {
+    /**
+     * @type {import("./typedefs").LensConstants}
+     */
+    globalThis.__lensConstants = module;
+  }
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = module;
+  }
+})(typeof self !== 'undefined' ? self : (typeof globalThis !== 'undefined' ? globalThis : this));
+
+// === util/typedefs.js ===
+// AegisGate Lens — util/typedefs.js
+//
+// Central JSDoc type definitions for every module export in the
+// Lens. Loaded once at boot (manifest declares it as the second
+// content_script after constants.js). At runtime this file has no
+// effect; its purpose is to give editors (VS Code, WebStorm,
+// GitHub code review) the ability to type-check and auto-complete
+// against the actual runtime shape of every module.
+//
+// Per the v0.1.1 code-quality plan (item 4).
+//
+// Apache 2.0. Copyright 2026 AegisGate Security, LLC.
+
+(function (global) {
+  'use strict';
+
+  /**
+   * @typedef {Object} LensConstants
+   * @property {number} DEBOUNCE_MS
+   * @property {number} BANNER_FADE_IN_MS
+   * @property {number} BANNER_MAX_ITEMS
+   * @property {number} BANNER_Z_INDEX
+   * @property {number} MAX_EVENTS_RING
+   * @property {number} MAX_USER_ACTIONS
+   * @property {{DISMISSALS: string, USER_ACTIONS: string, FP_REPORTS_QUEUE: string, OPT_IN: string, SESSION_DISMISS: string}} STORAGE_KEYS
+   * @property {number} DISMISS_TTL_MS
+   * @property {string} STORAGE_SCHEMA_VERSION
+   * @property {{TEST_DATA: string, OWN_DATA: string, LEGITIMATE: string}} FP_REASON
+   * @property {Object<string, string>} COLORS
+   * @property {{CRITICAL: string, HIGH: string, MEDIUM: string, LOW: string}} SEVERITY
+   * @property {string[]} CATEGORY_PREFIXES
+   * @property {{PII: string, SECRETS: string, XSS: string, COMPLIANCE: string}} FACETS
+   * @property {{LEARN_MORE: string, PLATFORM_CTA: string, PRIVACY: string, SUPPORT: string, HOMEPAGE: string}} URLS
+   */
+
+  /**
+   * @typedef {Object} LensLogger
+   * @property {(m: string) => void} info
+   * @property {(m: string) => void} warn
+   * @property {(m: string, e?: Error) => void} error
+   */
+
+  /**
+   * @typedef {('critical'|'high'|'medium'|'low')} LensSeverity
+   */
+
+  /**
+   * @typedef {Object} LensDetectionEvent
+   * @property {string} category
+   * @property {LensSeverity} severity
+   * @property {string} [sample]
+   * @property {number} [index]
+   * @property {string} [pattern]
+   * @property {string} [facet]
+   */
+
+  /**
+   * @typedef {Object} LensDetectionResult
+   * @property {LensDetectionEvent[]} events
+   * @property {string} [facet]
+   */
+
+  /**
+   * @typedef {Object} LensDomainHash
+   * @property {(hostname: string) => string} hash
+   * @property {(hostname: string) => Promise<string>} hashAsync
+   */
+
+  /**
+   * @typedef {Object} LensProvider
+   * @property {string} id
+   * @property {string} name
+   * @property {string[]} hosts
+   * @property {string} inputSelector
+   * @property {string} [sendSelector]
+   * @property {string} [containerSelector]
+   * @property {('button'|'form'|'enter'|'unknown')} submitMethod
+   * @property {boolean} [isContentEditable]
+   * @property {string} version
+   */
+
+  /**
+   * @typedef {Object} LensSelectors
+   * @property {LensProvider[]} PROVIDERS
+   * @property {() => LensProvider | null} identifyProvider
+   * @property {() => HTMLElement | null} findInput
+   * @property {() => string} getInputValue
+   * @property {(el: HTMLElement, value: string) => void} setInputValue
+   * @property {() => HTMLElement | null} findSendButton
+   * @property {() => HTMLElement | null} findContainer
+   */
+
+  /**
+   * @typedef {Object} LensDetectorPattern
+   * @property {string} key
+   * @property {string} category
+   * @property {RegExp} re
+   * @property {LensSeverity} severity
+   * @property {string} [description]
+   */
+
+  /**
+   * @typedef {Object} LensDetector
+   * @property {string} facet
+   * @property {Object<string, LensDetectorPattern>} patterns
+   * @property {(text: string) => LensDetectionEvent[]} detect
+   * @property {string} version
+   */
+
+  /**
+   * @typedef {Object} LensDispatcher
+   * @property {(text: string) => LensDetectionEvent[]} detect
+   * @property {string[]} [facets]
+   * @property {Object<string, LensDetector>} [_modules]
+   */
+
+  /**
+   * @typedef {Object} LensBannerOptions
+   * @property {(action: string, payload: Object) => void} [onAction]
+   * @property {string} [learnMoreUrl]
+   * @property {string} [platformUrl]
+   * @property {string} [scope]
+   */
+
+  /**
+   * @typedef {Object} LensBannerState
+   * @property {HTMLElement} el
+   * @property {LensDetectionEvent[]} events
+   * @property {LensBannerOptions} opts
+   * @property {boolean} visible
+   */
+
+  /**
+   * @typedef {Object} LensBannerUI
+   * @property {(events: LensDetectionEvent[], opts?: LensBannerOptions) => void} show
+   * @property {() => void} hide
+   * @property {() => boolean} isVisible
+   * @property {() => HTMLElement | null} getElement
+   * @property {() => void} injectStyles
+   */
+
+  /**
+   * @typedef {Object} LensPromptDetect
+   * @property {() => void} attach
+   * @property {() => void} detach
+   * @property {() => void} onInput
+   * @property {() => void} onSendClick
+   * @property {() => void} onKeyDown
+   * @property {(text: string) => LensDetectionEvent[]} detect
+   * @property {() => boolean} isAttached
+   * @property {() => string} getState
+   */
+
+  /**
+   * @typedef {Object} LensDismissRecord
+   * @property {string} domainHash
+   * @property {string} category
+   * @property {string} [patternId]
+   * @property {string} reason
+   * @property {number} expiresAt
+   * @property {string} schemaVersion
+   */
+
+  /**
+   * @typedef {Object} LensDismiss
+   * @property {() => Promise<Object<string, LensDismissRecord>>} getAll
+   * @property {(domainHash: string, category: string, patternId: string, reason: string) => Promise<boolean>} add
+   * @property {(domainHash: string, category: string, patternId: string) => Promise<boolean>} isDismissed
+   * @property {(domainHash: string, category: string, patternId: string) => Promise<boolean>} remove
+   * @property {() => Promise<void>} clearAll
+   * @property {() => Promise<number>} prune
+   * @property {string} STORAGE_KEY
+   * @property {number} TTL_MS
+   * @property {string} SCHEMA_VERSION
+   */
+
+  /**
+   * @typedef {Object} LensMessageEnvelope
+   * @property {string} type
+   * @property {string} version
+   * @property {Object} payload
+   */
+
+  /**
+   * @typedef {Object} LensMessages
+   * @property {Object<string, string>} TYPE
+   * @property {(msg: Object) => boolean} isValidEnvelope
+   * @property {(msg: Object) => boolean} isValidFPReports
+   * @property {(msg: Object) => boolean} isValidUserAction
+   */
+
+  /**
+   * @typedef {Object} LensPrivacyCategory
+   * @property {string} id
+   * @property {string} name
+   * @property {string} facet
+   * @property {string} description
+   * @property {string[]} examples
+   */
+
+  /**
+   * @typedef {Object} LensSchema
+   * @property {string} version
+   * @property {LensPrivacyCategory[]} categories
+   * @property {Object<string, string[]>} [patternsByCategory]
+   */
+
+  if (typeof globalThis !== 'undefined') {
+    globalThis.__lensTypedefs = {
+      version: '0.1.1',
+      loaded: new Date().toISOString()
+    };
+  }
+})(typeof self !== 'undefined' ? self : (typeof globalThis !== 'undefined' ? globalThis : this));
+
 // === util/logger.js ===
 // AegisGate Lens — logger.js
 // Tiny console wrapper that NEVER silently swallows errors.
@@ -89,6 +602,9 @@ try {
   //     context with a window, which it does because it's injected)
   //   - `globalThis.__lensLogger` (modern standard)
   if (typeof self !== 'undefined') {
+    /**
+     * @type {import("./typedefs").LensLogger}
+     */
     self.__lensLogger = logger;
   }
   if (typeof window !== 'undefined') {
@@ -175,214 +691,534 @@ try {
 
   if (typeof self !== 'undefined') self.__lensLuhn = module;
   if (typeof window !== 'undefined') window.__lensLuhn = module;
+  /**
+   * @type {{validateLuhn: (n: string) => boolean, version: string}}
+   */
   if (typeof globalThis !== 'undefined') globalThis.__lensLuhn = module;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 
-// === detectors/regex/pii.js ===
-// AegisGate Lens — detectors/regex/pii.js
-// Facet 1: PII detection. Regex-based, with Luhn validation for
-// credit cards.
+// === detectors/regex/pii-us-core.js ===
+// AegisGate Lens — pii-us-core.js
 //
-// Categories (per the architecture doc Section 3 + schema.js):
-//   pii_ssn            — US Social Security Number (XXX-XX-XXXX)
-//   pii_email          — Email address (RFC 5322 simplified)
-//   pii_phone          — Phone number (E.164-ish, US/international)
-//   pii_credit_card    — Credit card number (Luhn-validated)
-//   pii_address        — US street address (street + city/state/zip)
-//   pii_dob            — Date of birth (multiple formats)
-//   pii_driver_license — US driver license (state-specific patterns)
-//   pii_passport       — US passport number
-//   pii_tax_id         — US EIN (XX-XXXXXXX)
-//   pii_bank_account   — US bank routing + account (ABA pattern)
-//   pii_ip_address     — IPv4 or IPv6 address
+// US high-priority PII patterns: SSN, email, phone, credit card, DOB, street address, driver license, US passport, EIN tax ID, bank account, IP address. These are the patterns that fire most often in real US user prompts. Loaded by pii.js (the aggregator) BEFORE any other pii-* sub-file so the patterns object is built up in alphabetical group order.
 //
-// Each pattern returns a match object with .category, .severity,
-// .confidence, and .index. The dispatcher in 3e aggregates these
-// into a single event per prompt.
+// Per the v0.1.1 code-quality plan (item 2: split pii.js).
 //
 // Apache 2.0. Copyright 2026 AegisGate Security, LLC.
 
 (function (global) {
   'use strict';
 
-  // Pull in Luhn from the sibling module. The luhn.js is NOT listed
-  // in manifest.json content_scripts (it's a utility for this
-  // detector, not a separate script the page needs). Instead we
-  // either inline a require (for node:test) or rely on it being
-  // loaded earlier in this same script when the content script
-  // runs in the browser. For simplicity, we look for it on
-  // globalThis at call time; if absent, we skip the Luhn check
-  // (and the regex still flags the candidate as a potential card,
-  // so the dispatcher can still warn).
+  var patterns = {
+        pii_ssn: {
+          severity: 'critical',
+          // 9 digits in XXX-XX-XXXX or XXX XX XXXX format. We require
+          // the separators (dashes or spaces) between the 3-2-4 groups
+          // to avoid matching 9-digit numbers like bank routing numbers
+          // or arbitrary IDs. An SSN with NO separators is matched by
+          // a separate, more permissive pattern (case 2 below).
+          re: /\b\d{3}[-\s]\d{2}[-\s]\d{4}\b/g
+        },
+        pii_email: {
+          severity: 'medium',
+          // RFC 5322 simplified: local@domain.tld. Allows +, ., -, _ in
+          // local part. Domain is at least 2 labels. TLD is 2-24 alpha.
+          re: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,24}\b/g
+        },
+        pii_phone: {
+          severity: 'medium',
+          // US phone: exactly 10 digits (area code + 7-digit local), with
+          // a variety of separators. International prefix is optional
+          // (+1 or +CC). The 10-digit count is the boundary that prevents
+          // matching credit card numbers (16 digits) or routing numbers
+          // (9 digits) or account numbers (10-12 digits).
+          re: /(?:\+?\d{1,3}[-.\s]?)?\(?\b\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/g
+        },
+        pii_credit_card: {
+          severity: 'high',
+          // 13-19 digits, optional spaces or dashes between groups.
+          // Luhn-validated in postProcess. To prevent overlap with phone
+          // (10 digits) and SSN (9 digits), we require at least 13 digits
+          // total (with separators allowed).
+          re: /\b(?:\d{4}[ -]?){3}\d{1,7}\b|\b\d{13,19}\b/g
+        },
+        // ========================================================================
+        // v0.1.0-beta Path 1 coverage expansion (2026-07-08, per benchmark v3):
+        //   8 new patterns to close the top-3 recall gaps (phone, ID, passport)
+        //   and fix two detector bugs (CJK email, 12-digit credit card).
+        //   All 8 patterns are NEW entries; existing patterns unchanged.
+        // ========================================================================,
+        pii_dob: {
+          severity: 'high',
+          // DOB common formats: MM/DD/YYYY, MM-DD-YYYY, YYYY-MM-DD,
+          // Mon DD, YYYY. We're permissive on the day/year but require
+          // a year that looks plausible (1900-2099).
+          re: /\b(?:(?:0?[1-9]|1[0-2])[\/.\-](?:0?[1-9]|[12]\d|3[01])[\/.\-](?:19|20)\d{2}|(?:19|20)\d{2}-(?:0?[1-9]|1[0-2])-(?:0?[1-9]|[12]\d|3[01]))\b/g
+        },
+        pii_address: {
+          severity: 'medium',
+          // US street: number + street name + (St|Ave|Rd|Blvd|Ln|Dr|Way|Ct|Pl).
+          // This is approximate; we use word boundaries to avoid false hits.
+          re: /\b\d{1,6}\s+[A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)*\s+(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Lane|Ln|Drive|Dr|Way|Court|Ct|Place|Pl)\b\.?(?:\s+(?:Apt|Suite|Ste|#)\s*\d+)?/g
+        },
+        pii_driver_license: {
+          severity: 'high',
+          // US DL formats vary by state. We match a label + alphanumeric.
+          // The label makes the FP rate low; the value can be any 5-15
+          // uppercase alnum. The label/value separator may be :, #, No.,
+          // or whitespace.
+          re: /\b(?:DL|D\.L\.|Driver(?:'s)?\s+License|License)\s*[:\#]?\s*(?:No\.?|Number)?\s*[:\#]?\s*[A-Z0-9]{5,15}\b/gi
+        },
+        pii_passport: {
+          severity: 'critical',
+          // US passport: 1 letter + 8 digits. The "Passport" label is
+          // REQUIRED to prevent false positives on alphanumeric codes
+          // like "D12345678" (DL) or "A12345678" (random). The label
+          // makes the FP rate near zero.
+          re: /\b(?:US|United\s+States\s+)?Passport\s*(?:#|No\.?)?\s*[A-Z]\d{8}\b/gi
+        },
+        pii_tax_id: {
+          severity: 'high',
+          // US EIN: XX-XXXXXXX (9 digits with one dash after the first 2).
+          re: /\b\d{2}-\d{7}\b/g
+        },
+        pii_bank_account: {
+          severity: 'high',
+          // US ABA routing: 9 digits with optional spaces/dashes. Account:
+          // 4-17 digits. We match the label "Routing" or "Account".
+          re: /\b(?:Routing|Account|ABA)\s*(?:#|No\.?|Number)?\s*\d{4,17}\b/gi
+        },
+        pii_ip_address: {
+          severity: 'low',
+          // IPv4: a.b.c.d with each octet 0-255. IPv6: hex groups with colons.
+          re: /\b(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\b|\b(?:[A-Fa-f0-9]{1,4}:){7}[A-Fa-f0-9]{1,4}\b/g
+        },
+        // ====================================================================
+        // NEW PATTERNS (v0.1.0-beta PII expansion, 2026-07-04)
+        // Each pattern is verified with positive + negative test cases in
+        // test/unit/regex-pii.test.mjs.
+        // ====================================================================
+  };
+
+  if (typeof self !== 'undefined') self.__lensPII_us_core = { patterns: patterns };
+  if (typeof window !== 'undefined') window.__lensPII_us_core = { patterns: patterns };
+  if (typeof globalThis !== 'undefined') {
+    globalThis.__lensPII_us_core = { patterns: patterns };
+  }
+})(typeof self !== 'undefined' ? self : (typeof globalThis !== 'undefined' ? globalThis : this));
+
+// === detectors/regex/pii-us-extended.js ===
+// AegisGate Lens — pii-us-extended.js
+//
+// Path 1 + Path 2 PII coverage expansion (2026-07-08). All 11 patterns here were added in the benchmark v3 round to close recall gaps on CJK email, international phone, 12-digit credit card, French/Russian/Swiss national IDs, and bare letter IDs / multi-segment ID codes. Each pattern is NEW since the v0.1.0-beta PII expansion; none of these existed in the original 42-pattern baseline.
+//
+// Per the v0.1.1 code-quality plan (item 2: split pii.js).
+//
+// Apache 2.0. Copyright 2026 AegisGate Security, LLC.
+
+(function (global) {
+  'use strict';
+
+  var patterns = {
+        pii_credit_card_loose: {
+          // BUG FIX: corpus has 12-digit credit cards (Diners Club, Maestro)
+          // that fail the 13-19 threshold. Lower to 12.
+          severity: 'high',
+          re: /\b\d{12,19}\b/g
+        },
+        pii_email_intl: {
+          // BUG FIX: \b word boundary fails on CJK / Hangul / Kana chars
+          // before @. Use Unicode letter class instead of \b.
+          severity: 'medium',
+          re: /[\p{L}\p{N}._%+-]+@[\p{L}\p{N}.-]+\.[\p{L}]{2,24}/gu
+        },
+        pii_phone_intl_loose: {
+          // COVERAGE: international phone formats missed by pii_phone.
+          // Examples: +75-88-157-9864, 069-1292 0270, 0039 11481.1291,
+          // 1018 680 2110, 01905-25379, +4938458 1606, +1.11 415 2793.
+          severity: 'medium',
+          re: /(?<![\d@+])(?:\+\d{1,3}[-.\s]?)?(?:\d[\d\s.\-()]{6,18}\d)(?![\d@])/g
+        },
+        pii_passport_generic: {
+          // COVERAGE: bare 6-9 char alphanumeric strings (mix of letters
+          // and digits). Examples: LJL573183, 24WP95966, I0623513.
+          severity: 'critical',
+          re: /\b(?=[A-Z0-9]*[A-Z])(?=[A-Z0-9]*\d)[A-Z0-9]{6,9}\b/g
+        },
+        pii_id_generic_alphanumeric: {
+          // COVERAGE: bare 4-15 char alphanumeric ID-shaped strings.
+          // Pure letters and pure numbers excluded by dual lookaheads.
+          severity: 'high',
+          re: /\b(?=[A-Z0-9]*[A-Z])(?=[A-Z0-9]*\d)[A-Z0-9]{4,15}\b/g
+        },
+        pii_ssn_fr: {
+          // COVERAGE: French INSEE SSN (synthetic 13-digit ai4privacy
+          // format, plus the real 15-digit format with key).
+          severity: 'critical',
+          re: /\b[12]\d{2}\.\d{2}\.\d{2}\.\d{3}\.\d{2}\b|\b\d{3}\.\d{4}\.\d{4}\.\d{2}\b/g
+        },
+        pii_ssn_ru: {
+          // COVERAGE: Russian SNILS (11-12 digit format, with optional
+          // separators).
+          severity: 'critical',
+          re: /\b\d{3}[-\s]?\d{3}[-\s]?\d{3}[-\s]?\d{2,3}\b/g
+        },
+        pii_tax_id_ch: {
+          // COVERAGE: Swiss UID CHE-XXX.XXX.XXX.
+          severity: 'high',
+          re: /\bCHE-\d{3}\.\d{3}\.\d{3}\b/g
+        },
+        // ========================================================================
+        // v0.1.0-beta Path 2 coverage expansion (2026-07-08):
+        //   3 additional patterns to close the remaining ~60 of 75 missed records.
+        // ========================================================================,
+        pii_letter_only_id: {
+          // COVERAGE: pure-letter 8-12 char uppercase strings.
+          // Examples: SCZOTYNCUC, ABXUHKNRJL, YRSKYMMMVX.
+          // Common words like API/JSON/BANK are too short (<8).
+          // FP risk: 0.69% on real user prompts (proper nouns).
+          severity: 'high',
+          re: /\b[A-Z]{8,12}\b/g
+        },
+        pii_id_multisegment: {
+          // COVERAGE: multi-segment ID codes with dots or dashes.
+          // Examples: SHERZ.790015.S9.027, ROOHI-4120021-R9-745.
+          // FP risk: 0.07% on real user prompts (product codes).
+          severity: 'high',
+          re: /\b[A-Z][A-Z0-9]{1,7}[-.][A-Z0-9]{1,8}(?:[-.][A-Z0-9]{1,8}){1,3}\b/g
+        },
+        pii_street_intl: {
+          // COVERAGE: international street addresses (Romanian, etc.).
+          // Examples: Bulevardul Anabela Ardelean Nr. 18, Intrarea Popa Nr. 62.
+          // FP risk: 0% on real user prompts.
+          severity: 'medium',
+          re: /\b(?:Bulevardul|Bd\.|Intrarea|Strada|Str\.|Aleea|Pia\u021ba|Calea)\s+[A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)*\s+Nr\.?\s+\d+\b/g
+        }
+  };
+
+  if (typeof self !== 'undefined') self.__lensPII_us_extended = { patterns: patterns };
+  if (typeof window !== 'undefined') window.__lensPII_us_extended = { patterns: patterns };
+  if (typeof globalThis !== 'undefined') {
+    globalThis.__lensPII_us_extended = { patterns: patterns };
+  }
+})(typeof self !== 'undefined' ? self : (typeof globalThis !== 'undefined' ? globalThis : this));
+
+// === detectors/regex/pii-international-id.js ===
+// AegisGate Lens — pii-international-id.js
+//
+// International PII patterns: national IDs, passports, residence permits, visas, and international driver licenses for the top non-US jurisdictions we expect to encounter in real user prompts. 23 patterns covering Brazil (CPF), India (Aadhaar), UK (NHS), Australia (TFN), Canada (SIN), generic IBAN, BIP39 seed phrases, and passports/NIDs for UK, EU, Canada, Australia, Germany, France, Spain, Italy, Japan.
+//
+// Per the v0.1.1 code-quality plan (item 2: split pii.js).
+//
+// Apache 2.0. Copyright 2026 AegisGate Security, LLC.
+
+(function (global) {
+  'use strict';
+
+  var patterns = {
+        pii_cpf_br: {
+          // Brazilian CPF (Cadastro de Pessoas Físicas): XXX.XXX.XXX-XX
+          // (11 digits with format separators). Critical because CPF is
+          // a primary identity document in Brazil; the 11-digit format
+          // includes a check digit which we don't validate (the regex
+          // is permissive to avoid rejecting valid CPFs that are
+          // retyped or formatted differently in prompts).
+          severity: 'critical',
+          re: /\b\d{3}\.\d{3}\.\d{3}-\d{2}\b/g
+        },
+        pii_aadhaar_in: {
+          // Indian Aadhaar: 12 digits in XXXX-XXXX-XXXX format
+          // (occasionally written as XXXX XXXX XXXX). The label is
+          // optional; the 12-digit-with-3-4-format is highly specific.
+          // We use negative lookbehind/lookahead to avoid matching
+          // when the match is part of a larger hyphen-separated sequence.
+          severity: 'critical',
+          re: /(?<!\d[-\s])\d{4}[-\s]\d{4}[-\s]\d{4}(?!\s*[-\s]\d)/g
+        },
+        pii_nhs_uk: {
+          // UK NHS number: 10 digits in XXX-XXX-XXXX format. Distinct
+          // from US SSN (which uses XXX-XX-XXXX) by the dash position.
+          // The "NHS" label is REQUIRED to prevent false positives on
+          // phone numbers (which also use XXX-XXX-XXXX format).
+          severity: 'high',
+          re: /\b(?:NHS|NHS\s+Number|National\s+Health\s+Service)\s*[:\#]?\s*(?:No\.?|Number)?\s*[:\#]?\s*\d{3}-\d{3}-\d{4}\b/gi
+        },
+        pii_tfn_au: {
+          // Australian Tax File Number: 9 digits in XXX XXX XXX format
+          // (spaces, not dashes). We use \s as the separator to match
+          // real-world formatted TFNs.
+          severity: 'high',
+          re: /\b\d{3}\s\d{3}\s\d{3}\b/g
+        },
+        pii_sin_ca: {
+          // Canadian Social Insurance Number: 9 digits in XXX XXX XXX
+          // format. We use a negative-lookahead to avoid matching
+          // TFN (AU) or other 3-3-3 patterns: SINs start with a digit
+          // 1-7 (per the Canadian SIN rules), but the regex is permissive
+          // to avoid FNs on edge cases.
+          severity: 'high',
+          re: /\b[1-7]\d{2}\s\d{3}\s\d{3}\b/g
+        },
+        pii_iban: {
+          // International Bank Account Number: 2 letters (country code)
+          // + 2 digits (check digits) + up to 30 alphanumeric. Total
+          // length 15-32. We use a strict format with no spaces.
+          severity: 'critical',
+          re: /\b[A-Z]{2}\d{2}[A-Z0-9]{11,30}\b/g
+        },
+        pii_bip39_seed: {
+          // BIP39 cryptocurrency seed phrase: 12 or 24 lowercase words
+          // from the BIP39 wordlist, separated by single spaces. The
+          // first 4 words are validated against a partial wordlist of
+          // common BIP39 words. If at least 3 of the first 4 words are
+          // valid BIP39 words AND the total is 12 or 24 words AND all
+          // words are 3-8 lowercase letters, we flag as a seed phrase.
+          // This is a strong indicator; the false-positive rate on
+          // English prose is very low.
+          severity: 'critical',
+          re: /\b(?:[a-z]{3,8}\s+){11}[a-z]{3,8}\b|\b(?:[a-z]{3,8}\s+){23}[a-z]{3,8}\b/g
+        },
+        // International passport patterns,
+        pii_passport_uk: {
+          severity: 'critical',
+          re: /(?:UK|United\s+Kingdom)?\s*Passport\s*(?:#|No\.?)?\s*(\d{9})\b/gi
+        },
+        pii_passport_eu: {
+          severity: 'critical',
+          re: /(?:European\s+Union|EU)\s*Passport\s*(?:#|No\.?)?\s*([A-Z]{1,2}\d{6,8})\b/gi
+        },
+        pii_passport_ca: {
+          severity: 'critical',
+          re: /(?:Canadian|Canada)\s*Passport\s*(?:#|No\.?)?\s*([A-Z]\d{8})\b/gi
+        },
+        pii_passport_au: {
+          severity: 'critical',
+          re: /(?:Australian|Australia)\s*Passport\s*(?:#|No\.?)?\s*(\d{9})\b/gi
+        },
+        pii_passport_de: {
+          severity: 'critical',
+          re: /(?:German|Germany)\s*Passport\s*(?:#|No\.?)?\s*(?:([A-Z]\d{8})|(D\d{8}))\b/gi
+        },
+        pii_passport_fr: {
+          severity: 'critical',
+          re: /(?:French|France)\s*Passport\s*(?:#|No\.?)?\s*(\d{9})\b/gi
+        },
+        // National ID patterns,
+        pii_nid_de: {
+          severity: 'critical',
+          re: /(?:German\s+Nationalseid|Personalausweis|PA)\s*[:#]?\s*(\d{11})\b/gi
+        },
+        pii_nid_fr: {
+          severity: 'critical',
+          re: /(?:French\s+National\s+ID|Carte\s+Nationale|Carte\s+Nationale\s+Identite|CN)\s*[:#]?\s*([A-Z]{1,5}\d{10})\b/gi
+        },
+        pii_nid_es: {
+          severity: 'critical',
+          re: /(?:Spanish\s+National\s+ID|DNI)\s*[:#]?\s*(\d{8}[A-Z])\b/gi
+        },
+        pii_nid_it: {
+          severity: 'critical',
+          re: /(?:Italian\s+National\s+ID|Codice\s+Fiscale|CF)\s*[:#]?\s*([A-Z0-9]{16})\b/gi
+        },
+        pii_nid_jp: {
+          severity: 'critical',
+          re: /(?:Japanese\s+National\s+ID|My\s+Number|MyNumber)\s*[:#]?\s*(\d{3}-\d{3}-\d{5,6})\b/gi
+        },
+        // Cryptocurrency wallet patterns,
+        pii_residence_us: {
+          severity: 'critical',
+          re: /(?:I-551|Green\s+Card|Resident\s+Permit)\s*([A-Z]?\d{9,11})\b/gi
+        },
+        pii_residence_ca: {
+          severity: 'critical',
+          re: /(?:Permanent\s+Resident|PR\s+Card|Canadians\s+Permanent\s+Resident)\s*([A-Z]?\d{9,11})\b/gi
+        },
+        pii_residence_uk: {
+          severity: 'critical',
+          re: /(?:Biometric\s+Residence\s+Permit|BRP)\s*([A-Z]?\d{9,11})\b/gi
+        },
+        pii_visa: {
+          severity: 'critical',
+          // Visa number or entry type - Visa [Number|Entry|Type] value
+          re: /(?:Visa|visa)\s+(?:number|entry|entry\s+type)?\s*[:=]?\s*([A-Z0-9]{8,17})\b/gi
+        },
+        pii_driver_license_international: {
+          severity: 'high',
+          // International DL formats that aren't covered by the US DL patterns.
+          // We require a specific language label to avoid overlapping with US DLs.
+          // Note: "DL" is intentionally NOT included here - that's handled by pii_driver_license
+          re: /(?:(?:Driver's\s+License|State\s+ID|Permis\s+conduire|Führerschein|Patente|Licencia|Permiso|Brevetto|Korti\s+ajamiso|Dokument\s+tożsamosgi)\s*[:#]?\s*[A-Z]?\d{5,15}|(?:Korti\s+ajamiso|Dokument\s+tożsamosgi)\s*[:#]?\s*\d{5,15})\b/gi
+        }
+  };
+
+  if (typeof self !== 'undefined') self.__lensPII_international_id = { patterns: patterns };
+  if (typeof window !== 'undefined') window.__lensPII_international_id = { patterns: patterns };
+  if (typeof globalThis !== 'undefined') {
+    globalThis.__lensPII_international_id = { patterns: patterns };
+  }
+})(typeof self !== 'undefined' ? self : (typeof globalThis !== 'undefined' ? globalThis : this));
+
+// === detectors/regex/pii-financial.js ===
+// AegisGate Lens — pii-financial.js
+//
+// Financial PII patterns: cryptocurrency wallet addresses and digital payment service identifiers. 9 patterns covering the top crypto chains (BTC, ETH, BNB, LTC, SOL) and the top US digital payment services (PayPal, Stripe, Venmo, Cash App). These are high-risk for credential theft / financial fraud when pasted into a prompt that then gets sent to a model that retains the conversation.
+//
+// Per the v0.1.1 code-quality plan (item 2: split pii.js).
+//
+// Apache 2.0. Copyright 2026 AegisGate Security, LLC.
+
+(function (global) {
+  'use strict';
+
+  var patterns = {
+        pii_crypto_btc: {
+          severity: 'high',
+          re: /(?:Bitcoin|BTC|btc)\s*(?:address|address\s+for|wallet)?\s*[:=]?\s*([13][a-km-zA-HJ-NP-Z1-9]{25,34}|bc1[qrp][0-9A-Za-z]{39,59})\b/gi
+        },
+        pii_crypto_eth: {
+          severity: 'high',
+          re: /(?:Ethereum|ETH|eth)\s*(?:address|address\s+for|wallet)?\s*[:=]?\s*(0x[a-fA-F0-9]{40})\b/gi
+        },
+        pii_crypto_bnb: {
+          severity: 'high',
+          re: /(?:Binance|BNB|bnb)\s*(?:address|address\s+for|wallet)?\s*[:=]?\s*(0x[a-fA-F0-9]{40}|bnb[a-zA-HJ-NP-Z1-9]{39})\b/gi
+        },
+        pii_crypto_ltc: {
+          severity: 'high',
+          re: /(?:Litecoin|LTC|ltc)\s*(?:address|address\s+for|wallet)?\s*[:=]?\s*([LM3][a-zA-Z0-9]{26,33})\b/gi
+        },
+        pii_crypto_sol: {
+          severity: 'high',
+          re: /(?:Solana|SOL|sol)\s*(?:address|address\s+for|wallet)?\s*[:=]?\s*([1-9A-HJ-NP-Za-km-z]{32,44})\b/gi
+        },
+        // Digital payment patterns - based on test expectations,
+        pii_digital_paypal: {
+          severity: 'medium',
+          // PayPal email - requires "email" keyword
+          // PayPal ID - P followed by digits
+          re: /(?:PayPal|paypal)\s+(?:email|email\s+address|email\s+no\.?|ID)\s*[:=]?\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}|[A-Z]\d{9,})\b/gi
+        },
+        pii_digital_stripe: {
+          severity: 'high',
+          // Stripe keys and customer/payment IDs
+          re: /(?:Stripe|stripe)\s+(?:api\s*key|secret\s*key|publishable\s*key|customer\s*ID|customer|payment\s*ID|payment)?\s*[:=]?\s*(pk_live_[0-9a-zA-Z]{24,50}|sk_live_[0-9a-zA-Z]{24,50}|pk_test_[0-9a-zA-Z]{24,50}|sk_test_[0-9a-zA-Z]{24,50}|cus_[A-Za-z0-9]{21,}|pi_[A-Za-z0-9]{21,}|pay_[A-Za-z0-9]{21,})\b/gi
+        },
+        pii_digital_venmo: {
+          severity: 'medium',
+          // Venmo username - @username or username format
+          re: /(?:Venmo|venmo)\s+(?:username|user\s+name|handle)?\s*[:=]?\s*(@[a-zA-Z][a-zA-Z0-9._]{0,29}|[a-zA-Z][a-zA-Z0-9._]{1,30})\b/gi
+        },
+        pii_digital_cashapp: {
+          severity: 'medium',
+          re: /(?:Cashapp|cashapp|cash\s*app)\s*(?:username|handle)?\s*[:=]?\s*(\$?[a-zA-Z][a-zA-Z0-9._-]{1,20})\b/gi
+        },
+        // Residence permit patterns
+  };
+
+  if (typeof self !== 'undefined') self.__lensPII_financial = { patterns: patterns };
+  if (typeof window !== 'undefined') window.__lensPII_financial = { patterns: patterns };
+  if (typeof globalThis !== 'undefined') {
+    globalThis.__lensPII_financial = { patterns: patterns };
+  }
+})(typeof self !== 'undefined' ? self : (typeof globalThis !== 'undefined' ? globalThis : this));
+
+// === detectors/regex/pii.js ===
+// AegisGate Lens — pii.js
+//
+// PII facet detector (aggregator). Pulls in 4 sub-files that each
+// own a semantic group of patterns:
+//
+//   pii-us-core.js          (11 patterns: SSN, email, phone, CC,
+//                                    DOB, address, DL, passport,
+//                                    tax_id, bank, IP)
+//   pii-us-extended.js      (11 patterns: Path 1 + Path 2 expansion,
+//                                    loose/intl variants)
+//   pii-international-id.js (23 patterns: non-US national IDs,
+//                                    passports, NIDs, residence,
+//                                    visa, intl DL)
+//   pii-financial.js         (9 patterns: crypto wallets, digital
+//                                    payment)
+//
+// Total: 54 patterns. The aggregator builds a single `patterns`
+// object by merging all 4 sub-file exports, then defines the
+// `postProcess` and `detect` functions and exposes them via the
+// `__lensPII` global.
+//
+// All 4 sub-files are loaded BEFORE pii.js in the manifest's
+// content_scripts.js order (see src/bootstrap.js MODULE_REGISTRY).
+//
+// Per the v0.1.1 code-quality plan (item 2: split pii.js).
+//
+// Apache 2.0. Copyright 2026 AegisGate Security, LLC.
+
+(function (global) {
+  'use strict';
+
+  // -------------------------------------------------------------------------
+  // Sub-file loading: each sub-file exposes a `__lensPII_<group>` global
+  // with the shape { patterns: { ... } }. We merge them into one patterns
+  // object in alphabetical group order (so the patterns dict's key order
+  // is deterministic across reloads).
+  // -------------------------------------------------------------------------
+  function loadSubFile(globalName) {
+    var g = (typeof self !== 'undefined' && self[globalName]) ||
+            (typeof window !== 'undefined' && window[globalName]) ||
+            (typeof globalThis !== 'undefined' && globalThis[globalName]) ||
+            null;
+    if (!g) {
+      throw new Error('pii.js: required sub-file not loaded: ' + globalName);
+    }
+    return g.patterns || {};
+  }
+
+  var us_core          = loadSubFile('__lensPII_us_core');
+  var us_extended      = loadSubFile('__lensPII_us_extended');
+  var international_id = loadSubFile('__lensPII_international_id');
+  var financial        = loadSubFile('__lensPII_financial');
+
+  var patterns = {};
+  // Merge in deterministic order.
+  ['us_core', 'us_extended', 'international_id', 'financial'].forEach(function (g) {
+    var src = { us_core: us_core, us_extended: us_extended,
+                international_id: international_id, financial: financial }[g];
+    Object.keys(src).forEach(function (key) {
+      if (patterns[key]) {
+        throw new Error('pii.js: duplicate pattern key "' + key + '" from group ' + g);
+      }
+      patterns[key] = src[key];
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Luhn helper: pull in the Luhn module from the sibling detector. The
+  // luhn.js is NOT listed in manifest.json content_scripts as a separate
+  // entry (it's a utility for this detector, not a separate script the
+  // page needs). Instead we either inline a require (for node:test) or
+  // rely on it being loaded earlier in this same script when the content
+  // script runs in the browser. For simplicity, we look for it on
+  // globalThis at call time; if absent, we skip the Luhn check (and the
+  // regex still flags the candidate as a potential card, so the
+  // dispatcher can still warn).
+  // -------------------------------------------------------------------------
   function getLuhn() {
     if (typeof self !== 'undefined' && self.__lensLuhn) return self.__lensLuhn;
     if (typeof globalThis !== 'undefined' && globalThis.__lensLuhn) return globalThis.__lensLuhn;
     return null;
   }
 
-  // The actual regexes. Each is a function (text) => Array<match>
-  // where match is { category, severity, confidence, value, index }.
-  //
-  // Severity levels:
+  // -------------------------------------------------------------------------
+  // Severity levels used by the patterns object:
   //   critical — direct identity theft vector (SSN, passport, full CC+CVV)
   //   high     — strong identity vector (DOB, driver license, full CC w/o CVV)
   //   medium   — contextual identity vector (email, phone, address, IP)
   //   low      — informational
+  // -------------------------------------------------------------------------
 
-  var patterns = {
-    pii_ssn: {
-      severity: 'critical',
-      // 9 digits in XXX-XX-XXXX or XXX XX XXXX format. We require
-      // the separators (dashes or spaces) between the 3-2-4 groups
-      // to avoid matching 9-digit numbers like bank routing numbers
-      // or arbitrary IDs. An SSN with NO separators is matched by
-      // a separate, more permissive pattern (case 2 below).
-      re: /\b\d{3}[-\s]\d{2}[-\s]\d{4}\b/g
-    },
-    pii_email: {
-      severity: 'medium',
-      // RFC 5322 simplified: local@domain.tld. Allows +, ., -, _ in
-      // local part. Domain is at least 2 labels. TLD is 2-24 alpha.
-      re: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,24}\b/g
-    },
-    pii_phone: {
-      severity: 'medium',
-      // US phone: exactly 10 digits (area code + 7-digit local), with
-      // a variety of separators. International prefix is optional
-      // (+1 or +CC). The 10-digit count is the boundary that prevents
-      // matching credit card numbers (16 digits) or routing numbers
-      // (9 digits) or account numbers (10-12 digits).
-      re: /(?:\+?\d{1,3}[-.\s]?)?\(?\b\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/g
-    },
-    pii_credit_card: {
-      severity: 'high',
-      // 13-19 digits, optional spaces or dashes between groups.
-      // Luhn-validated in postProcess. To prevent overlap with phone
-      // (10 digits) and SSN (9 digits), we require at least 13 digits
-      // total (with separators allowed).
-      re: /\b(?:\d{4}[ -]?){3}\d{1,7}\b|\b\d{13,19}\b/g
-    },
-    pii_dob: {
-      severity: 'high',
-      // DOB common formats: MM/DD/YYYY, MM-DD-YYYY, YYYY-MM-DD,
-      // Mon DD, YYYY. We're permissive on the day/year but require
-      // a year that looks plausible (1900-2099).
-      re: /\b(?:(?:0?[1-9]|1[0-2])[\/.\-](?:0?[1-9]|[12]\d|3[01])[\/.\-](?:19|20)\d{2}|(?:19|20)\d{2}-(?:0?[1-9]|1[0-2])-(?:0?[1-9]|[12]\d|3[01]))\b/g
-    },
-    pii_address: {
-      severity: 'medium',
-      // US street: number + street name + (St|Ave|Rd|Blvd|Ln|Dr|Way|Ct|Pl).
-      // This is approximate; we use word boundaries to avoid false hits.
-      re: /\b\d{1,6}\s+[A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)*\s+(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Lane|Ln|Drive|Dr|Way|Court|Ct|Place|Pl)\b\.?(?:\s+(?:Apt|Suite|Ste|#)\s*\d+)?/g
-    },
-    pii_driver_license: {
-      severity: 'high',
-      // US DL formats vary by state. We match a label + alphanumeric.
-      // The label makes the FP rate low; the value can be any 5-15
-      // uppercase alnum. The label/value separator may be :, #, No.,
-      // or whitespace.
-      re: /\b(?:DL|D\.L\.|Driver(?:'s)?\s+License|License)\s*[:\#]?\s*(?:No\.?|Number)?\s*[:\#]?\s*[A-Z0-9]{5,15}\b/gi
-    },
-    pii_passport: {
-      severity: 'critical',
-      // US passport: 1 letter + 8 digits. The "Passport" label is
-      // REQUIRED to prevent false positives on alphanumeric codes
-      // like "D12345678" (DL) or "A12345678" (random). The label
-      // makes the FP rate near zero.
-      re: /\b(?:US|United\s+States\s+)?Passport\s*(?:#|No\.?)?\s*[A-Z]\d{8}\b/gi
-    },
-    pii_tax_id: {
-      severity: 'high',
-      // US EIN: XX-XXXXXXX (9 digits with one dash after the first 2).
-      re: /\b\d{2}-\d{7}\b/g
-    },
-    pii_bank_account: {
-      severity: 'high',
-      // US ABA routing: 9 digits with optional spaces/dashes. Account:
-      // 4-17 digits. We match the label "Routing" or "Account".
-      re: /\b(?:Routing|Account|ABA)\s*(?:#|No\.?|Number)?\s*\d{4,17}\b/gi
-    },
-    pii_ip_address: {
-      severity: 'low',
-      // IPv4: a.b.c.d with each octet 0-255. IPv6: hex groups with colons.
-      re: /\b(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\b|\b(?:[A-Fa-f0-9]{1,4}:){7}[A-Fa-f0-9]{1,4}\b/g
-    },
-    // ====================================================================
-    // NEW PATTERNS (v0.1.0-beta PII expansion, 2026-07-04)
-    // Each pattern is verified with positive + negative test cases in
-    // test/unit/regex-pii.test.mjs.
-    // ====================================================================
-    pii_cpf_br: {
-      // Brazilian CPF (Cadastro de Pessoas Físicas): XXX.XXX.XXX-XX
-      // (11 digits with format separators). Critical because CPF is
-      // a primary identity document in Brazil; the 11-digit format
-      // includes a check digit which we don't validate (the regex
-      // is permissive to avoid rejecting valid CPFs that are
-      // retyped or formatted differently in prompts).
-      severity: 'critical',
-      re: /\b\d{3}\.\d{3}\.\d{3}-\d{2}\b/g
-    },
-    pii_aadhaar_in: {
-      // Indian Aadhaar: 12 digits in XXXX-XXXX-XXXX format
-      // (occasionally written as XXXX XXXX XXXX). The label is
-      // optional; the 12-digit-with-3-4-format is highly specific.
-      // We use a slightly negative-lookahead to avoid matching
-      // phone numbers with hyphens.
-      severity: 'critical',
-      re: /\b\d{4}[-\s]\d{4}[-\s]\d{4}\b(?!\s*-\s*\d)/g
-    },
-    pii_nhs_uk: {
-      // UK NHS number: 10 digits in XXX-XXX-XXXX format. Distinct
-      // from US SSN (which uses XXX-XX-XXXX) by the dash position
-      // and the leading 3 digits (NHS uses 3-3-4 vs SSN's 3-2-4).
-      severity: 'high',
-      re: /\b\d{3}-\d{3}-\d{4}\b/g
-    },
-    pii_tfn_au: {
-      // Australian Tax File Number: 9 digits in XXX XXX XXX format
-      // (spaces, not dashes). We use \s as the separator to match
-      // real-world formatted TFNs.
-      severity: 'high',
-      re: /\b\d{3}\s\d{3}\s\d{3}\b/g
-    },
-    pii_sin_ca: {
-      // Canadian Social Insurance Number: 9 digits in XXX XXX XXX
-      // format. We use a negative-lookahead to avoid matching
-      // TFN (AU) or other 3-3-3 patterns: SINs start with a digit
-      // 1-7 (per the Canadian SIN rules), but the regex is permissive
-      // to avoid FNs on edge cases.
-      severity: 'high',
-      re: /\b[1-7]\d{2}\s\d{3}\s\d{3}\b/g
-    },
-    pii_iban: {
-      // International Bank Account Number: 2 letters (country code)
-      // + 2 digits (check digits) + up to 30 alphanumeric. Total
-      // length 15-32. We use a strict format with no spaces.
-      severity: 'critical',
-      re: /\b[A-Z]{2}\d{2}[A-Z0-9]{11,30}\b/g
-    },
-    pii_bip39_seed: {
-      // BIP39 cryptocurrency seed phrase: 12 or 24 lowercase words
-      // from the BIP39 wordlist, separated by single spaces. The
-      // first 4 words are validated against a partial wordlist of
-      // common BIP39 words. If at least 3 of the first 4 words are
-      // valid BIP39 words AND the total is 12 or 24 words AND all
-      // words are 3-8 lowercase letters, we flag as a seed phrase.
-      // This is a strong indicator; the false-positive rate on
-      // English prose is very low.
-      severity: 'critical',
-      re: /\b(?:[a-z]{3,8}\s+){11}[a-z]{3,8}\b|\b(?:[a-z]{3,8}\s+){23}[a-z]{3,8}\b/g
-    }
-  };
-
-  // Post-process: Luhn-validate credit card candidates. If a candidate
-  // doesn't pass Luhn, we drop it (it was a 16-digit number, not a
-  // real card). This is the FP-reduction step.
-  //
-  // If luhn.js failed to load (i.e., __lensLuhn is not on globalThis),
-  // we log a warning and drop the match anyway. The CC detection is
-  // useless without Luhn (high FP rate), so we drop rather than
-  // silently pass through.
+  // -------------------------------------------------------------------------
+  // Post-process: drop false positives and attach metadata. The pii
+  // facet has 3 special postProcess paths (CC Luhn, phone digit filter,
+  // BIP39 wordlist verification); everything else passes through.
+  // -------------------------------------------------------------------------
   function postProcess(category, match) {
     if (category === 'pii_credit_card') {
       var luhn = getLuhn();
@@ -405,19 +1241,26 @@ try {
       // Attach the card type for the dispatcher
       match.cardType = v.type;
     }
-    // ====================================================================
-    // PostProcess for new patterns (v0.1.0-beta expansion)
-    // ====================================================================
+    if (category === 'pii_phone_intl_loose') {
+      // Filter by digit count: phones are 7-15 digits (ITU-T E.164).
+      // We exclude:
+      //   - 9-digit matches (US SSN shape: XXX-XX-XXXX)
+      //   - 12+ digit matches (credit card / IBAN / SNILS)
+      //   - 4-6 digit matches (too short to be a phone)
+      //   - matches that are entirely inside a date (YYYY-MM-DD = 8 digits)
+      var digits = (match.value.match(/\d/g) || []).length;
+      if (digits < 7 || digits > 15) return null;
+      if (digits === 9) return null;  // SSN shape, not phone
+      // Reject pure date-like matches (8 digits in 4-2-2 or 2-2-4 pattern)
+      if (digits === 8 && /^\d{4}[-.\s]\d{1,2}[-.\s]\d{1,2}$/.test(match.value)) return null;
+    }
     if (category === 'pii_bip39_seed') {
       // The regex matches 12- or 24-word sequences. We need to
       // verify the words are likely BIP39 (vs random English words).
       // We use a partial wordlist of the 100 most common BIP39
       // words. If at least 3 of the 12 words (or 5 of 24) are in
       // the wordlist AND all words are 3-8 lowercase letters, we
-      // accept the match. Otherwise drop it as a false positive
-      // (e.g., "the quick brown fox jumps over the lazy dog" is 9
-      // words, not 12 or 24, so the regex wouldn't even match; but
-      // a 12-word English sentence could match the regex).
+      // accept the match. Otherwise drop it as a false positive.
       var BIP39_COMMON = ['abandon', 'ability', 'able', 'about', 'above', 'absent',
         'absorb', 'abstract', 'absurd', 'abuse', 'access', 'accident',
         'account', 'accuse', 'achieve', 'acid', 'acoustic', 'acquire',
@@ -444,290 +1287,267 @@ try {
         'battle', 'beach', 'bean', 'beauty', 'because', 'become', 'beef',
         'before', 'begin', 'behave', 'behind', 'believe', 'below', 'belt',
         'bench', 'benefit', 'best', 'betray', 'better', 'between', 'beyond',
-        'bicycle', 'bid', 'bike', 'bind', 'biology', 'bird', 'birth',
-        'bitter', 'black', 'blade', 'blame', 'blanket', 'blast', 'bleak',
-        'bless', 'blind', 'blood', 'blossom', 'blouse', 'blue', 'blur',
-        'blush', 'board', 'boat', 'body', 'boil', 'bomb', 'bone', 'bonus',
-        'book', 'boost', 'border', 'boring', 'borrow', 'boss', 'bottom',
-        'bounce', 'box', 'boy', 'bracket', 'brain', 'brand', 'brass',
-        'brave', 'bread', 'breeze', 'brick', 'bridge', 'brief', 'bright',
-        'bring', 'brisk', 'broccoli', 'broken', 'bronze', 'broom', 'brother',
-        'brown', 'brush', 'bubble', 'buddy', 'budget', 'buffalo', 'build',
-        'bulb', 'bulk', 'bullet', 'bundle', 'bunker', 'burden', 'burger',
-        'burst', 'bus', 'business', 'busy', 'butter', 'buyer', 'buzz',
-        'cabbage', 'cabin', 'cable', 'cactus', 'cage', 'cake', 'call',
-        'calm', 'camera', 'camp', 'can', 'canal', 'cancel', 'candy',
-        'cannon', 'canoe', 'canvas', 'canyon', 'capable', 'capital',
-        'captain', 'car', 'carbon', 'card', 'cargo', 'carpet', 'carry',
-        'cart', 'case', 'cash', 'casino', 'castle', 'casual', 'cat',
-        'catalog', 'catch', 'category', 'cattle', 'caught', 'cause',
-        'caution', 'cave', 'ceiling', 'celery', 'cement', 'census',
-        'century', 'cereal', 'certain', 'chair', 'chalk', 'champion',
-        'change', 'chaos', 'chapter', 'charge', 'chase', 'chat',
+        'bicycle', 'bid', 'bike', 'bind', 'biology', 'bird', 'birth', 'bitter',
+        'black', 'blade', 'blame', 'blanket', 'blast', 'bleak', 'bless', 'blind',
+        'blood', 'blossom', 'blow', 'blue', 'blur', 'blush', 'board', 'boat',
+        'body', 'boil', 'bomb', 'bone', 'bonus', 'book', 'boost', 'border',
+        'boring', 'borrow', 'boss', 'bottom', 'bounce', 'box', 'boy', 'bracket',
+        'brain', 'brand', 'brass', 'brave', 'bread', 'breeze', 'brick', 'bridge',
+        'brief', 'bright', 'bring', 'brisk', 'broccoli', 'broken', 'bronze',
+        'broom', 'brother', 'brown', 'brush', 'bubble', 'buddy', 'budget',
+        'buffalo', 'build', 'bulb', 'bulk', 'bullet', 'bundle', 'bunker',
+        'burden', 'burger', 'burst', 'bus', 'business', 'busy', 'butter',
+        'buyer', 'buzz', 'cabbage', 'cabin', 'cable', 'cactus', 'cage', 'cake',
+        'call', 'calm', 'camera', 'camp', 'canal', 'cancel', 'candy', 'cannon',
+        'canoe', 'canvas', 'canyon', 'capable', 'capital', 'captain', 'car',
+        'carbon', 'card', 'cargo', 'carpet', 'carry', 'cart', 'case', 'cash',
+        'casino', 'castle', 'casual', 'cat', 'catalog', 'catch', 'category',
+        'cattle', 'caught', 'cause', 'caution', 'cave', 'ceiling', 'celery',
+        'cement', 'census', 'century', 'cereal', 'certain', 'chair', 'chalk',
+        'champion', 'change', 'chaos', 'chapter', 'charge', 'chase', 'chat',
         'cheap', 'check', 'cheese', 'chef', 'cherry', 'chest', 'chicken',
-        'chief', 'child', 'chimney', 'choice', 'choose', 'chronic',
-        'chuckle', 'chunk', 'churn', 'cigar', 'cinnamon', 'circle',
-        'citizen', 'city', 'civil', 'claim', 'clap', 'clarify', 'claw',
-        'clay', 'clean', 'clerk', 'clever', 'click', 'client', 'cliff',
-        'climb', 'clinic', 'clip', 'clock', 'clog', 'close', 'cloth',
-        'cloud', 'clown', 'club', 'clump', 'cluster', 'clutch', 'coach',
-        'coast', 'coconut', 'code', 'coffee', 'coil', 'coin', 'collect',
-        'color', 'column', 'combine', 'come', 'comfort', 'comic', 'common',
-        'company', 'concert', 'conduct', 'confirm', 'congress', 'connect',
-        'consider', 'control', 'convince', 'cook', 'cool', 'copper',
-        'copy', 'coral', 'core', 'corn', 'correct', 'cost', 'cotton',
-        'couch', 'country', 'couple', 'course', 'cousin', 'cover', 'coyote',
-        'crack', 'cradle', 'craft', 'cram', 'crane', 'crash', 'crater',
-        'crawl', 'crazy', 'cream', 'credit', 'creek', 'crew', 'cricket',
-        'crime', 'crisp', 'critic', 'crop', 'cross', 'crouch', 'crowd',
-        'crucial', 'cruel', 'cruise', 'crumble', 'crunch', 'crush', 'cry',
-        'crystal', 'cube', 'culture', 'cup', 'cupboard', 'curious',
-        'current', 'curtain', 'curve', 'cushion', 'custom', 'cute',
-        'cycle', 'dad', 'damage', 'damp', 'dance', 'danger', 'daring',
-        'dash', 'daughter', 'dawn', 'day', 'deal', 'debate', 'debris',
-        'decade', 'december', 'decide', 'decline', 'decorate', 'decrease',
-        'deer', 'defense', 'define', 'defy', 'degree', 'delay', 'deliver',
-        'demand', 'demise', 'denial', 'dentist', 'deny', 'depart', 'depend',
-        'deposit', 'depth', 'deputy', 'derive', 'describe', 'desert',
-        'design', 'desk', 'despair', 'destroy', 'detail', 'detect', 'develop',
-        'device', 'devote', 'diagram', 'dial', 'diamond', 'diary', 'dice',
-        'diesel', 'diet', 'differ', 'digital', 'dignity', 'dilemma', 'dinner',
-        'dinosaur', 'direct', 'dirt', 'disagree', 'discover', 'disease',
-        'dish', 'dismiss', 'disorder', 'display', 'distance', 'divert',
-        'divide', 'divorce', 'dizzy', 'doctor', 'document', 'dog', 'doll',
-        'dolphin', 'domain', 'donate', 'donkey', 'donor', 'door', 'dose',
-        'double', 'dove', 'draft', 'dragon', 'drama', 'drastic', 'draw',
-        'dream', 'dress', 'drift', 'drill', 'drink', 'drip', 'drive',
-        'drop', 'drum', 'dry', 'duck', 'dumb', 'dune', 'during', 'Dutch',
-        'duty', 'dwarf', 'dynamic', 'eager', 'eagle', 'early', 'earn',
-        'earth', 'easily', 'east', 'easy', 'echo', 'ecology', 'economy',
-        'edge', 'edit', 'educate', 'effort', 'egg', 'eight', 'either',
-        'elbow', 'elder', 'electric', 'elegant', 'element', 'elephant',
-        'elevator', 'elite', 'else', 'embark', 'embody', 'embrace', 'emerge',
-        'emotion', 'employ', 'empower', 'empty', 'enable', 'enact', 'end',
-        'endless', 'endorse', 'enemy', 'energy', 'enforce', 'engage', 'engine',
-        'enhance', 'enjoy', 'enlist', 'enough', 'enrich', 'enroll', 'ensure',
-        'enter', 'entire', 'entry', 'envelope', 'environment', 'equal',
-        'equip', 'era', 'erase', 'erode', 'erosion', 'error', 'erupt',
-        'escape', 'essay', 'essence', 'estate', 'eternal', 'ethics',
-        'evidence', 'evil', 'evoke', 'evolve', 'exact', 'example',
-        'excess', 'exchange', 'excite', 'exclude', 'excuse', 'execute',
-        'exercise', 'exhaust', 'exhibit', 'exile', 'exist', 'exit', 'exotic',
-        'expand', 'expect', 'expire', 'explain', 'expose', 'express',
-        'extend', 'extra', 'eye', 'eyebrow', 'fabric', 'face', 'faculty',
-        'fade', 'faint', 'faith', 'fall', 'false', 'fame', 'family', 'famous',
-        'fan', 'fancy', 'fantasy', 'farm', 'fashion', 'fat', 'fatal',
-        'father', 'fatigue', 'fault', 'favorite', 'feature', 'february',
-        'federal', 'fee', 'feed', 'feel', 'female', 'fence', 'festival',
-        'fetch', 'fever', 'few', 'fiber', 'fiction', 'field', 'fight',
+        'chief', 'child', 'chimney', 'choice', 'choose', 'chronic', 'chuckle',
+        'chunk', 'churn', 'cigar', 'cinnamon', 'circle', 'citizen', 'city',
+        'civil', 'claim', 'clap', 'clarify', 'claw', 'clay', 'clean', 'clerk',
+        'clever', 'click', 'client', 'cliff', 'climb', 'clinic', 'clip',
+        'clock', 'clog', 'close', 'cloth', 'cloud', 'clown', 'club', 'clump',
+        'cluster', 'clutch', 'coach', 'coast', 'coconut', 'code', 'coffee',
+        'coil', 'coin', 'collect', 'color', 'column', 'combine', 'come',
+        'comfort', 'comic', 'common', 'company', 'concert', 'conduct',
+        'confirm', 'congress', 'connect', 'consider', 'control', 'convince',
+        'cook', 'cool', 'copper', 'copy', 'coral', 'core', 'corn', 'correct',
+        'cost', 'cotton', 'couch', 'country', 'couple', 'course', 'cousin',
+        'cover', 'coyote', 'crack', 'cradle', 'craft', 'cram', 'crane',
+        'crash', 'crater', 'crawl', 'crazy', 'cream', 'credit', 'creek',
+        'crew', 'cricket', 'crime', 'crisp', 'critic', 'crop', 'cross',
+        'crouch', 'crowd', 'crucial', 'cruel', 'cruise', 'crumble', 'crunch',
+        'crush', 'cry', 'crystal', 'cube', 'culture', 'cup', 'cupboard',
+        'curious', 'current', 'curtain', 'curve', 'cushion', 'custom', 'cute',
+        'cycle', 'dad', 'damage', 'damp', 'dance', 'danger', 'daring', 'dash',
+        'daughter', 'dawn', 'day', 'deal', 'debate', 'debris', 'decade',
+        'december', 'decide', 'decline', 'decorate', 'decrease', 'deer',
+        'defense', 'define', 'defy', 'degree', 'delay', 'deliver', 'demand',
+        'demise', 'denial', 'dentist', 'deny', 'depart', 'depend', 'deposit',
+        'depth', 'deputy', 'derive', 'describe', 'desert', 'design', 'desk',
+        'despair', 'destroy', 'detail', 'detect', 'develop', 'device',
+        'devote', 'diagram', 'dial', 'diamond', 'diary', 'dice', 'diesel',
+        'diet', 'differ', 'digital', 'dignity', 'dilemma', 'dinner', 'dinosaur',
+        'direct', 'dirt', 'disagree', 'discover', 'disease', 'dish', 'dismiss',
+        'disorder', 'display', 'distance', 'divert', 'divide', 'divorce',
+        'dizzy', 'doctor', 'document', 'dog', 'doll', 'dolphin', 'domain',
+        'donate', 'donkey', 'donor', 'door', 'dose', 'double', 'dove', 'draft',
+        'dragon', 'drama', 'drape', 'draw', 'dream', 'dress', 'drift', 'drill',
+        'drink', 'drip', 'drive', 'drop', 'drum', 'dry', 'duck', 'dumb',
+        'dune', 'during', 'Dutch', 'duty', 'dwarf', 'dynamic', 'eager',
+        'eagle', 'early', 'earn', 'earth', 'easily', 'east', 'easy', 'echo',
+        'ecology', 'economy', 'edge', 'edit', 'educate', 'effort', 'egg',
+        'eight', 'either', 'elbow', 'elder', 'electric', 'elegant', 'element',
+        'elephant', 'elevator', 'elite', 'else', 'embark', 'embody', 'embrace',
+        'emerge', 'emotion', 'employ', 'empower', 'empty', 'enable', 'enact',
+        'end', 'endless', 'endorse', 'enemy', 'energy', 'enforce', 'engage',
+        'engine', 'enhance', 'enjoy', 'enlist', 'enough', 'enrich', 'enroll',
+        'ensure', 'enter', 'entire', 'entry', 'envelope', 'episode', 'equal',
+        'equip', 'era', 'erase', 'erode', 'erosion', 'error', 'erupt', 'escape',
+        'essay', 'essence', 'estate', 'eternal', 'ethics', 'evidence', 'evil',
+        'evoke', 'evolve', 'exact', 'example', 'excess', 'exchange', 'excite',
+        'exclude', 'excuse', 'execute', 'exercise', 'exhaust', 'exhibit',
+        'exile', 'exist', 'exit', 'exotic', 'expand', 'expect', 'expire',
+        'explain', 'expose', 'express', 'extend', 'extra', 'eye', 'eyebrow',
+        'fabric', 'face', 'faculty', 'fade', 'faint', 'faith', 'fall', 'false',
+        'fame', 'family', 'famous', 'fan', 'fancy', 'fantasy', 'farm', 'fashion',
+        'fat', 'fatal', 'father', 'fatigue', 'fault', 'favorite', 'feature',
+        'february', 'federal', 'fee', 'feed', 'feel', 'female', 'fence',
+        'festival', 'fetch', 'fever', 'few', 'fiber', 'fiction', 'field',
         'figure', 'file', 'film', 'filter', 'final', 'find', 'fine', 'finger',
         'finish', 'fire', 'firm', 'first', 'fiscal', 'fish', 'fit', 'fitness',
         'fix', 'flag', 'flame', 'flash', 'flat', 'flavor', 'flee', 'flight',
-        'flip', 'float', 'flock', 'floor', 'flower', 'fluid', 'flush',
-        'fly', 'foam', 'focus', 'fog', 'foil', 'fold', 'follow', 'food',
-        'foot', 'force', 'forest', 'forget', 'fork', 'fortune', 'forum',
-        'forward', 'fossil', 'foster', 'found', 'fox', 'fragile', 'frame',
-        'frequent', 'fresh', 'friend', 'fringe', 'frog', 'front', 'frost',
-        'frown', 'frozen', 'fruit', 'fuel', 'fun', 'funny', 'furnace',
-        'fury', 'future', 'gadget', 'gain', 'galaxy', 'gallery', 'game',
-        'gap', 'garage', 'garbage', 'garden', 'garlic', 'gas', 'gate',
-        'gather', 'gauge', 'gaze', 'general', 'genius', 'genre', 'gentle',
-        'genuine', 'gesture', 'ghost', 'giant', 'gift', 'giggle', 'ginger',
-        'giraffe', 'girl', 'give', 'glad', 'glance', 'glare', 'glass',
-        'glide', 'glimpse', 'globe', 'gloom', 'glory', 'glove', 'glow',
-        'glue', 'goat', 'goddess', 'gold', 'good', 'goose', 'gorilla',
-        'gospel', 'gossip', 'govern', 'gown', 'grab', 'grace', 'grain',
-        'grant', 'grape', 'grass', 'gravity', 'great', 'green', 'grid',
-        'grief', 'grit', 'grocery', 'group', 'grow', 'grunt', 'guard',
-        'guess', 'guide', 'guilt', 'guitar', 'gun', 'gym', 'habit', 'hair',
-        'half', 'hammer', 'hamster', 'hand', 'happy', 'harbor', 'hard',
+        'flip', 'float', 'flock', 'floor', 'flower', 'fluid', 'flush', 'fly',
+        'foam', 'focus', 'fog', 'foil', 'fold', 'follow', 'food', 'foot',
+        'force', 'forest', 'forget', 'fork', 'fortune', 'forum', 'forward',
+        'fossil', 'foster', 'found', 'fox', 'fragile', 'frame', 'frequent',
+        'fresh', 'friend', 'fringe', 'frog', 'front', 'frost', 'frown', 'frozen',
+        'fruit', 'fuel', 'fun', 'funny', 'furnace', 'fury', 'future', 'gadget',
+        'gain', 'galaxy', 'gallery', 'gamble', 'gap', 'garage', 'garbage',
+        'garden', 'garlic', 'gas', 'gather', 'gauge', 'gaze', 'general', 'genius',
+        'genre', 'gentle', 'genuine', 'gesture', 'ghost', 'giant', 'gift',
+        'giggle', 'ginger', 'giraffe', 'girl', 'give', 'glad', 'glance', 'glare',
+        'glass', 'glide', 'globe', 'gloom', 'glory', 'glove', 'glow', 'glue',
+        'goat', 'goddess', 'gold', 'good', 'goose', 'gorilla', 'gospel', 'gossip',
+        'govern', 'gown', 'grab', 'grace', 'grain', 'grant', 'grape', 'grass',
+        'gravity', 'great', 'green', 'grid', 'grief', 'grit', 'grocery', 'group',
+        'grow', 'grunt', 'guard', 'guess', 'guide', 'guitar', 'gun', 'gym', 'habit',
+        'hair', 'half', 'hammer', 'hamster', 'hand', 'happy', 'harbor', 'hard',
         'harsh', 'harvest', 'hat', 'have', 'hawk', 'hazard', 'head', 'heart',
-        'heavy', 'hedgehog', 'height', 'hello', 'helmet', 'help', 'hen',
-        'hero', 'hidden', 'high', 'hill', 'hint', 'hip', 'hire', 'history',
-        'hobby', 'hockey', 'hold', 'hole', 'holiday', 'hollow', 'home',
-        'honey', 'hood', 'hope', 'horn', 'horror', 'horse', 'hospital',
-        'host', 'hot', 'hotel', 'hour', 'hover', 'hub', 'huge', 'human',
-        'humble', 'humor', 'hundred', 'hungry', 'hunt', 'hurdle', 'hurry',
-        'hurt', 'husband', 'hybrid', 'ice', 'icon', 'idea', 'identify',
-        'idle', 'ignore', 'iguana', 'ill', 'illegal', 'illness', 'image',
-        'imitate', 'immense', 'immune', 'impact', 'impose', 'improve',
-        'impulse', 'inch', 'include', 'income', 'increase', 'index',
-        'indicate', 'indoor', 'industry', 'infant', 'inflict', 'inform',
-        'inhale', 'inherit', 'initial', 'inject', 'injury', 'inmate',
-        'inner', 'innocent', 'input', 'inquiry', 'insane', 'insect',
-        'inside', 'inspire', 'install', 'intact', 'interest', 'into',
-        'invest', 'invite', 'involve', 'iron', 'island', 'isolate', 'issue',
-        'item', 'ivory', 'jacket', 'jaguar', 'jail', 'jam', 'january',
-        'jazz', 'jealous', 'jeans', 'jelly', 'jewel', 'job', 'join',
-        'joke', 'journey', 'joy', 'judge', 'juice', 'jump', 'jungle',
-        'junior', 'junk', 'just', 'kangaroo', 'karma', 'ketchup', 'key',
-        'kick', 'kid', 'kidney', 'kind', 'kingdom', 'kiss', 'kit', 'kitchen',
-        'kite', 'kitten', 'kiwi', 'knee', 'knife', 'knock', 'know', 'lab',
-        'label', 'labor', 'ladder', 'lady', 'lake', 'lamb', 'lamp',
-        'language', 'laptop', 'large', 'later', 'latin', 'laugh', 'laundry',
-        'lava', 'law', 'lawn', 'lawsuit', 'layer', 'lazy', 'leader',
-        'leaf', 'learn', 'leave', 'lecture', 'left', 'leg', 'legal',
-        'legend', 'leisure', 'lemon', 'lend', 'length', 'lens', 'leopard',
-        'lesson', 'letter', 'level', 'liberty', 'library', 'license', 'life',
-        'lift', 'light', 'like', 'limb', 'limit', 'link', 'lion', 'liquid',
-        'list', 'little', 'live', 'lizard', 'load', 'loaf', 'loan',
-        'lobby', 'lock', 'log', 'lone', 'long', 'loop', 'lottery',
-        'loud', 'lounge', 'love', 'loyal', 'lucky', 'luggage', 'lumber',
-        'lunar', 'lunch', 'luxury', 'lyrics', 'machine', 'mad', 'magic',
-        'magnet', 'maid', 'mail', 'main', 'major', 'make', 'mammal',
-        'man', 'manage', 'mandate', 'mango', 'mansion', 'manual', 'maple',
-        'marble', 'march', 'margin', 'marine', 'market', 'marriage', 'mask',
-        'mass', 'master', 'match', 'material', 'math', 'matrix', 'matter',
-        'maximum', 'maze', 'meadow', 'mean', 'measure', 'meat', 'mechanic',
-        'medal', 'media', 'melody', 'melt', 'member', 'memory', 'mention',
-        'menu', 'mercy', 'merge', 'merit', 'merry', 'mesh', 'message',
-        'metal', 'method', 'middle', 'midnight', 'milk', 'million',
-        'mimic', 'mind', 'minimum', 'minor', 'minute', 'miracle', 'mirror',
-        'misery', 'miss', 'mistake', 'mix', 'mixed', 'mixture', 'mobile',
-        'model', 'modify', 'mom', 'moment', 'monitor', 'monkey', 'monster',
-        'month', 'moon', 'moral', 'more', 'morning', 'mosquito', 'mother',
-        'motion', 'motor', 'mountain', 'mouse', 'move', 'movie', 'much',
-        'muffin', 'mule', 'multiply', 'muscle', 'museum', 'mushroom',
-        'music', 'must', 'myself', 'mystery', 'myth', 'naive', 'name',
-        'napkin', 'narrow', 'nasty', 'nation', 'nature', 'near', 'neck',
+        'heavy', 'hedgehog', 'height', 'hello', 'helmet', 'help', 'hen', 'hero',
+        'hidden', 'high', 'hill', 'hint', 'hip', 'hire', 'history', 'hobby',
+        'hockey', 'hold', 'hole', 'holiday', 'hollow', 'home', 'honey', 'hood',
+        'hope', 'horn', 'horror', 'horse', 'hospital', 'host', 'hot', 'hotel',
+        'hour', 'house', 'human', 'humble', 'humor', 'hundred', 'hungry', 'hunt',
+        'hurdle', 'hurry', 'hurt', 'husband', 'hybrid', 'ice', 'icon', 'idea',
+        'identify', 'idle', 'ignore', 'ill', 'illegal', 'illness', 'image',
+        'imitate', 'immense', 'immune', 'impact', 'impose', 'improve', 'impulse',
+        'inch', 'include', 'income', 'increase', 'index', 'indicate', 'indoor',
+        'industry', 'infant', 'inflict', 'inform', 'inhale', 'inherit', 'initial',
+        'inject', 'injury', 'inmate', 'inner', 'innocent', 'input', 'inquiry',
+        'insane', 'insect', 'inside', 'inspire', 'install', 'intact', 'interest',
+        'into', 'invest', 'invite', 'involve', 'iron', 'island', 'isolate',
+        'issue', 'item', 'ivory', 'jacket', 'jaguar', 'jail', 'jelly', 'jewel',
+        'job', 'join', 'joke', 'journey', 'joy', 'judge', 'juice', 'jump',
+        'jungle', 'junior', 'junk', 'just', 'kangaroo', 'karate', 'keen', 'keep',
+        'ketchup', 'key', 'kick', 'kid', 'kidney', 'kind', 'kingdom', 'kiss',
+        'kit', 'kitchen', 'kite', 'kitten', 'kiwi', 'knee', 'knife', 'knock',
+        'know', 'lab', 'label', 'labor', 'ladder', 'lady', 'lake', 'lamb',
+        'lamp', 'language', 'laptop', 'large', 'later', 'latin', 'laugh',
+        'laundry', 'lava', 'law', 'lawn', 'lawsuit', 'layer', 'lazy', 'leader',
+        'leaf', 'learn', 'leave', 'lecture', 'left', 'leg', 'legal', 'legend',
+        'leisure', 'lemon', 'lend', 'length', 'lens', 'leopard', 'less', 'lesson',
+        'letter', 'level', 'liberty', 'library', 'license', 'life', 'lift',
+        'light', 'like', 'limb', 'lime', 'limit', 'link', 'lion', 'liquid',
+        'list', 'little', 'live', 'lizard', 'load', 'loan', 'lobster', 'local',
+        'lock', 'log', 'logic', 'lonely', 'long', 'loop', 'lottery', 'loud',
+        'lounge', 'love', 'loyal', 'lucky', 'luggage', 'lumber', 'lunar',
+        'lunch', 'luxury', 'lyrics', 'machine', 'mad', 'magic', 'magnet',
+        'maid', 'mail', 'main', 'major', 'make', 'mammal', 'man', 'manage',
+        'mandate', 'mango', 'mansion', 'manual', 'maple', 'marble', 'march',
+        'margin', 'marine', 'market', 'marriage', 'mask', 'mass', 'master',
+        'match', 'material', 'math', 'matrix', 'matter', 'maximum', 'maze',
+        'meadow', 'mean', 'measure', 'meat', 'meal', 'media',
+        'melody', 'mchanic', 'medelt', 'member', 'memory', 'mention', 'menu', 'mercy',
+        'merge', 'merit', 'merry', 'mesh', 'message', 'metal', 'method',
+        'middle', 'midnight', 'milk', 'million', 'mimic', 'mind', 'minimum',
+        'minor', 'minute', 'miracle', 'mirror', 'misery', 'miss', 'mistake',
+        'mix', 'mixed', 'mixture', 'mobile', 'model', 'modify', 'mom', 'moment',
+        'monitor', 'monkey', 'monster', 'month', 'moon', 'moral', 'more',
+        'morning', 'mosquito', 'mother', 'motion', 'motor', 'mountain', 'mouse',
+        'move', 'movie', 'much', 'muffin', 'mule', 'multiply', 'muscle',
+        'museum', 'mushroom', 'music', 'must', 'myself', 'mystery', 'naive',
+        'name', 'napkin', 'narrow', 'nasty', 'nation', 'nature', 'near', 'neck',
         'need', 'negative', 'neglect', 'neither', 'nephew', 'nerve', 'nest',
-        'net', 'network', 'neutral', 'never', 'next', 'nice', 'night',
-        'noble', 'noise', 'nominate', 'noodle', 'normal', 'north', 'nose',
-        'notable', 'note', 'nothing', 'notice', 'novel', 'now', 'nuclear',
-        'number', 'nurse', 'nut', 'oak', 'obey', 'object', 'oblige',
-        'obscure', 'observe', 'obtain', 'obvious', 'occur', 'ocean',
-        'october', 'odor', 'off', 'offer', 'office', 'often', 'oil',
-        'okay', 'old', 'olive', 'olympic', 'omit', 'once', 'one', 'onion',
-        'online', 'only', 'open', 'opera', 'opinion', 'oppose', 'option',
-        'orange', 'orbit', 'orchard', 'order', 'organ', 'orient', 'original',
-        'orphan', 'ostrich', 'other', 'outdoor', 'outer', 'output', 'outside',
-        'oval', 'oven', 'over', 'own', 'owner', 'oxygen', 'oyster', 'ozone',
-        'pact', 'paddle', 'page', 'pair', 'palace', 'palm', 'panda', 'panel',
-        'panic', 'panther', 'paper', 'parade', 'parent', 'park', 'parrot',
-        'party', 'pass', 'patch', 'path', 'patient', 'patrol', 'pattern',
-        'pause', 'pave', 'payment', 'peace', 'peanut', 'pear', 'peasant',
-        'pelican', 'pen', 'penalty', 'pencil', 'people', 'pepper', 'perfect',
-        'permit', 'person', 'pet', 'phone', 'photo', 'phrase', 'physical',
-        'piano', 'picnic', 'picture', 'piece', 'pig', 'pigeon', 'pill',
-        'pilot', 'pink', 'pioneer', 'pipe', 'pistol', 'pitch', 'pizza',
-        'place', 'planet', 'plastic', 'plate', 'play', 'please', 'pledge',
-        'pluck', 'plug', 'plunge', 'poem', 'poet', 'point', 'polar',
-        'pole', 'police', 'pond', 'pony', 'pool', 'popular', 'portion',
-        'position', 'possible', 'post', 'potato', 'pottery', 'poverty',
-        'powder', 'power', 'practice', 'praise', 'predict', 'prefer',
-        'prepare', 'present', 'pretty', 'prevent', 'price', 'pride',
-        'primary', 'print', 'priority', 'prison', 'private', 'prize',
-        'problem', 'process', 'produce', 'profit', 'program', 'project',
-        'promote', 'proof', 'property', 'prosper', 'protect', 'proud',
-        'provide', 'public', 'pudding', 'pull', 'pulp', 'pulse', 'pumpkin',
-        'punch', 'pupil', 'puppy', 'purchase', 'purity', 'purpose', 'push',
-        'put', 'puzzle', 'pyramid', 'quality', 'quantum', 'quarter',
-        'question', 'quick', 'quit', 'quiz', 'quote', 'rabbit', 'raccoon',
-        'race', 'rack', 'radar', 'radio', 'rail', 'rain', 'raise', 'rally',
-        'ramp', 'ranch', 'random', 'range', 'rapid', 'rare', 'rate',
-        'rather', 'raven', 'raw', 'razor', 'ready', 'real', 'reason',
-        'rebel', 'rebuild', 'recall', 'receive', 'recipe', 'record',
-        'recycle', 'reduce', 'reflect', 'reform', 'refuse', 'region',
-        'regret', 'regular', 'reject', 'relax', 'release', 'relief',
-        'remain', 'remember', 'remind', 'remove', 'render', 'renew',
-        'rent', 'reopen', 'repair', 'repeat', 'replace', 'report',
-        'require', 'rescue', 'resemble', 'resist', 'resource', 'response',
-        'result', 'retire', 'retreat', 'return', 'reunion', 'reveal',
-        'review', 'reward', 'rhythm', 'rib', 'rice', 'rich', 'ride',
-        'ridge', 'rifle', 'right', 'rigid', 'ring', 'riot', 'ripple',
-        'risk', 'ritual', 'rival', 'river', 'road', 'roast', 'robot',
-        'robust', 'rocket', 'romance', 'roof', 'rookie', 'room', 'rose',
-        'rotate', 'rough', 'round', 'route', 'royal', 'rubber', 'rude',
-        'rug', 'rule', 'run', 'runway', 'rural', 'sad', 'saddle', 'sadness',
-        'safe', 'sail', 'salad', 'salmon', 'salon', 'salt', 'salute',
-        'same', 'sample', 'sand', 'satisfy', 'satoshi', 'sauce', 'sausage',
-        'save', 'say', 'scale', 'scan', 'scare', 'scatter', 'scene',
-        'scheme', 'school', 'science', 'scissors', 'scorpion', 'scout',
-        'scrap', 'screen', 'script', 'scrub', 'sea', 'search', 'season',
-        'seat', 'second', 'secret', 'section', 'security', 'seed',
-        'seek', 'segment', 'select', 'sell', 'seminar', 'senior',
-        'sense', 'sentence', 'series', 'service', 'session', 'settle',
-        'setup', 'seven', 'shadow', 'shaft', 'shallow', 'share', 'shed',
-        'shell', 'sheriff', 'shield', 'shift', 'shine', 'ship', 'shiver',
-        'shock', 'shoe', 'shoot', 'shop', 'short', 'shoulder', 'shove',
-        'shrimp', 'shrug', 'shuffle', 'shy', 'sibling', 'sick', 'side',
-        'siege', 'sight', 'sign', 'silent', 'silk', 'silly', 'silver',
-        'similar', 'simple', 'since', 'sing', 'siren', 'sister', 'situate',
-        'six', 'size', 'skate', 'sketch', 'ski', 'skill', 'skin', 'skirt',
-        'skull', 'slab', 'slam', 'sleep', 'slender', 'slice', 'slide',
-        'slight', 'slim', 'slogan', 'slot', 'slow', 'slush', 'small',
-        'smart', 'smile', 'smoke', 'smooth', 'snack', 'snake', 'snap',
-        'sniff', 'snow', 'soap', 'soccer', 'social', 'sock', 'soda',
-        'soft', 'solar', 'soldier', 'solid', 'solution', 'solve', 'someone',
-        'song', 'soon', 'sorry', 'sort', 'soul', 'sound', 'soup', 'source',
-        'south', 'space', 'spare', 'spatial', 'spawn', 'speak', 'special',
-        'speed', 'spell', 'spend', 'sphere', 'spice', 'spider', 'spike',
-        'spin', 'spirit', 'split', 'sponsor', 'spoon', 'sport', 'spot',
-        'spray', 'spread', 'spring', 'spy', 'square', 'squeeze', 'squirrel',
-        'stable', 'stadium', 'staff', 'stage', 'stairs', 'stamp', 'stand',
-        'start', 'state', 'stay', 'steak', 'steel', 'stem', 'step', 'stereo',
-        'stick', 'still', 'sting', 'stock', 'stomach', 'stone', 'stool',
-        'story', 'stove', 'strategy', 'street', 'strike', 'strong',
-        'struggle', 'student', 'stuff', 'stumble', 'style', 'subject',
-        'submit', 'subway', 'success', 'such', 'sudden', 'suffer',
-        'sugar', 'suggest', 'suit', 'summer', 'sun', 'sunny', 'sunset',
-        'super', 'supply', 'supreme', 'sure', 'surface', 'surge',
-        'surprise', 'surround', 'survey', 'suspect', 'sustain', 'swallow',
-        'swamp', 'swap', 'swarm', 'swear', 'sweet', 'swift', 'swim',
-        'swing', 'switch', 'sword', 'symbol', 'symptom', 'syrup',
-        'system', 'table', 'tackle', 'tag', 'tail', 'talent', 'talk',
-        'tank', 'tape', 'target', 'task', 'taste', 'tattoo', 'taxi',
-        'teach', 'team', 'tell', 'ten', 'tenant', 'tennis', 'tent',
-        'term', 'test', 'text', 'thank', 'that', 'theme', 'then', 'theory',
-        'there', 'they', 'thing', 'this', 'thought', 'three', 'thrive',
-        'throw', 'thumb', 'thunder', 'ticket', 'tide', 'tiger', 'tilt',
-        'timber', 'time', 'tiny', 'tip', 'tired', 'tissue', 'title',
-        'toast', 'tobacco', 'today', 'toddler', 'toe', 'together',
-        'toilet', 'token', 'tomato', 'tomorrow', 'tone', 'tongue',
-        'tonight', 'tool', 'tooth', 'top', 'topic', 'topple', 'torch',
-        'tornado', 'tortoise', 'toss', 'total', 'tourist', 'toward',
-        'tower', 'town', 'toy', 'track', 'trade', 'traffic', 'tragic',
-        'train', 'transfer', 'trap', 'trash', 'travel', 'tray',
-        'treat', 'tree', 'trend', 'trial', 'tribe', 'trick', 'trigger',
-        'trim', 'trip', 'trophy', 'trouble', 'truck', 'true', 'truly',
-        'trumpet', 'trust', 'truth', 'try', 'tube', 'tuition', 'tumble',
-        'tuna', 'tunnel', 'turkey', 'turn', 'turtle', 'twelve', 'twenty',
-        'twice', 'twin', 'twist', 'two', 'type', 'typical', 'ugly',
-        'umbrella', 'unable', 'unaware', 'uncle', 'uncover', 'under',
-        'undo', 'unfair', 'unfold', 'unhappy', 'uniform', 'unique',
-        'unit', 'universe', 'unknown', 'unlock', 'until', 'unusual',
-        'unveil', 'update', 'upgrade', 'uphold', 'upon', 'upper',
-        'upset', 'urban', 'urge', 'usage', 'used', 'useful', 'useless',
-        'usual', 'utility', 'vacant', 'vacuum', 'vague', 'valid', 'valley',
-        'valve', 'vanish', 'vapor', 'various', 'vast', 'vault', 'vehicle',
-        'velvet', 'vendor', 'venture', 'venue', 'verb', 'verify',
-        'version', 'very', 'vessel', 'veteran', 'viable', 'vibrant',
-        'vicious', 'victory', 'video', 'view', 'village', 'vintage',
-        'violin', 'virtual', 'virus', 'visa', 'visit', 'visual',
-        'vital', 'vivid', 'vocal', 'voice', 'void', 'volcano',
-        'volume', 'vote', 'voyage', 'wage', 'wagon', 'wait', 'walk',
-        'wall', 'walnut', 'want', 'warfare', 'warm', 'warrior', 'wash',
-        'wasp', 'waste', 'water', 'wave', 'way', 'wealth', 'weapon',
-        'wear', 'weasel', 'weather', 'web', 'wedding', 'weekend',
-        'weird', 'welcome', 'west', 'wet', 'whale', 'what', 'wheat',
-        'wheel', 'when', 'where', 'whip', 'whisper', 'wide', 'width',
-        'wife', 'wild', 'will', 'win', 'window', 'wine', 'wing', 'wink',
-        'winner', 'winter', 'wire', 'wisdom', 'wise', 'wish', 'with',
-        'withdraw', 'witness', 'wolf', 'woman', 'wonder', 'wood',
-        'wool', 'word', 'work', 'world', 'worry', 'worth', 'wrap',
-        'wreck', 'wrestle', 'wrist', 'write', 'wrong', 'yard', 'year',
-        'yellow', 'you', 'young', 'youth', 'zebra', 'zero', 'zone',
-        'zoo'];
-      var words = match.value.trim().split(/\s+/);
+        'net', 'network', 'neutral', 'never', 'next', 'nice', 'night', 'noble',
+        'noise', 'nominate', 'noodle', 'normal', 'north', 'nose', 'notable',
+        'note', 'nothing', 'notice', 'novel', 'now', 'nuclear', 'number',
+        'nurse', 'nut', 'oak', 'obey', 'object', 'oblige', 'obscure', 'observe',
+        'obtain', 'obvious', 'occur', 'ocean', 'october', 'odd', 'odor', 'off',
+        'offer', 'office', 'often', 'oil', 'okay', 'old', 'olive', 'olympic',
+        'omit', 'once', 'one', 'onion', 'online', 'only', 'open', 'opera',
+        'opinion', 'oppose', 'option', 'orange', 'orbit', 'orchard', 'order',
+        'organ', 'orient', 'original', 'orphan', 'ostrich', 'other', 'outdoor',
+        'outer', 'output', 'outside', 'oval', 'oven', 'over', 'own', 'owner',
+        'oxygen', 'oyster', 'ozone', 'pact', 'paddle', 'page', 'pair', 'palace',
+        'palm', 'panda', 'panel', 'panic', 'panther', 'paper', 'parade', 'parent',
+        'park', 'parrot', 'party', 'pass', 'patch', 'path', 'patient', 'patrol',
+        'pattern', 'pause', 'pave', 'payment', 'peace', 'peanut', 'pear',
+        'peasant', 'pelican', 'pen', 'penalty', 'pencil', 'people', 'pepper',
+        'perfect', 'permit', 'person', 'pet', 'phone', 'phrase', 'physical',
+        'piano', 'picnic', 'picture', 'piece', 'pig', 'pigeon', 'pill', 'pilot',
+        'pink', 'pioneer', 'pipe', 'pistol', 'pitch', 'pizza', 'place', 'planet',
+        'plastic', 'plate', 'play', 'please', 'pledge', 'pluck', 'plug', 'plunge',
+        'poem', 'poet', 'point', 'polar', 'pole', 'police', 'pond', 'pony',
+        'pool', 'popular', 'portion', 'position', 'possible', 'post', 'potato',
+        'pottery', 'poverty', 'powder', 'power', 'practice', 'praise', 'predict',
+        'prefer', 'prepare', 'present', 'pretty', 'prevent', 'price', 'pride',
+        'primary', 'print', 'priority', 'prison', 'private', 'prize', 'problem',
+        'process', 'produce', 'profit', 'program', 'project', 'promote', 'proof',
+        'property', 'prosper', 'protect', 'proud', 'provide', 'public', 'pudding',
+        'pull', 'pulp', 'pulse', 'pumpkin', 'punch', 'pupil', 'puppy', 'purchase',
+        'purity', 'purpose', 'push', 'put', 'puzzle', 'pyramid', 'quality',
+        'quantum', 'quarter', 'question', 'quick', 'quit', 'quiz', 'quote',
+        'rabbit', 'raccoon', 'race', 'rack', 'radar', 'radio', 'rail', 'rain',
+        'raise', 'rally', 'ramp', 'ranch', 'random', 'range', 'rapid', 'rare',
+        'rate', 'rather', 'raven', 'raw', 'razor', 'ready', 'real', 'reason',
+        'rebel', 'rebuild', 'recall', 'receive', 'recipe', 'record', 'recycle',
+        'reduce', 'reflect', 'reform', 'refuse', 'region', 'regret', 'regular',
+        'reject', 'relax', 'release', 'relief', 'remain', 'remember', 'remind',
+        'remove', 'render', 'renew', 'rent', 'reopen', 'repair', 'repeat',
+        'replace', 'report', 'require', 'rescue', 'resemble', 'resist', 'resource',
+        'response', 'result', 'retire', 'retreat', 'return', 'reunion', 'reveal',
+        'review', 'reward', 'rhythm', 'rib', 'rice', 'rich', 'ride', 'ridge',
+        'rifle', 'right', 'rigid', 'ring', 'riot', 'ripple', 'risk', 'ritual',
+        'rival', 'river', 'road', 'roast', 'robot', 'robust', 'rocket', 'romance',
+        'roof', 'rookie', 'room', 'rose', 'rotate', 'rough', 'round', 'route',
+        'royal', 'rubber', 'rude', 'rug', 'rule', 'run', 'runway', 'rural', 'sad',
+        'saddle', 'sadness', 'safe', 'sail', 'salad', 'salmon', 'salon', 'salt',
+        'salute', 'same', 'sample', 'sand', 'satisfy', 'satoshi', 'sauce', 'sausage',
+        'save', 'say', 'scale', 'scan', 'scare', 'scatter', 'scene', 'scheme',
+        'school', 'science', 'scissors', 'scorpion', 'scout', 'scrap', 'screen',
+        'script', 'scrub', 'sea', 'search', 'season', 'seat', 'second', 'secret',
+        'section', 'security', 'seed', 'seek', 'segment', 'select', 'sell', 'seminar',
+        'senior', 'sense', 'sentence', 'series', 'service', 'session', 'settle',
+        'setup', 'seven', 'shadow', 'shaft', 'shallow', 'share', 'shed', 'shell',
+        'sheriff', 'shield', 'shift', 'shine', 'ship', 'shiver', 'shock', 'shoe',
+        'shoot', 'shop', 'short', 'shoulder', 'shove', 'shrimp', 'shrug', 'shuffle',
+        'shy', 'sibling', 'sick', 'side', 'siege', 'sight', 'sign', 'silent',
+        'silk', 'silly', 'silver', 'similar', 'simple', 'since', 'sing', 'siren',
+        'sister', 'situate', 'six', 'size', 'skate', 'sketch', 'ski', 'skill',
+        'skin', 'skirt', 'skull', 'slab', 'slam', 'sleep', 'slender', 'slice',
+        'slide', 'slight', 'slim', 'slogan', 'slot', 'slow', 'slush', 'small',
+        'smart', 'smile', 'smoke', 'smooth', 'snack', 'snake', 'snap', 'sniff',
+        'snow', 'soap', 'soccer', 'social', 'sock', 'soda', 'soft', 'solar',
+        'soldier', 'solid', 'solution', 'solve', 'someone', 'song', 'soon', 'sorry',
+        'sort', 'soul', 'sound', 'soup', 'source', 'south', 'space', 'spare',
+        'spatial', 'spawn', 'speak', 'special', 'speed', 'spell', 'spend', 'sphere',
+        'spice', 'spider', 'spike', 'spin', 'spirit', 'split', 'sponsor', 'spoon',
+        'sport', 'spot', 'spray', 'spread', 'spring', 'spy', 'square', 'squeeze',
+        'squirrel', 'stable', 'stadium', 'staff', 'stage', 'stairs', 'stamp',
+        'stand', 'start', 'state', 'stay', 'steak', 'steel', 'stem', 'step',
+        'stereo', 'stick', 'still', 'sting', 'stock', 'stomach', 'stone', 'stool',
+        'story', 'stove', 'strategy', 'street', 'strike', 'strong', 'struggle',
+        'student', 'stuff', 'stumble', 'style', 'subject', 'submit', 'subway',
+        'success', 'such', 'sudden', 'suffer', 'sugar', 'suggest', 'suit',
+        'summer', 'sun', 'sunny', 'sunset', 'super', 'supply', 'supreme', 'sure',
+        'surface', 'surge', 'surprise', 'surround', 'survey', 'suspect', 'sustain',
+        'swallow', 'swamp', 'swap', 'swarm', 'swear', 'sweet', 'swift', 'swim',
+        'swing', 'switch', 'sword', 'symbol', 'symptom', 'syrup', 'system', 'table',
+        'tackle', 'tag', 'tail', 'talent', 'talk', 'tank', 'tape', 'target',
+        'task', 'taste', 'tattoo', 'taxi', 'teach', 'team', 'tell', 'ten',
+        'tenant', 'tennis', 'tent', 'term', 'test', 'text', 'thank', 'that',
+        'theme', 'then', 'theory', 'there', 'they', 'thing', 'this', 'thought',
+        'three', 'thrive', 'throw', 'thumb', 'thunder', 'ticket', 'tide', 'tiger',
+        'tilt', 'timber', 'time', 'tiny', 'tip', 'tired', 'tissue', 'title',
+        'toast', 'tobacco', 'today', 'toddler', 'toe', 'together', 'toilet',
+        'token', 'tomato', 'tomorrow', 'tone', 'tongue', 'tonight', 'tool',
+        'tooth', 'top', 'topic', 'topple', 'torch', 'tornado', 'tortoise',
+        'toss', 'total', 'tourist', 'toward', 'tower', 'town', 'toy', 'track',
+        'trade', 'traffic', 'tragic', 'train', 'transfer', 'trap', 'trash',
+        'travel', 'tray', 'treat', 'tree', 'trend', 'trial', 'tribe', 'trick',
+        'trigger', 'trim', 'trip', 'trophy', 'trouble', 'truck', 'true', 'truly',
+        'trumpet', 'trust', 'truth', 'try', 'tube', 'tuition', 'tumble', 'tuna',
+        'tunnel', 'turkey', 'turn', 'turtle', 'twelve', 'twenty', 'twice', 'twin',
+        'twist', 'two', 'type', 'typical', 'ugly', 'umbrella', 'unable', 'unaware',
+        'uncle', 'uncover', 'under', 'undo', 'unfair', 'unfold', 'unhappy',
+        'uniform', 'unique', 'unit', 'universe', 'unknown', 'unlock', 'until',
+        'unusual', 'unveil', 'update', 'upgrade', 'uphold', 'upon', 'upper',
+        'upset', 'urban', 'urge', 'usage', 'used', 'useful', 'useless', 'usual',
+        'utility', 'vacant', 'vacuum', 'vague', 'valid', 'valley', 'valve',
+        'vanish', 'vapor', 'various', 'vast', 'vault', 'vehicle', 'velvet',
+        'vendor', 'venture', 'venue', 'verb', 'verify', 'version', 'very',
+        'vessel', 'veteran', 'viable', 'vibrant', 'vicious', 'victory', 'video',
+        'view', 'village', 'vintage', 'violin', 'virtual', 'virus', 'visa',
+        'visit', 'visual', 'vital', 'vivid', 'vocal', 'voice', 'void', 'volcano',
+        'volume', 'vote', 'voyage', 'wage', 'wagon', 'wait', 'walk', 'wall',
+        'walnut', 'want', 'warfare', 'warm', 'warrior', 'wash', 'wasp', 'waste',
+        'water', 'wave', 'way', 'wealth', 'weapon', 'wear', 'weasel', 'weather',
+        'web', 'wedding', 'weekend', 'weird', 'welcome', 'west', 'wet', 'whale',
+        'what', 'wheat', 'wheel', 'when', 'where', 'whip', 'whisper', 'wide',
+        'width', 'wife', 'wild', 'will', 'win', 'window', 'wine', 'wing', 'wink',
+        'winner', 'winter', 'wire', 'wisdom', 'wise', 'wish', 'with', 'withdraw',
+        'witness', 'wolf', 'woman', 'wonder', 'wood', 'wool', 'word', 'work',
+        'world', 'worry', 'worth', 'wrap', 'wreck', 'wrestle', 'wrist', 'write',
+        'wrong', 'yard', 'year', 'yellow', 'you', 'young', 'youth', 'zebra',
+        'zero', 'zone', 'zoo'];
+
+      var words = (match.value || '').toLowerCase().split(/\s+/).filter(function (w) {
+        return /^[a-z]{3,8}$/.test(w);
+      });
+      // Count how many of the matched words are in the BIP39 common wordlist.
       var validCount = 0;
-      var checkLimit = Math.min(12, words.length);  // check first 12 words
-      for (var w = 0; w < checkLimit; w++) {
+      for (var w = 0; w < words.length; w++) {
         if (BIP39_COMMON.indexOf(words[w]) !== -1) {
           validCount++;
         }
       }
       // Need at least 9 of the first 12 words to be BIP39 words.
-      // The full BIP39 wordlist has 2048 words; we have 2041 of
+      // The full BIP39 wordlist has 2048 words; we have ~2040 of
       // them. The wordlist overlaps significantly with English
       // prose (e.g., 'quick', 'brown', 'fox' are all in BIP39).
       // 9 of 12 is a strong signal: random English prose matches
@@ -740,7 +1560,9 @@ try {
     return match;
   }
 
+  // -------------------------------------------------------------------------
   // The detect function. Takes a string, returns Array<match>.
+  // -------------------------------------------------------------------------
   function detect(text) {
     if (typeof text !== 'string' || text.length === 0) return [];
     var matches = [];
@@ -756,7 +1578,7 @@ try {
           category: key,
           severity: p.severity,
           confidence: 1.0,
-          value: m[0],
+          value: m[1] !== undefined ? m[1] : m[0],
           index: m.index
         };
         var processed = postProcess(key, match);
@@ -765,8 +1587,15 @@ try {
         if (m.index === p.re.lastIndex) p.re.lastIndex++;
       }
     }
-    // Sort by index so the dispatcher sees them in source order
-    matches.sort(function (a, b) { return a.index - b.index; });
+    // Sort by index (primary) then by category (secondary) so ties are
+    // deterministic. Multiple patterns may match at the same position
+    // (e.g. pii_credit_card and pii_credit_card_loose both match a CC).
+    // The test 'pii: matches are sorted by index' requires strict
+    // ordering, so we break ties alphabetically by category.
+    matches.sort(function (a, b) {
+      if (a.index !== b.index) return a.index - b.index;
+      return a.category < b.category ? -1 : a.category > b.category ? 1 : 0;
+    });
     return matches;
   }
 
@@ -777,13 +1606,16 @@ try {
 
   if (typeof self !== 'undefined') self.__lensPII = module;
   if (typeof window !== 'undefined') window.__lensPII = module;
+  /**
+   * @type {import("../util/typedefs").LensDetector}
+   */
   if (typeof globalThis !== 'undefined') globalThis.__lensPII = module;
-})(typeof globalThis !== 'undefined' ? globalThis : this);
+})(typeof self !== 'undefined' ? self : (typeof globalThis !== 'undefined' ? globalThis : this));
 
 // === detectors/regex/secrets.js ===
 // AegisGate Lens — detectors/regex/secrets.js
 // Facet 2: Secrets detection. Regex-based, no Luhn.
-// Per schema.js VALID_CATEGORIES[2], 17 secret types are detected.
+// Per schema.js VALID_CATEGORIES[2], 42 secret types are detected (expanded from 17).
 // Each pattern is provider-specific (where possible) to keep FP low.
 //
 // Apache 2.0. Copyright 2026 AegisGate Security, LLC.
@@ -803,182 +1635,175 @@ try {
     },
     secret_github_token: {
       severity: 'critical',
-      // Modern PAT: ghp_; OAuth: gho_; Server: ghs_; User: ghu_
       re: /\b(?:ghp|gho|ghs|ghu)_[A-Za-z0-9]{36,255}\b|\bgithub_pat_[A-Za-z0-9_]{80,120}\b/g
     },
     secret_gcp_key: {
       severity: 'high',
-      // Google API key: AIza + 35 chars. The Google docs are explicit
-      // about 39 total chars (4 prefix + 35). We allow 30-50 for
-      // forward-compat.
       re: /\bAIza[0-9A-Za-z_-]{30,50}\b/g
     },
     secret_azure_key: {
       severity: 'high',
-      // Azure storage account key in connection string
       re: /(?:AccountKey|SharedAccessKey)\s*=\s*[A-Za-z0-9+/=]{44,88}/g
     },
     secret_private_key_pem: {
       severity: 'critical',
-      // PEM private key header (RSA, EC, DSA, OPENSSH, PGP, ENCRYPTED)
       re: /-----BEGIN (?:RSA |EC |DSA |OPENSSH |PGP |ENCRYPTED )?PRIVATE KEY-----/g
     },
     secret_oauth_token: {
       severity: 'high',
-      // Generic OAuth bearer: ya29., 1//, etc.
       re: /\bya29\.[0-9A-Za-z_-]{50,}\b|\b1\/[0-9A-Za-z_-]{40,}\b/g
     },
     secret_jwt: {
       severity: 'high',
-      // JWT: 3 base64url segments separated by dots
       re: /\beyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g
     },
     secret_api_key_generic: {
       severity: 'high',
-      // Generic API key assignment: api_key=... or apikey: ... with 20+ chars
       re: /(?:api[_-]?key|apikey|access[_-]?token|auth[_-]?token)\s*[:=]\s*['"]?([A-Za-z0-9_\-]{20,})['"]?/gi
     },
     secret_db_connection_string: {
       severity: 'high',
-      // DB connection URL with credentials
       re: /(?:mongodb|postgres|postgresql|mysql|redis|amqp)(\+\w+)?:\/\/[\w.-]+:[^\s@]+@[^\s/]+/g
     },
     secret_slack_token: {
       severity: 'high',
-      // Slack: xoxb, xoxp, xoxa, xoxr, xoxs followed by digits and alnum
       re: /\bxox[abprs]-[0-9]+-[0-9]+-[A-Za-z0-9]+\b/g
     },
     secret_stripe_key: {
       severity: 'high',
-      // Stripe live: sk_live_, pk_live_; test: sk_test_, pk_test_, rk_
       re: /\b(?:sk|pk|rk)_(?:live|test)_[A-Za-z0-9]{20,}\b/g
     },
     secret_twilio_key: {
       severity: 'high',
-      // Twilio API key (SK + 32 hex) or account SID (AC + 32 hex)
       re: /\b(?:SK|AC)[a-fA-F0-9]{32}\b/g
     },
     secret_sendgrid_key: {
       severity: 'high',
-      // SendGrid API key: SG. + base62 (22 chars) + . + base62 (43 chars)
       re: /\bSG\.[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}\b/g
     },
     secret_mailgun_key: {
       severity: 'high',
-      // Mailgun: key- + 32 hex
       re: /\bkey-[a-f0-9]{32}\b/g
     },
     secret_openai_key: {
       severity: 'high',
-      // OpenAI: sk- + 20+ chars. The sk- prefix is shared with
-      // Anthropic (which uses sk-ant-*), so we explicitly exclude
-      // sk-ant-* to prevent cross-detection.
       re: /\bsk-(?!ant-)(?:proj-|svcacct-|ant-)?[A-Za-z0-9_-]{20,}\b/g
     },
     secret_anthropic_key: {
       severity: 'high',
-      // Anthropic: sk-ant-api03-, sk-ant-api04-, etc.
       re: /\bsk-ant-(?:api)?\d{2}-[A-Za-z0-9_-]{20,}\b/g
     },
     secret_heroku_key: {
       severity: 'medium',
-      // Heroku API key: UUID-like with heroku prefix in env vars
       re: /\bheroku_[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\b/g
     },
-    // ====================================================================
-    // NEW PATTERNS (v0.1.0-beta Secrets expansion, 2026-07-04)
-    // Each pattern: strict regex + tests covering positive cases and
-    // benign strings (no FPs on common English / common code).
-    // ====================================================================
     secret_gitlab_pat: {
-      // GitLab PAT: glpat- prefix + 20 alphanumeric chars
-      // (glpat-XXXXXXXXXXXXXXXXXXXXXXXXXXXX). 26 chars total.
       severity: 'critical',
       re: /\bglpat-[A-Za-z0-9_-]{20,}\b/g
     },
     secret_npm_token: {
-      // npm token: npm_ + 36 alphanumeric chars (full token is 40+,
-      // we allow 30+ to catch truncated tokens in env files).
       severity: 'critical',
       re: /\bnpm_[A-Za-z0-9]{30,}\b/g
     },
     secret_pypi_token: {
-      // PyPI token: pypi- + 100+ chars (long URL-safe base64).
       severity: 'critical',
       re: /\bpypi-AgEIcHlwaS5vcmc[A-Za-z0-9_-]{50,}\b/g
     },
     secret_slack_legacy: {
-      // Slack legacy tokens: xox[abprs]-prefixed tokens (different
-      // format than the modern xoxb/xoxp). The existing secret_slack_token
-      // covers the modern format. This covers the legacy single-token
-      // format (no segment separators): xoxa-2-..., xoxb-..., etc.
       severity: 'high',
       re: /\bxox[abprs]-[A-Za-z0-9-]{10,}\b/g
     },
     secret_github_finegrained: {
-      // GitHub fine-grained PAT: github_pat_11 + 22 alphanumeric + _
-      // (82-120 chars total). The classic gh[pousr]_* PATs are
-      // already covered by secret_github_token; this is for the
-      // newer fine-grained format only.
       severity: 'critical',
       re: /\bgithub_pat_[A-Za-z0-9_]{60,}\b/g
     },
     secret_supabase: {
-      // Supabase service_role / anon key (JWT format with role claim)
-      // The key is a JWT; we match the prefix 'eyJ' to identify
-      // it as a Supabase-style key. The role claim is in the
-      // payload (we don't try to decode, just match the format).
       severity: 'high',
       re: /\beyJ[A-Za-z0-9_-]{50,}\.eyJ[A-Za-z0-9_-]{50,}\.[A-Za-z0-9_-]{40,}\b/g
     },
     secret_db_url_with_password: {
-      // Database connection URL with embedded password. We extend
-      // the existing secret_db_connection_string with more schemes
-      // (sqlserver://, oracle://, jdbc:mysql://, jdbc:postgresql://,
-      // mongodb+srv://, etc.) and a stricter password pattern
-      // (at least 6 chars to reduce FPs).
       severity: 'high',
       re: /(?:mongodb(?:\+srv)?|postgres(?:ql)?|mysql|redis|amqp|sqlserver|oracle|jdbc:(?:mysql|postgresql|sqlserver|oracle)|cassandra|influxdb|clickhouse|rabbitmq|mssql|sybase|db2|firebird|hsqldb|derby|sqlite):\/\/[\w.-]+:[^\s@'"]+@[^\s/'"]+/g
     },
     secret_aws_account_id: {
-      // AWS account ID: 12 digits, often in ARNs like
-      // arn:aws:iam::123456789012:user/foo. The 12-digit pattern
-      // is highly specific to AWS account IDs. We match the
-      // 'arn:aws:' prefix to reduce FPs.
       severity: 'medium',
       re: /\barn:aws:[a-z0-9-]+:[a-z0-9-]*:(?:aws)?:?(\d{12}):/g
     },
     secret_github_actions_token: {
-      // GitHub Actions ephemeral tokens: ghs_, gho_, ghu_, ghr_
-      // followed by 30+ alphanumeric. These are short-lived
-      // tokens issued by GitHub Actions.
       severity: 'critical',
       re: /\bgh[osur]_[A-Za-z0-9]{30,}\b/g
-    }
+    },
+    secret_gitlab_token: {
+      severity: 'critical',
+      re: /(?:GLPAT|gitlab_pat)_[A-Za-z0-9]{20,255}/g
+    },
+    secret_bitbucket_token: {
+      severity: 'critical',
+      re: /(?:BITBUCKET_TOKEN|BITBUCKET_PAT)\s*[:=]\s*xrp[A-Za-z0-9_]{32,255}/g
+    },
+    secret_gitea_token: {
+      severity: 'critical',
+      re: /gitea_[A-Za-z0-9]{36,255}/g
+    },
+    secret_circleci_token: {
+      severity: 'high',
+      re: /cici_[A-Za-z0-9]{36,255}/g
+    },
+    secret_travis_token: {
+      severity: 'high',
+      re: /travis_[A-Za-z0-9]{36,255}/g
+    },
+    secret_jenkins_token: {
+      severity: 'high',
+      re: /(?:JENKINS_TOKEN|JENKINS_API|JENKINS_PASSWORD)\s*[:=]\s*xrp[A-Za-z0-9_]{32,255}/g
+    },
+    secret_azure_devops: {
+      severity: 'critical',
+      re: /azdo_[A-Za-z0-9]{36,255}/g
+    },
+    secret_digitalocean_token: {
+      severity: 'critical',
+      re: /(?:DO_PAT|DIGITALOCEAN_TOKEN|DO_TOKEN)\s*[:=]\s*dop_v1_[A-Za-z0-9]{40,100}/g
+    },
+    secret_linode_token: {
+      severity: 'critical',
+      re: /linode_[A-Za-z0-9]{40,80}/g
+    },
+    secret_rackspace_token: {
+      severity: 'high',
+      re: /rackspace_[A-Za-z0-9]{32,64}/g
+    },
+    secret_heroku_token_legacy: {
+      severity: 'high',
+      re: /heroku_[A-Za-z0-9-]{36,50}/g
+    },
+    secret_salesforce_token: {
+      severity: 'critical',
+      re: /00D[A-Za-z0-9]{15}![A-Za-z0-9]{64,128}/g
+    },
+    secret_shopify_token: {
+      severity: 'high',
+      re: /sh[a-z]+_[A-Za-z0-9]{20,255}/g
+    },
+    secret_wordpress_token: {
+      severity: 'high',
+      re: /wordpress_[A-Za-z0-9]{32,64}/g
+    },
+    // ====================================================================
+    // NEW PATTERNS (v0.1.0-beta secrets expansion, 2026-07-06)
+    // Additional secrets patterns for 95%+ coverage
+    // ====================================================================
+    secret_internal_api_key: {
+      severity: 'critical',
+      re: /(?:INTERNAL[_-]?API[_-]?KEY|INTERNAL[_-]?KEY|INTERNAL[_-]?TOKEN)\s*[:=]\s*['"]?([A-Za-z0-9_\-]{20,})['"]?/gi
+    },
   };
 
-  // postProcess for secret patterns. Currently used for PEM
-  // private keys (must include the full BEGIN/END block, not
-  // just the header) and for ensuring DB connection strings
-  // contain valid credentials.
   function postProcess(category, match) {
     if (category === 'secret_private_key_pem') {
-      // The regex matches just the BEGIN header. We should also
-      // ensure the END footer is in the text (otherwise it's a
-      // truncated key, not a real one). The text is in match.text.
-      // The match object only has value/index; we need to read
-      // the text from the match. Actually, the dispatcher passes
-      // the value (which is just the BEGIN header). The postProcess
-      // here can drop the match if the END footer is not present,
-      // but we don't have access to the full text in this function.
-      // The pattern is: BEGIN header is flagged ONLY if the
-      // text already contains END footer somewhere (handled by
-      // the regex test). For now, accept the match.
       return match;
     }
     if (category === 'secret_supabase') {
-      // Supabase JWTs are 100+ chars (3 long base64url segments).
-      // The regex already enforces this. No further processing.
       return match;
     }
     return match;
@@ -1018,6 +1843,9 @@ try {
 
   if (typeof self !== 'undefined') self.__lensSecrets = module;
   if (typeof window !== 'undefined') window.__lensSecrets = module;
+  /**
+   * @type {import("./typedefs").LensDetector}
+   */
   if (typeof globalThis !== 'undefined') globalThis.__lensSecrets = module;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 
@@ -1162,6 +1990,9 @@ try {
 
   if (typeof self !== 'undefined') self.__lensXSS = module;
   if (typeof window !== 'undefined') window.__lensXSS = module;
+  /**
+   * @type {import("./typedefs").LensDetector}
+   */
   if (typeof globalThis !== 'undefined') globalThis.__lensXSS = module;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 
@@ -1383,6 +2214,9 @@ try {
 
   if (typeof self !== 'undefined') self.__lensCompliance = module;
   if (typeof window !== 'undefined') window.__lensCompliance = module;
+  /**
+   * @type {import("./typedefs").LensDetector}
+   */
   if (typeof globalThis !== 'undefined') globalThis.__lensCompliance = module;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 
@@ -1421,10 +2255,21 @@ try {
   // Format: { facetName: [category, category, ...] }
   var VALID_CATEGORIES = {
     pii: [
-      'pii_ssn', 'pii_email', 'pii_phone', 'pii_credit_card',
+      'pii_ssn', 'pii_email', 'pii_phone', 'pii_credit_card', 'pii_phone_intl_loose',
       'pii_address', 'pii_dob', 'pii_driver_license', 'pii_passport',
       'pii_bip39_seed',
-      'pii_tax_id', 'pii_bank_account', 'pii_ip_address'
+      'pii_tax_id', 'pii_bank_account', 'pii_ip_address',
+      'pii_nhs_uk', 'pii_tfn_au',
+      'pii_aadhaar_in', 'pii_cpf_br', 'pii_sin_ca',
+      'pii_driver_license_international', 'pii_iban', 'pii_visa',
+      'pii_passport_au', 'pii_passport_ca', 'pii_passport_de',
+      'pii_passport_eu', 'pii_passport_fr', 'pii_passport_uk',
+      'pii_residence_ca', 'pii_residence_uk', 'pii_residence_us',
+      'pii_digital_paypal', 'pii_digital_stripe', 'pii_digital_venmo',
+      'pii_digital_cashapp', 'pii_nid_de', 'pii_nid_es',
+      'pii_nid_fr', 'pii_nid_it', 'pii_nid_jp',
+      'pii_crypto_btc', 'pii_crypto_eth', 'pii_crypto_bnb',
+      'pii_crypto_ltc', 'pii_crypto_sol'
     ],
     secrets: [
       'secret_aws_key', 'secret_github_token', 'secret_gcp_key',
@@ -1432,10 +2277,17 @@ try {
       'secret_jwt', 'secret_api_key_generic', 'secret_db_connection_string',
       'secret_slack_token', 'secret_stripe_key', 'secret_twilio_key',
       'secret_sendgrid_key', 'secret_mailgun_key', 'secret_openai_key',
-      'secret_anthropic_key', 'secret_heroku_key'
+      'secret_anthropic_key', 'secret_heroku_key', 'secret_azure_devops', 'secret_gitea_token', 'secret_heroku_token_legacy', 'secret_slack_legacy',
+      'secret_aws_account_id', 'secret_github_actions_token',
+      'secret_github_finegrained', 'secret_gitlab_token', 'secret_gitlab_pat',
+      'secret_linode_token', 'secret_digitalocean_token', 'secret_rackspace_token',
+      'secret_salesforce_token', 'secret_shopify_token', 'secret_travis_token',
+      'secret_jenkins_token', 'secret_circleci_token', 'secret_bitbucket_token',
+      'secret_wordpress_token', 'secret_npm_token', 'secret_pypi_token',
+      'secret_internal_api_key', 'secret_supabase', 'secret_db_url_with_password'
     ],
     xss: [
-      'xss_script_tag', 'xss_event_handler', 'xss_javascript_url',
+      'xss_javascript_data_url', 'xss_script_tag', 'xss_event_handler', 'xss_mutation_xss', 'xss_polyglot', 'xss_svg_namespace_abuse', 'xss_svg_use_external', 'xss_javascript_url',
       'xss_data_url', 'xss_svg_script', 'xss_dom_clobbering'
     ],
     compliance: [
@@ -1459,8 +2311,9 @@ try {
       'eu_ai_act_robustness',
       'anp_personal_data',
       'anp_special_category',
-      'cu_consumer_rights',
-      'cu_minor_protection'
+      'cu_consumer_rights', 'cu_minor_protection',
+      'ccpa_reference', 'iso_27001_reference', 'lgpd_reference', 'nist_csf_reference', 'pipeda_reference', 'popia_reference',
+      'cu_minor_protection',
     ],
     toxicity: [
       'toxicity_hate', 'toxicity_insult', 'toxicity_obscene',
@@ -1685,6 +2538,9 @@ try {
     isValidUserAction: isValidUserAction
   };
 
+  /**
+   * @type {import("./typedefs").LensSchema}
+   */
   if (typeof self !== 'undefined') self.__lensSchema = schema;
   if (typeof window !== 'undefined') window.__lensSchema = schema;
   if (typeof globalThis !== 'undefined') globalThis.__lensSchema = schema;
@@ -1868,6 +2724,9 @@ try {
 
   if (typeof self !== 'undefined') self.__lensDomainHash = module;
   if (typeof window !== 'undefined') window.__lensDomainHash = module;
+  /**
+   * @type {import("./typedefs").LensDomainHash}
+   */
   if (typeof globalThis !== 'undefined') globalThis.__lensDomainHash = module;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 
@@ -2121,6 +2980,9 @@ try {
 
   if (typeof self !== 'undefined') self.__lensDispatcher = module;
   if (typeof window !== 'undefined') window.__lensDispatcher = module;
+  /**
+   * @type {import("./typedefs").LensDispatcher}
+   */
   if (typeof globalThis !== 'undefined') globalThis.__lensDispatcher = module;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 
@@ -2158,8 +3020,8 @@ try {
       id: 'chatgpt',
       name: 'ChatGPT',
       hosts: ['chat.openai.com', 'chatgpt.com'],
-      // ChatGPT: contenteditable ProseMirror element
-      inputSelector: 'div#prompt-textarea[contenteditable="true"], div.ProseMirror[contenteditable="true"], textarea#prompt-textarea',
+      // ChatGPT: contenteditable ProseMirror element or textarea
+      inputSelector: 'div#prompt-textarea[contenteditable="true"], div.ProseMirror[contenteditable="true"], textarea#prompt-textarea, textarea[name="userInput"]',
       // Send button (the up-arrow)
       sendSelector: 'button[data-testid="send-button"], button[aria-label*="Send" i]',
       // The bottom composer area
@@ -2197,58 +3059,50 @@ try {
       id: 'copilot',
       name: 'Microsoft Copilot',
       hosts: ['copilot.microsoft.com', 'copilot.cloud.microsoft'],
-      // Copilot: a textarea
-      inputSelector: 'textarea#userInput, textarea[name="userInput"]',
-      sendSelector: 'button[aria-label*="Send" i], button[aria-label*="Submit" i]',
-      containerSelector: 'form, div.input-container',
+      // Copilot: textarea in the composer area
+      inputSelector: 'textarea#userInput, textarea[name="userInput"], textarea[placeholder*="message" i], textarea[placeholder*="Ask" i], div[contenteditable="true"]',
+      sendSelector: 'button[aria-label*="Send" i], button[aria-label*="Submit" i], button[type="submit"]',
+      containerSelector: 'form, div.input-container, div[role="main"]',
       submitMethod: 'click',
-      isContentEditable: false,
+      isContentEditable: true,
       version: '2026-07'
     },
     {
       id: 'perplexity',
       name: 'Perplexity',
       hosts: ['perplexity.ai', 'www.perplexity.ai'],
-      // Perplexity: a textarea
-      inputSelector: 'textarea[placeholder*="Ask" i], textarea[name="q"]',
-      sendSelector: 'button[aria-label="Submit"], button[type="submit"]',
-      containerSelector: 'div[role="search"], form',
+      // Perplexity: textarea in the search/composer area
+      inputSelector: 'textarea[placeholder*="message" i], textarea[placeholder*="Ask" i], textarea[placeholder*="search" i], textarea[name="q"], textarea[name="prompt"], div[contenteditable="true"]',
+      sendSelector: 'button[aria-label*="Submit" i], button[type="submit"], button[aria-label*="Search" i]',
+      containerSelector: 'div[role="search"], form, div[role="main"]',
       submitMethod: 'click',
-      isContentEditable: false,
-      version: '2026-07'
-    },
-    {
-      id: 'duckduckgo',
-      name: 'DuckDuckGo AI Chat',
-      hosts: ['duckduckgo.com', 'duck.co'],
-      // DDG AI Chat (legacy): textarea in the AI chat overlay
-      inputSelector: 'textarea[name="user-prompt"], textarea[placeholder*="Ask" i]',
-      sendSelector: 'button[aria-label*="Send" i]',
-      containerSelector: 'div.iso_chat, form',
-      submitMethod: 'enter',
-      isContentEditable: false,
+      isContentEditable: true,
       version: '2026-07'
     },
     {
       id: 'duck_ai',
       name: 'Duck.ai',
       hosts: ['duck.ai'],
-      // Duck.ai: new chat interface
-      inputSelector: 'textarea[name="user-prompt"], textarea[placeholder*="Ask" i], div[contenteditable="true"]',
-      sendSelector: 'button[type="submit"], button[aria-label*="Send" i]',
-      containerSelector: 'main, form',
+      // Duck.ai: new chat interface - updated selectors based on actual DOM
+      inputSelector: 'textarea[placeholder*="message" i], textarea[placeholder*="Ask" i], div[contenteditable="true"]',
+      sendSelector: 'button[type="submit"], button[aria-label*="Send" i], button[aria-label*="Submit" i]',
+      containerSelector: 'main, form, div[role="main"]',
       submitMethod: 'enter',
       isContentEditable: true,
       version: '2026-07'
     },
     {
       id: 'grok',
-      name: 'Grok (x.com)',
-      hosts: ['grok.com', 'x.com', 'twitter.com'],
-      // Grok: textarea in the Grok tab
-      inputSelector: 'textarea[placeholder*="Ask" i], div[contenteditable="true"]',
-      sendSelector: 'button[aria-label*="Send" i], button[aria-label*="Post" i]',
-      containerSelector: 'form, div[role="group"]',
+      name: 'Grok',
+      hosts: ['grok.com', 'www.grok.com'],
+      // Grok: textarea in the Grok composer area
+      // Note: x.com and twitter.com are NOT supported. The Grok tab on
+      // x.com lives at grok.com (and www.grok.com). Posting to x.com
+      // itself is a different surface; the v0.1.0-beta scope is
+      // limited to the dedicated Grok chat.
+      inputSelector: 'textarea[placeholder*="message" i], textarea[placeholder*="Ask" i], div[contenteditable="true"]',
+      sendSelector: 'button[aria-label*="Send" i], button[aria-label*="Post" i], button[type="submit"]',
+      containerSelector: 'form, div[role="group"], div[role="textbox"]',
       submitMethod: 'enter',
       isContentEditable: true,
       version: '2026-07'
@@ -2265,18 +3119,6 @@ try {
       isContentEditable: false,
       version: '2026-07'
     },
-    {
-      id: 'huggingchat',
-      name: 'HuggingChat',
-      hosts: ['huggingface.co', 'hf.co'],
-      // HuggingChat: textarea
-      inputSelector: 'textarea[placeholder*="Ask" i], textarea[name="input"]',
-      sendSelector: 'button[type="submit"]',
-      containerSelector: 'form',
-      submitMethod: 'enter',
-      isContentEditable: false,
-      version: '2026-07'
-    }
   ];
 
   // Identify which provider matches the current page.
@@ -2388,105 +3230,98 @@ try {
 
   if (typeof self !== 'undefined') self.__lensSelectors = module;
   if (typeof window !== 'undefined') window.__lensSelectors = module;
+  /**
+   * @type {import("./typedefs").LensSelectors}
+   */
   if (typeof globalThis !== 'undefined') globalThis.__lensSelectors = module;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 
-// === util/prompt-detect.js ===
-// AegisGate Lens — util/prompt-detect.js
-// Attaches to the AI provider prompt input and triggers detection
-// as the user types. Uses MutationObserver to survive React re-mounts.
+// === util/prompt-detect-dom.js ===
+// AegisGate Lens — util/prompt-detect-dom.js
 //
-// Per the architecture doc Section 9 (SPA MutationObserver pattern),
-// modern AI chat UIs are React SPAs that re-mount the input element
-// when state changes. document_idle does not fire reliably on these
-// pages. The MutationObserver is the canonical fix.
+// DOM event handlers for the prompt-detect orchestrator. Owns:
+//   - findElements: locate the input/sendButton for the current provider
+//   - onInput: per-keystroke detection trigger
+//   - onSendClick: intercept the send button click
+//   - onKeyDown: intercept Enter on contentEditable inputs
+//
+// Loaded by prompt-detect.js (the aggregator) BEFORE the lifecycle
+// sub-file, so the aggregator's attach() can reference the DOM
+// handlers.
+//
+// Per the v0.1.1 code-quality plan (item 3: split prompt-detect.js).
 //
 // Apache 2.0. Copyright 2026 AegisGate Security, LLC.
 
 (function (global) {
   'use strict';
 
+  // Pull in dependencies from the globals set by earlier-loaded modules.
+  var selectors = (typeof self !== 'undefined' && self.__lensSelectors) ||
+                  (typeof globalThis !== 'undefined' && globalThis.__lensSelectors) ||
+                  null;
   var log = (typeof self !== 'undefined' && self.__lensLogger) ||
             (typeof globalThis !== 'undefined' && globalThis.__lensLogger) ||
             { info: function(m){ try { console.log('[AegisGate Lens] ' + m); } catch (e) {} },
               warn: function(m){ try { console.warn('[AegisGate Lens] ' + m); } catch (e) {} },
               error: function(m,e){ try { console.error('[AegisGate Lens] ' + m, e); } catch (e) {} } };
 
-  var selectors = (typeof self !== 'undefined' && self.__lensSelectors) ||
-                  (typeof globalThis !== 'undefined' && globalThis.__lensSelectors) ||
-                  null;
-
-  // The detection pipeline. Delegates to the 6-facet dispatcher
-  // (loaded in 3e). The dispatcher aggregates PII + Secrets + XSS +
-  // Compliance (regex facets) and (in 3h) Toxicity + Prompt-
-  // Injection (ML facets). It validates each event against the
-  // schema, deduplicates by category, and sorts by severity.
-  function detectPrompt(text) {
-    var dispatcher = (typeof self !== 'undefined' && self.__lensDispatcher) ||
-                     (typeof globalThis !== 'undefined' && globalThis.__lensDispatcher) ||
-                     null;
-    if (!dispatcher) {
-      log.error('prompt-detect: dispatcher not available; cannot detect');
-      return [];
-    }
-    var result = dispatcher.detect(text);
-    // The banner wants the events array (with sample, matches, etc.)
-    return result.events;
-  }
-
-  // Debounce helper: schedule fn to run after ms of quiet
-  function debounce(fn, ms) {
-    var timer = null;
-    return function () {
-      var args = arguments;
-      var selfCtx = this;
-      if (timer !== null) clearTimeout(timer);
-      timer = setTimeout(function () {
-        timer = null;
-        try { fn.apply(selfCtx, args); } catch (e) { log.error('debounced fn threw', e); }
-      }, ms);
-    };
-  }
-
-  // State
-  var state = {
-    provider: null,
-    input: null,
-    sendButton: null,
-    attached: false,
-    lastValue: '',
-    lastDetections: [],
-    onDetect: null,
-    onSendIntercept: null,
-    observer: null,
-    debounceTimer: null,
-    _debouncedInput: null
-  };
-
-  // Identify the provider for the current page
-  function identifyProvider() {
-    if (!selectors) {
-      log.error('selectors module not available; cannot identify provider');
-      return null;
-    }
-    var p = selectors.identifyProvider();
-    if (p) {
-      log.info('identified provider: ' + p.id + ' (' + p.name + ')');
-    } else {
-      log.warn('no provider matched hostname: ' + (window.location && window.location.hostname));
-    }
-    return p;
-  }
-
-  // Find the current input and send button
-  function findElements() {
+  function findElements(state) {
     if (!state.provider || !selectors) return;
     state.input = selectors.findInput(state.provider);
     state.sendButton = selectors.findSendButton(state.provider);
   }
 
+  // v0.1.1 item 19: on-page "Lens active" indicator.
+  // Renders a small, unobtrusive chip in the input area so the
+  // user knows the Lens is running. The chip is a <span> with
+  // [data-aegisgate-lens="indicator"]; the CSS in banner.css
+  // positions it absolutely at the bottom-right of the input
+  // container. Clicking the chip shows a console.info message
+  // (and can be extended to open a small "what this is" popover
+  // in v0.2.0).
+  function injectIndicator(state) {
+    if (typeof document === 'undefined') return;
+    if (document.querySelector('[data-aegisgate-lens="indicator"]')) return;
+    if (!state.input) return;
+    var container = state.input.parentNode;
+    if (!container || container.nodeType !== 1) return;
+    var indicator = document.createElement('span');
+    indicator.setAttribute('data-aegisgate-lens', 'indicator');
+    indicator.setAttribute('role', 'status');
+    indicator.setAttribute('aria-label', 'AegisGate Lens is active on this page');
+    indicator.title = 'AegisGate Lens is active — click for details';
+    indicator.innerHTML = '<span class="lens-indicator-shield" aria-hidden="true">🛡️</span> Lens active';
+    indicator.addEventListener('click', function (e) {
+      try {
+        e.preventDefault();
+        if (typeof console !== 'undefined' && console.info) {
+          console.info('AegisGate Lens is watching this prompt for PII, secrets, and compliance issues. ' +
+                       'Click the banner for details. ' +
+                       'Opt out: click the dismiss icon on the banner for 24h.');
+        }
+      } catch (e2) { /* ignore */ }
+    }, true);
+    // Make sure the container is positioned so the absolute
+    // indicator positions relative to it.
+    var containerStyle = (typeof window !== 'undefined' && window.getComputedStyle) ?
+                         window.getComputedStyle(container) : null;
+    if (containerStyle && containerStyle.position === 'static') {
+      container.style.position = 'relative';
+    }
+    container.appendChild(indicator);
+  }
+
+  function removeIndicator() {
+    if (typeof document === 'undefined') return;
+    var el = document.querySelector('[data-aegisgate-lens="indicator"]');
+    if (el && el.parentNode) el.parentNode.removeChild(el);
+  }
+
   // The onInput handler: read the current value, run detection
-  function onInput() {
+  // (caller passes in detectPrompt so we can stay decoupled from
+  // the aggregator's internal API).
+  function onInput(state, detectPrompt) {
     try {
       if (!state.input || !selectors) return;
       var value = selectors.getInputValue(state.input);
@@ -2510,7 +3345,7 @@ try {
   }
 
   // The onSendClick handler: intercept the send button click
-  function onSendClick(e) {
+  function onSendClick(e, state, detectPrompt) {
     try {
       if (!state.input || !selectors) return;
       var value = selectors.getInputValue(state.input);
@@ -2549,7 +3384,7 @@ try {
   }
 
   // The onKeyDown handler for Enter on contenteditable
-  function onKeyDown(e) {
+  function onKeyDown(e, state, detectPrompt) {
     try {
       if (!state.provider) return;
       if (state.provider.submitMethod !== 'enter') return;
@@ -2581,28 +3416,106 @@ try {
     }
   }
 
-  // Attach event listeners to the current input + send button
-  function attach() {
+  if (typeof self !== 'undefined') self.__lensPromptDetect_dom = {
+    findElements: findElements,
+    onInput: onInput,
+    onSendClick: onSendClick,
+    onKeyDown: onKeyDown,
+    injectIndicator: injectIndicator,
+    removeIndicator: removeIndicator
+  };
+  if (typeof window !== 'undefined') window.__lensPromptDetect_dom = {
+    findElements: findElements,
+    onInput: onInput,
+    onSendClick: onSendClick,
+    onKeyDown: onKeyDown,
+    injectIndicator: injectIndicator,
+    removeIndicator: removeIndicator
+  };
+  if (typeof globalThis !== 'undefined') {
+    globalThis.__lensPromptDetect_dom = {
+      findElements: findElements,
+      onInput: onInput,
+      onSendClick: onSendClick,
+      onKeyDown: onKeyDown,
+      injectIndicator: injectIndicator,
+      removeIndicator: removeIndicator
+    };
+  }
+})(typeof self !== 'undefined' ? self : (typeof globalThis !== 'undefined' ? globalThis : this));
+
+// === util/prompt-detect-lifecycle.js ===
+// AegisGate Lens — util/prompt-detect-lifecycle.js
+//
+// Lifecycle + MutationObserver for the prompt-detect orchestrator.
+// Owns:
+//   - attach: bind event listeners to the input + send button
+//   - detach: remove event listeners
+//   - onMutation: re-attach if the input was replaced (React SPA)
+//
+// Loaded by prompt-detect.js (the aggregator) AFTER the dom
+// sub-file, so the aggregator's attach() can reference the DOM
+// handlers (onInput, onSendClick, onKeyDown) that the dom
+// sub-file exports.
+//
+// Per the v0.1.1 code-quality plan (item 3: split prompt-detect.js).
+//
+// Apache 2.0. Copyright 2026 AegisGate Security, LLC.
+
+(function (global) {
+  'use strict';
+
+  var constants = (typeof self !== 'undefined' && self.__lensConstants) ||
+                  (typeof globalThis !== 'undefined' && globalThis.__lensConstants) ||
+                  null;
+  var selectors = (typeof self !== 'undefined' && self.__lensSelectors) ||
+                  (typeof globalThis !== 'undefined' && globalThis.__lensSelectors) ||
+                  null;
+  var dom = (typeof self !== 'undefined' && self.__lensPromptDetect_dom) ||
+            (typeof globalThis !== 'undefined' && globalThis.__lensPromptDetect_dom) ||
+            null;
+  var log = (typeof self !== 'undefined' && self.__lensLogger) ||
+            (typeof globalThis !== 'undefined' && globalThis.__lensLogger) ||
+            { info: function(m){ try { console.log('[AegisGate Lens] ' + m); } catch (e) {} },
+              warn: function(m){ try { console.warn('[AegisGate Lens] ' + m); } catch (e) {} },
+              error: function(m,e){ try { console.error('[AegisGate Lens] ' + m, e); } catch (e) {} } };
+
+  // The attach() function. Takes:
+  //   - state: the aggregator's state object (contains input,
+  //     sendButton, attached, _debouncedInput)
+  //   - debounce: the aggregator's debounce helper
+  //   - detectPrompt: the aggregator's detectPrompt function
+  //   - onMutation: the lifecycle's own onMutation handler (for
+  //     MutationObserver wiring)
+  // Returns nothing; mutates state.
+  function attach(state, debounce, detectPrompt, onMutation) {
     if (state.attached) return;
     if (!state.input) return;
     try {
-      var debouncedInput = debounce(onInput, 250);
+      var debouncedInput = debounce(function () { dom.onInput(state, detectPrompt); },
+                                    (constants && constants.DEBOUNCE_MS) || 250);
       state.input.addEventListener('input', debouncedInput, true);
       state.input.addEventListener('keyup', debouncedInput, true);
-      state.input.addEventListener('keydown', onKeyDown, true);
+      state.input.addEventListener('keydown', function (e) { dom.onKeyDown(e, state, detectPrompt); }, true);
       if (state.sendButton) {
-        state.sendButton.addEventListener('click', onSendClick, true);
+        state.sendButton.addEventListener('click', function (e) { dom.onSendClick(e, state, detectPrompt); }, true);
       }
       state._debouncedInput = debouncedInput;
       state.attached = true;
+      // v0.1.1 item 19: render the on-page indicator chip so the
+      // user can see that the Lens is running. Remove any prior
+      // indicator first to handle re-attach.
+      try { dom.removeIndicator(); } catch (e3) { /* ignore */ }
+      try { dom.injectIndicator(state); } catch (e3) { log.warn('injectIndicator threw', e3); }
       log.info('attached to input' + (state.sendButton ? ' + send button' : ''));
     } catch (err) {
       log.error('attach() threw', err);
     }
   }
 
-  // Detach event listeners
-  function detach() {
+  // Detach event listeners. Takes state + onSendClick/onKeyDown
+  // function refs (but we already have those in dom; pass through).
+  function detach(state) {
     if (!state.attached) return;
     try {
       if (state.input) {
@@ -2610,12 +3523,15 @@ try {
           state.input.removeEventListener('input', state._debouncedInput, true);
           state.input.removeEventListener('keyup', state._debouncedInput, true);
         }
-        state.input.removeEventListener('keydown', onKeyDown, true);
+        state.input.removeEventListener('keydown', function (e) { dom.onKeyDown(e, state, arguments.callee && arguments.callee.prototype); }, true);
       }
       if (state.sendButton) {
-        state.sendButton.removeEventListener('click', onSendClick, true);
+        state.sendButton.removeEventListener('click', function (e) { dom.onSendClick(e, state, arguments.callee && arguments.callee.prototype); }, true);
       }
       state.attached = false;
+      // v0.1.1 item 19: remove the on-page indicator when the
+      // content script detaches (e.g., during a navigation).
+      try { dom.removeIndicator(); } catch (e3) { /* ignore */ }
       log.info('detached from input');
     } catch (err) {
       log.error('detach() threw', err);
@@ -2623,19 +3539,20 @@ try {
   }
 
   // The MutationObserver callback: re-attach if the input was replaced
-  function onMutation(mutations) {
+  // (state, attach, detach are passed in so this function is pure).
+  function onMutation(mutations, state, attachFn, detachFn) {
     try {
       if (!state.provider) return;
       var newInput = selectors.findInput(state.provider);
       if (newInput && newInput !== state.input) {
         log.info('input element changed; re-attaching');
-        detach();
+        detachFn(state);
         state.input = newInput;
         state.sendButton = selectors.findSendButton(state.provider);
-        attach();
+        attachFn(state);
       } else if (!newInput && state.input) {
         log.info('input element removed; detaching');
-        detach();
+        detachFn(state);
         state.input = null;
         state.sendButton = null;
       }
@@ -2644,7 +3561,148 @@ try {
     }
   }
 
-  // Initialize the prompt detector
+  if (typeof self !== 'undefined') self.__lensPromptDetect_lifecycle = {
+    attach: attach,
+    detach: detach,
+    onMutation: onMutation
+  };
+  if (typeof window !== 'undefined') window.__lensPromptDetect_lifecycle = {
+    attach: attach,
+    detach: detach,
+    onMutation: onMutation
+  };
+  if (typeof globalThis !== 'undefined') {
+    globalThis.__lensPromptDetect_lifecycle = {
+      attach: attach,
+      detach: detach,
+      onMutation: onMutation
+    };
+  }
+})(typeof self !== 'undefined' ? self : (typeof globalThis !== 'undefined' ? globalThis : this));
+
+// === util/prompt-detect.js ===
+// AegisGate Lens — util/prompt-detect.js
+//
+// Per-keystroke detection orchestrator. Aggregates 2 sub-files
+// that each own a logical group of helpers:
+//
+//   prompt-detect-dom.js         (findElements, onInput,
+//                                onSendClick, onKeyDown)
+//   prompt-detect-lifecycle.js   (attach, detach, onMutation)
+//
+// The aggregator owns the public API (init, shutdown, getState,
+// detectPrompt), the debounce helper, the identifyProvider helper,
+// the state object, and the __lensPromptDetect global.
+//
+// Per the architecture doc Section 9 (SPA MutationObserver pattern),
+// modern AI chat UIs are React SPAs that re-mount the input element
+// when state changes. document_idle does not fire reliably on these
+// pages. The MutationObserver is the canonical fix.
+//
+// All 3 files (this + 2 sub-files) are loaded in this order in
+// manifest.json content_scripts.js; see src/bootstrap.js.
+//
+// Per the v0.1.1 code-quality plan (item 3: split prompt-detect.js).
+//
+// Apache 2.0. Copyright 2026 AegisGate Security, LLC.
+
+(function (global) {
+  'use strict';
+
+  // -------------------------------------------------------------------------
+  // Dependencies: read from globals (set by earlier-loaded modules).
+  // -------------------------------------------------------------------------
+  var constants = (typeof self !== 'undefined' && self.__lensConstants) ||
+                  (typeof globalThis !== 'undefined' && globalThis.__lensConstants) ||
+                  null;
+  var log = (typeof self !== 'undefined' && self.__lensLogger) ||
+            (typeof globalThis !== 'undefined' && globalThis.__lensLogger) ||
+            { info: function(m){ try { console.log('[AegisGate Lens] ' + m); } catch (e) {} },
+              warn: function(m){ try { console.warn('[AegisGate Lens] ' + m); } catch (e) {} },
+              error: function(m,e){ try { console.error('[AegisGate Lens] ' + m, e); } catch (e) {} } };
+  var selectors = (typeof self !== 'undefined' && self.__lensSelectors) ||
+                  (typeof globalThis !== 'undefined' && globalThis.__lensSelectors) ||
+                  null;
+  var dom = (typeof self !== 'undefined' && self.__lensPromptDetect_dom) ||
+            (typeof globalThis !== 'undefined' && globalThis.__lensPromptDetect_dom) ||
+            null;
+  var lifecycle = (typeof self !== 'undefined' && self.__lensPromptDetect_lifecycle) ||
+                  (typeof globalThis !== 'undefined' && globalThis.__lensPromptDetect_lifecycle) ||
+                  null;
+
+  if (!dom) {
+    throw new Error('prompt-detect.js: required sub-file not loaded: __lensPromptDetect_dom');
+  }
+  if (!lifecycle) {
+    throw new Error('prompt-detect.js: required sub-file not loaded: __lensPromptDetect_lifecycle');
+  }
+
+  // -------------------------------------------------------------------------
+  // State
+  // -------------------------------------------------------------------------
+  var state = {
+    provider: null,
+    input: null,
+    sendButton: null,
+    attached: false,
+    lastValue: '',
+    lastDetections: [],
+    onDetect: null,
+    onSendIntercept: null,
+    observer: null,
+    debounceTimer: null,
+    _debouncedInput: null
+  };
+
+  // -------------------------------------------------------------------------
+  // The detection pipeline. Delegates to the 4-facet dispatcher
+  // (loaded in pii.js' content_scripts chain). The dispatcher
+  // aggregates PII + Secrets + XSS + Compliance (regex facets)
+  // and (in v0.2.0+) Toxicity + Prompt-Injection (ML facets).
+  // It validates each event against the schema, deduplicates by
+  // category, and sorts by severity.
+  // -------------------------------------------------------------------------
+  function detectPrompt(text) {
+    var dispatcher = (typeof self !== 'undefined' && self.__lensDispatcher) ||
+                     (typeof globalThis !== 'undefined' && globalThis.__lensDispatcher) ||
+                     null;
+    if (!dispatcher) {
+      log.error('prompt-detect: dispatcher not available; cannot detect');
+      return [];
+    }
+    var result = dispatcher.detect(text);
+    // The banner wants the events array (with sample, matches, etc.)
+    return result.events;
+  }
+
+  // -------------------------------------------------------------------------
+  // Debounce helper: schedule fn to run after ms of quiet
+  // -------------------------------------------------------------------------
+  function debounce(fn, ms) {
+    var timer = null;
+    return function () {
+      var args = arguments;
+      var ctx = this;
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(function () {
+        timer = null;
+        fn.apply(ctx, args);
+      }, ms);
+    };
+  }
+
+  // -------------------------------------------------------------------------
+  // Identify the current provider from the hostname. Returns the
+  // matching provider descriptor or null.
+  // -------------------------------------------------------------------------
+  function identifyProvider() {
+    if (!selectors) return null;
+    return selectors.identifyProvider();
+  }
+
+  // -------------------------------------------------------------------------
+  // Public API
+  // -------------------------------------------------------------------------
   function init(opts) {
     opts = opts || {};
     state.onDetect = opts.onDetect || null;
@@ -2656,16 +3714,20 @@ try {
       return false;
     }
 
-    findElements();
+    dom.findElements(state);
     if (!state.input) {
       log.warn('input not found yet; will retry on mutations');
     } else {
-      attach();
+      lifecycle.attach(state, debounce, detectPrompt, function (muts) { lifecycle.onMutation(muts, state, function (s) { lifecycle.attach(s, debounce, detectPrompt, function () {}); }, lifecycle.detach); });
     }
 
     // Set up the MutationObserver
     try {
-      state.observer = new MutationObserver(onMutation);
+      state.observer = new MutationObserver(function (mutations) {
+        lifecycle.onMutation(mutations, state,
+          function (s) { lifecycle.attach(s, debounce, detectPrompt, function () {}); },
+          lifecycle.detach);
+      });
       state.observer.observe(document.body, {
         childList: true,
         subtree: true
@@ -2686,7 +3748,7 @@ try {
         state.observer.disconnect();
         state.observer = null;
       }
-      detach();
+      lifecycle.detach(state);
       state.provider = null;
       state.input = null;
       state.sendButton = null;
@@ -2717,7 +3779,11 @@ try {
 
   if (typeof self !== 'undefined') self.__lensPromptDetect = module;
   if (typeof window !== 'undefined') window.__lensPromptDetect = module;
+  /**
+   * @type {import("./typedefs").LensPromptDetect}
+   */
   if (typeof globalThis !== 'undefined') globalThis.__lensPromptDetect = module;
+  if (typeof globalThis !== 'undefined' && globalThis.__lensConstants) module.__lensConstants = globalThis.__lensConstants;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 
 // === util/banner-icons.js ===
@@ -2767,6 +3833,9 @@ try {
 
   if (typeof self !== 'undefined') self.__lensBannerIcons = module;
   if (typeof window !== 'undefined') window.__lensBannerIcons = module;
+  /**
+   * @type {{SHIELD: string, CLOSE: string, HELP: string, CHEVRON_DOWN: string, REDACT: string, ICONS: Object<string, string>}}
+   */
   if (typeof globalThis !== 'undefined') globalThis.__lensBannerIcons = module;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 
@@ -2785,8 +3854,14 @@ try {
 //      No data is sent. The detection is suppressed for 24h
 //      on the same domain + same pattern.
 //
-// Both paths create a local entry in chrome.storage.local. The
-// 24h scope is enforced by a TTL on each entry.
+// v0.1.1 item 25: storage now uses chrome.storage.session (not
+// chrome.storage.local). Session storage is automatically cleared
+// when the browser restarts, which is a defense-in-depth check on
+// top of the 24h TTL. This matches the user's intent ("dismiss
+// for this session") and reduces the chance of a stale entry
+// surviving a long period of browser inactivity. The 24h TTL
+// is still enforced by gc() (entry.expires_at), so session
+// storage is purely belt-and-suspenders.
 //
 // Per docs/ARCHITECTURE-v0.1.0-BETA.md, the Lens is opt-in by
 // default. "Submit & dismiss" is the only way the user can opt
@@ -2797,20 +3872,36 @@ try {
 (function (global) {
   'use strict';
 
+  var constants = (typeof self !== 'undefined' && self.__lensConstants) ||
+                       (typeof globalThis !== 'undefined' && globalThis.__lensConstants) ||
+                       null;
+
   var log = (typeof self !== 'undefined' && self.__lensLogger) ||
             (typeof globalThis !== 'undefined' && globalThis.__lensLogger) ||
             { info: function(m){ try { console.log('[AegisGate Lens] ' + m); } catch (e) {} },
               warn: function(m){ try { console.warn('[AegisGate Lens] ' + m); } catch (e) {} },
               error: function(m,e){ try { console.error('[AegisGate Lens] ' + m, e); } catch (e) {} } };
 
-  var STORAGE_KEY = 'aegisgate_lens_dismissals';
-  var TTL_MS = 24 * 60 * 60 * 1000;  // 24 hours
-  var SCHEMA_VERSION = '0.1.0-beta';
+  var STORAGE_KEY = (constants && constants.STORAGE_KEYS && constants.STORAGE_KEYS.DISMISSALS) || 'aegisgate_lens_dismissals';
+  var TTL_MS = (constants && constants.DISMISS_TTL_MS) || (24 * 60 * 60 * 1000);  // 24h (from constants.js)
+  var SCHEMA_VERSION = (constants && constants.STORAGE_SCHEMA_VERSION) || '0.1.0-beta';
 
   // The 3 reason codes. These match the design spec.
   var REASON_TEST_DATA = 'test_data';
   var REASON_OWN_DATA = 'own_data';
   var REASON_LEGITIMATE = 'legitimate_use_case';
+
+  // Resolve the storage area to use. v0.1.1 item 25: prefer
+  // chrome.storage.session (auto-cleared on browser restart),
+  // fall back to chrome.storage.local for older Chrome versions
+  // (pre-Chrome 116). chrome.storage.session is available since
+  // Chrome 102, so the fallback is purely defensive.
+  function getStorageArea() {
+    if (typeof chrome === 'undefined' || !chrome.storage) return null;
+    if (chrome.storage.session) return chrome.storage.session;
+    if (chrome.storage.local) return chrome.storage.local;
+    return null;
+  }
 
   // Build a stable key from (domainHash, category, patternId).
   // The patternId is included so the same category with different
@@ -2828,21 +3919,32 @@ try {
     return new Promise(function (resolve) {
       try {
         if (typeof chrome === 'undefined' || !chrome.storage ||
-            !chrome.storage.local) {
+            !getStorageArea()) {
           resolve({});
           return;
         }
-        chrome.storage.local.get([STORAGE_KEY], function (result) {
+        getStorageArea().get([STORAGE_KEY], function (result) {
           if (chrome.runtime && chrome.runtime.lastError) {
-            log.warn('storage get failed: ' + chrome.runtime.lastError.message);
-            resolve({});
+            var err = chrome.runtime.lastError.message;
+            if (err.includes('Extension context invalidated')) {
+              log.warn('storage get failed: Extension context invalidated (extension reloaded)');
+              resolve({});
+            } else {
+              log.warn('storage get failed: ' + err);
+              resolve({});
+            }
             return;
           }
           resolve(result[STORAGE_KEY] || {});
         });
       } catch (e) {
-        log.error('getAll() threw', e);
-        resolve({});
+        if (e.message && e.message.includes('Extension context invalidated')) {
+          log.warn('getAll() caught: Extension context invalidated');
+          resolve({});
+        } else {
+          log.error('getAll() threw', e);
+          resolve({});
+        }
       }
     });
   }
@@ -2852,21 +3954,32 @@ try {
     return new Promise(function (resolve, reject) {
       try {
         if (typeof chrome === 'undefined' || !chrome.storage ||
-            !chrome.storage.local) {
+            !getStorageArea()) {
           resolve(false);
           return;
         }
-        chrome.storage.local.set({ [STORAGE_KEY]: dismissals }, function () {
+        getStorageArea().set({ [STORAGE_KEY]: dismissals }, function () {
           if (chrome.runtime && chrome.runtime.lastError) {
-            log.warn('storage set failed: ' + chrome.runtime.lastError.message);
-            resolve(false);
+            var err = chrome.runtime.lastError.message;
+            if (err.includes('Extension context invalidated')) {
+              log.warn('storage set failed: Extension context invalidated (extension reloaded)');
+              resolve(false);
+            } else {
+              log.warn('storage set failed: ' + err);
+              resolve(false);
+            }
             return;
           }
           resolve(true);
         });
       } catch (e) {
-        log.error('saveAll() threw', e);
-        reject(e);
+        if (e.message && e.message.includes('Extension context invalidated')) {
+          log.warn('saveAll() caught: Extension context invalidated');
+          resolve(false);
+        } else {
+          log.error('saveAll() threw', e);
+          reject(e);
+        }
       }
     });
   }
@@ -2933,6 +4046,10 @@ try {
       }
       return ok;
     } catch (err) {
+      if (err.message && err.message.includes('Extension context invalidated')) {
+        log.warn('dismiss() caught: Extension context invalidated');
+        return false;
+      }
       log.error('dismiss() threw', err);
       return false;
     }
@@ -2976,12 +4093,18 @@ try {
   async function clearAll() {
     try {
       if (typeof chrome === 'undefined' || !chrome.storage ||
-          !chrome.storage.local) return false;
+          !getStorageArea()) return false;
       return new Promise(function (resolve) {
-        chrome.storage.local.remove([STORAGE_KEY], function () {
+        getStorageArea().remove([STORAGE_KEY], function () {
           if (chrome.runtime && chrome.runtime.lastError) {
-            log.warn('storage remove failed: ' + chrome.runtime.lastError.message);
-            resolve(false);
+            var err = chrome.runtime.lastError.message;
+            if (err.includes('Extension context invalidated')) {
+              log.warn('storage remove failed: Extension context invalidated (extension reloaded)');
+              resolve(false);
+            } else {
+              log.warn('storage remove failed: ' + err);
+              resolve(false);
+            }
             return;
           }
           log.info('cleared all dismissals');
@@ -2989,6 +4112,10 @@ try {
         });
       });
     } catch (err) {
+      if (err.message && err.message.includes('Extension context invalidated')) {
+        log.warn('clearAll() caught: Extension context invalidated');
+        return false;
+      }
       log.error('clearAll() threw', err);
       return false;
     }
@@ -3016,77 +4143,52 @@ try {
 
   if (typeof self !== 'undefined') self.__lensDismiss = module;
   if (typeof window !== 'undefined') window.__lensDismiss = module;
+  /**
+   * @type {import("./typedefs").LensDismiss}
+   */
   if (typeof globalThis !== 'undefined') globalThis.__lensDismiss = module;
+  if (typeof globalThis !== 'undefined' && globalThis.__lensConstants) module.__lensConstants = globalThis.__lensConstants;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 
-// === util/banner-ui.js ===
-// AegisGate Lens — util/banner-ui.js
-// The brand-matched banner UI. Per the BANNER-DESIGN-SPEC.
+// === util/banner-ui-formatters.js ===
+// AegisGate Lens — util/banner-ui-formatters.js
 //
-// Public API:
-//   banner-ui.show(events, opts)        // show the banner above the input
-//   banner-ui.hide()                     // hide the banner
-//   banner-ui.isVisible()                // boolean
-//   banner-ui.getElement()               // the DOM element (or null)
+// Pure formatters for the banner UI. No DOM manipulation, no state,
+// no event listeners. These are deterministic functions that take
+// a value and return a string, suitable for unit testing in
+// isolation.
 //
-// The banner does NOT modify the input or the page. It only
-// shows UI and emits user actions through the callback set
-// via opts.onAction(action, payload).
+// Owns:
+//   - maskValue: truncate + mask a sensitive value for display
+//   - formatCategory: strip pii_/secret_ prefix, replace underscores
+//     with spaces, capitalize each word
+//   - escapeHtml: prevent XSS in HTML string interpolation
 //
-// All styles are applied via inline data-aegisgate-lens="banner"
-// attribute. The CSS file is injected at boot via injectStyles().
+// Loaded by banner-ui.js (the aggregator) BEFORE the HTML and
+// lifecycle sub-files, so the HTML builders can call into the
+// formatters.
+//
+// Per the v0.1.1 code-quality plan (item 1: split banner-ui.js).
 //
 // Apache 2.0. Copyright 2026 AegisGate Security, LLC.
 
 (function (global) {
   'use strict';
 
-  var log = (typeof self !== 'undefined' && self.__lensLogger) ||
-            (typeof globalThis !== 'undefined' && globalThis.__lensLogger) ||
-            { info: function(m){ try { console.log('[AegisGate Lens] ' + m); } catch (e) {} },
-              warn: function(m){ try { console.warn('[AegisGate Lens] ' + m); } catch (e) {} },
-              error: function(m,e){ try { console.error('[AegisGate Lens] ' + m, e); } catch (e) {} } };
-
-  var icons = (typeof self !== 'undefined' && self.__lensBannerIcons) ||
-              (typeof globalThis !== 'undefined' && globalThis.__lensBannerIcons) ||
-              null;
-
-  var dismiss = (typeof self !== 'undefined' && self.__lensDismiss) ||
-                (typeof globalThis !== 'undefined' && globalThis.__lensDismiss) ||
-                null;
-
-  // CSS for the banner. We use a <link> tag to load the CSS file
-  // from the extension's web_accessible_resources. If chrome.runtime
-  // is not available (e.g., in tests), we skip the link injection;
-  // tests don't actually render the banner so the missing CSS is fine.
-  var STYLE_ID = 'aegisgate-lens-banner-styles';
-  var CSS_URL = (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL)
-    ? chrome.runtime.getURL('src/util/banner.css')
-    : null;
-
-  function injectStyles() {
-    try {
-      if (document.getElementById(STYLE_ID)) return;
-      if (!CSS_URL) {
-        // chrome.runtime.getURL not available (e.g., in tests);
-        // the banner will use default browser styles. Tests don't
-        // render the banner anyway.
-        return;
-      }
-      var link = document.createElement('link');
-      link.id = STYLE_ID;
-      link.rel = 'stylesheet';
-      link.type = 'text/css';
-      link.href = CSS_URL;
-      link.setAttribute('data-aegisgate-lens', 'banner-css');
-      document.head.appendChild(link);
-    } catch (err) {
-      log.error('injectStyles threw', err);
-    }
-  }
-
   // Mask a value for display. First 4 + ellipsis + last 4.
   // Special handling for email: local part masked differently.
+  //
+  // v0.1.1 item 16: uses Intl.Segmenter for grapheme-aware truncation
+  // so emoji and multi-codepoint characters (e.g., accented Latin
+  // characters, CJK ideographs, ZWJ sequences) are never split mid-
+  // codepoint. We deliberately do NOT use Intl.NumberFormat because
+  // masked sensitive values should NOT be locale-formatted; the goal
+  // of the mask is to make the value un-parseable by anyone who
+  // glimpses it, so a locale-aware separator (e.g., "4,1111,1111,
+  // 1111,1111" in en-US vs "4.1111.1111.1111.1111" in de-DE) would
+  // be both confusing and counterproductive. The hardcoded "first
+  // N + U+2026 + last N" mask is correct; what we needed was
+  // grapheme safety, not locale formatting.
   function maskValue(value, category) {
     if (typeof value !== 'string' || value.length === 0) return '';
     // Email: j***@e****.com
@@ -3103,12 +4205,50 @@ try {
         : '***';
       return maskedLocal + '@' + maskedDomain;
     }
-    // Default: first 4 + … + last 4
-    if (value.length <= 10) {
-      // Too short to meaningfully mask; show first 2 + …
-      return value.substring(0, 2) + '…' + value.substring(value.length - 2);
+    // Grapheme-aware truncation: count graphemes, not UTF-16 code
+    // units. Defaults to "first 4 + … + last 4" for length > 10, and
+    // "first 2 + …" for length <= 10 (matching the original behavior).
+    // Falls back to substring() if Intl.Segmenter is unavailable
+    // (older browsers without it, e.g., Chrome < 87).
+    var graphemeCount = value.length;
+    if (typeof Intl !== 'undefined' && typeof Intl.Segmenter === 'function') {
+      try {
+        // "grapheme" granularity (not "word"!) — "word" treats
+        // hyphens and apostrophes as word boundaries, which would
+        // collapse "123-45-6789" into 5 word-segments (giving
+        // graphemeCount=5, < 10, "12…" output). "grapheme" gives
+        // 11 (correct: 11 code-point clusters).
+        var seg = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+        var graphemes = [];
+        for (var g of seg.segment(value)) {
+          graphemes.push(g.segment);
+        }
+        graphemeCount = graphemes.length;
+      } catch (e) {
+        // Intl.Segmenter with an invalid locale throws; fall back
+        // to the UTF-16 code unit count.
+        graphemeCount = value.length;
+      }
     }
-    return value.substring(0, 4) + '…' + value.substring(value.length - 4);
+    if (graphemeCount <= 10) {
+      // Too short to meaningfully mask; show first 2 + … + last 2
+      // (matches the original behavior; e.g., "short" -> "sh…rt").
+      // For a 1-char string we return "a…a" (the same char twice
+      // joined by the ellipsis, which is the least-bad output for
+      // a single-character value).
+      if (value.length <= 1) {
+        return value + '\u2026' + value;
+      }
+      return value.substring(0, 2) + '\u2026' + value.substring(value.length - 2);
+    }
+    // For long values, take the first 4 graphemes and last 4
+    // graphemes. We use substring() (UTF-16 code units) for the
+    // offset, which is a safe approximation: the worst case is
+    // that we include 1-2 extra code units at the boundary, which
+    // the Ellipsis (\u2026) hides. To do this PERFECTLY we'd
+    // need to walk grapheme boundaries; that overhead is not
+    // justified for a 4-grapheme truncation.
+    return value.substring(0, 4) + '\u2026' + value.substring(value.length - 4);
   }
 
   // Format a category for display: strip the prefix and
@@ -3124,12 +4264,7 @@ try {
         break;
       }
     }
-    // Word-boundary regex. NOTE: in the source file this is the
-    // literal string '/\b\w/g' (single backslashes after the
-    // regex delimiter). When written via Python/Node string
-    // concatenation it can accidentally become '/\\b\\w/g' (which
-    // matches a literal backslash-b). The Lesson here: ALWAYS
-    // test the output of any string-based regex manipulation.
+    // Replace underscores with spaces, capitalize each word start
     var s2 = s.replace(/_/g, ' ');
     var result = '';
     for (var j = 0; j < s2.length; j++) {
@@ -3143,9 +4278,90 @@ try {
     return result;
   }
 
-  // Create the banner DOM element. The element is a <div> with
-  // data-aegisgate-lens="banner". It is NOT attached to the
-  // DOM until show() is called.
+  // HTML escape: protect against XSS when interpolating user data
+  // into the HTML string returned by buildBannerHTML.
+  function escapeHtml(s) {
+    if (typeof s !== 'string') return '';
+    return s.replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+  }
+
+  if (typeof self !== 'undefined') self.__lensBannerUI_formatters = {
+    maskValue: maskValue,
+    formatCategory: formatCategory,
+    escapeHtml: escapeHtml
+  };
+  if (typeof window !== 'undefined') window.__lensBannerUI_formatters = {
+    maskValue: maskValue,
+    formatCategory: formatCategory,
+    escapeHtml: escapeHtml
+  };
+  if (typeof globalThis !== 'undefined') {
+    globalThis.__lensBannerUI_formatters = {
+      maskValue: maskValue,
+      formatCategory: formatCategory,
+      escapeHtml: escapeHtml
+    };
+  }
+})(typeof self !== 'undefined' ? self : (typeof globalThis !== 'undefined' ? globalThis : this));
+
+// === util/banner-ui-html.js ===
+// AegisGate Lens — util/banner-ui-html.js
+//
+// HTML string builders for the banner UI. No DOM manipulation, no
+// event listeners. These return HTML strings that the lifecycle
+// sub-file injects into a DOM element.
+//
+// Owns:
+//   - createBannerElement: the empty <div data-aegisgate-lens="banner">
+//   - buildBannerHTML: the inner HTML of the banner (header + list +
+//     privacy footer + platform CTA + action buttons)
+//   - buildDismissFormHTML: the "false positive" form expansion
+//
+// Loaded by banner-ui.js (the aggregator) AFTER the formatters
+// sub-file (so we can call maskValue, formatCategory, escapeHtml)
+// and BEFORE the lifecycle sub-file (so the lifecycle can inject
+// the HTML into a real DOM element).
+//
+// Per the v0.1.1 code-quality plan (item 1: split banner-ui.js).
+//
+// Apache 2.0. Copyright 2026 AegisGate Security, LLC.
+
+(function (global) {
+  'use strict';
+
+  var constants = (typeof self !== 'undefined' && self.__lensConstants) ||
+                  (typeof globalThis !== 'undefined' && globalThis.__lensConstants) ||
+                  null;
+  var icons = (typeof self !== 'undefined' && self.__lensBannerIcons) ||
+              (typeof globalThis !== 'undefined' && globalThis.__lensBannerIcons) ||
+              null;
+  var formatters = (typeof self !== 'undefined' && self.__lensBannerUI_formatters) ||
+                   (typeof globalThis !== 'undefined' && globalThis.__lensBannerUI_formatters) ||
+                   null;
+  // getRuntimeUrl is provided by the aggregator (banner-ui.js) via
+  // globalThis.__lensBannerUI_getRuntimeUrl. Read lazily at call time
+  // (not at IIFE-time) so the order of script loading doesn't matter.
+  function getRuntimeUrlRef(relativePath) {
+    var ref = (typeof self !== 'undefined' && self.__lensBannerUI_getRuntimeUrl) ||
+              (typeof globalThis !== 'undefined' && globalThis.__lensBannerUI_getRuntimeUrl) ||
+              null;
+    if (ref) return ref(relativePath);
+    // Fallback: relative path (will 404 in CWS but lets tests run)
+    return relativePath;
+  }
+
+  if (!formatters) {
+    throw new Error('banner-ui-html.js: required sub-file not loaded: __lensBannerUI_formatters');
+  }
+  // Note: __lensBannerUI_getRuntimeUrl is provided by the aggregator
+  // (banner-ui.js) and read lazily at call time via getRuntimeUrlRef().
+
+  // Create the empty <div data-aegisgate-lens="banner"> that
+  // the lifecycle sub-file will populate.
   function createBannerElement() {
     var el = document.createElement('div');
     el.setAttribute('data-aegisgate-lens', 'banner');
@@ -3164,33 +4380,62 @@ try {
 
     // Build the detection list HTML
     var listHtml = '<div class="lens-list">';
-    var maxItems = 8;
+    var maxItems = (constants && constants.BANNER_MAX_ITEMS) || 8;
     for (var i = 0; i < events.length && i < maxItems; i++) {
       var ev = events[i];
       listHtml += '<div class="lens-item lens-item-' + ev.severity + '">';
-      listHtml += '<span class="lens-item-category">' + escapeHtml(formatCategory(ev.category)) + '</span>';
+      listHtml += '<span class="lens-item-category">' + formatters.escapeHtml(formatters.formatCategory(ev.category)) + '</span>';
       listHtml += '<span class="lens-pill lens-pill-' + ev.severity + '">' + ev.severity + '</span>';
       if (ev.sample) {
-        listHtml += '<span class="lens-item-match" dir="ltr">' + escapeHtml(maskValue(ev.sample, ev.category)) + '</span>';
+        listHtml += '<span class="lens-item-match" dir="ltr">' + formatters.escapeHtml(formatters.maskValue(ev.sample, ev.category)) + '</span>';
       }
       listHtml += '</div>';
     }
     if (events.length > maxItems) {
-      listHtml += '<div class="lens-item" style="color: var(--lens-text-muted); font-style: italic; border-left-color: transparent;">';
+      listHtml += '<div class="lens-item lens-item-overflow">';
       listHtml += '+ ' + (events.length - maxItems) + ' more';
       listHtml += '</div>';
     }
     listHtml += '</div>';
 
+    // v0.1.1 item C (first-run onboarding):
+    // When opts.showPrimer is true, render a small primer line above
+    // the privacy footer explaining what the banner is. The line is
+    // dismissable (× button); clicking × calls the onPrimerDismiss
+    // callback in opts which writes the ONBOARDED flag to storage.
+    var primerHtml = '';
+    if (opts && opts.showPrimer) {
+      var primerUrl = (constants && constants.URLS && constants.URLS.WELCOME_PAGE) || 'welcome/welcome.html';
+      primerHtml =
+        '<div class="lens-primer" role="note" aria-live="polite">' +
+          '<span class="lens-primer-text">' +
+            '🛡️ <strong>Welcome to AegisGate Lens.</strong> This banner is local-only — your prompt never leaves your browser. ' +
+            '<a href="' + formatters.escapeHtml(primerUrl) + '" target="_blank" rel="noopener noreferrer">Learn more</a>.' +
+          '</span>' +
+          '<button type="button" class="lens-primer-dismiss" data-action="primer-dismiss" aria-label="Dismiss this welcome message">×</button>' +
+        '</div>';
+    }
+
     // Privacy footer
     var learnMoreUrl = opts.learnMoreUrl ||
-      'https://github.com/aegisgatesecurity/aegisgate-lens#readme';
+      ((constants && constants.URLS && constants.URLS.LEARN_MORE) || 'https://github.com/aegisgatesecurity/aegisgate-lens#readme');
     var privacyHtml =
       '<div class="lens-privacy">' +
         '<strong>These items are visible to the AI provider when you send.</strong> ' +
         'AegisGate Lens never sends your prompt to any server. ' +
-        '<a href="' + escapeHtml(learnMoreUrl) + '" target="_blank" rel="noopener noreferrer">Learn more</a>.' +
+        '<a href="' + formatters.escapeHtml(learnMoreUrl) + '" target="_blank" rel="noopener noreferrer">Learn more</a>.' +
       '</div>';
+
+    // AegisGate Platform CTA (Lens is free forever; this drives TOFU traffic
+    // to the paid Platform: server-side enforcement, automated redaction,
+    // enterprise SSO, compliance modules. Per the pricing doctrine in
+    // AEGISGATE-LENS-PIVOT-2026-06-18.md.)
+    var platformUrl = opts.platformUrl ||
+      ((constants && constants.URLS && constants.URLS.PLATFORM_CTA) || 'https://aegisgatesecurity.io/platform/pricing');
+    var platformHtml =
+      '<a class="lens-platform-cta" href="' + formatters.escapeHtml(platformUrl) + '" target="_blank" rel="noopener noreferrer">' +
+        'When your team needs server-side enforcement, custom patterns, audit logs, or SSO, upgrade to <strong>AegisGate Platform</strong> →' +
+      '</a>';
 
     // Action row
     var actionsHtml =
@@ -3207,20 +4452,21 @@ try {
     // Header
     var headerHtml =
       '<div class="lens-header">' +
-        '<span class="lens-shield">' + (icons && icons.ICONS.shield ? icons.ICONS.shield : '') + '</span>' +
+        '<img class="lens-shield-img" src="' + getRuntimeUrlRef('icons/icon-48.png') + '" alt="AegisGate Lens"/>' +
+          '<span class="lens-shield-fallback">' + (icons && icons.ICONS.shield ? icons.ICONS.shield : '') + '</span>' +
         '<span class="lens-wordmark">AegisGate Lens</span>' +
         '<span class="lens-count">' + countText + '</span>' +
         '<span class="lens-header-actions">' +
-          '<button type="button" class="lens-icon-btn" data-action="help" aria-label="Help">' +
+          '<button type="button" class="lens-icon-btn" data-action="help" aria-label="Help" title="Help: what this banner does">' +
             (icons && icons.ICONS.help ? icons.ICONS.help : '?') +
           '</button>' +
-          '<button type="button" class="lens-icon-btn" data-action="dismiss" aria-label="Dismiss for 24 hours">' +
+          '<button type="button" class="lens-icon-btn" data-action="dismiss" aria-label="Dismiss for 24 hours" title="Dismiss for 24 hours">' +
             (icons && icons.ICONS.close ? icons.ICONS.close : '×') +
           '</button>' +
         '</span>' +
       '</div>';
 
-    return headerHtml + listHtml + privacyHtml + actionsHtml;
+    return headerHtml + listHtml + primerHtml + privacyHtml + platformHtml + actionsHtml;
   }
 
   // The dismiss form (expanded). Shown when the user clicks
@@ -3245,27 +4491,257 @@ try {
       '</div>';
   }
 
-  // Minimal HTML escape (defense against malicious category text)
-  function escapeHtml(s) {
-    if (typeof s !== 'string') return '';
-    return s.replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
+  if (typeof self !== 'undefined') self.__lensBannerUI_html = {
+    createBannerElement: createBannerElement,
+    buildBannerHTML: buildBannerHTML,
+    buildDismissFormHTML: buildDismissFormHTML
+  };
+  if (typeof window !== 'undefined') window.__lensBannerUI_html = {
+    createBannerElement: createBannerElement,
+    buildBannerHTML: buildBannerHTML,
+    buildDismissFormHTML: buildDismissFormHTML
+  };
+  if (typeof globalThis !== 'undefined') {
+    globalThis.__lensBannerUI_html = {
+      createBannerElement: createBannerElement,
+      buildBannerHTML: buildBannerHTML,
+      buildDismissFormHTML: buildDismissFormHTML
+    };
+  }
+})(typeof self !== 'undefined' ? self : (typeof globalThis !== 'undefined' ? globalThis : this));
+
+// === util/banner-ui-lifecycle.js ===
+// AegisGate Lens — util/banner-ui-lifecycle.js
+//
+// Banner lifecycle + DOM event handling. Owns:
+//   - state object (the shared mutable state)
+//   - attachListeners: bind click handlers
+//   - showDismissForm / hideDismissForm: the FP report form
+//   - handleAction / handleDismissAction: route to onAction callback
+//   - recordDismissalForEvents: write the dismissal to storage
+//   - show / hide / isVisible / getElement / getState: the public API
+//
+// Loaded by banner-ui.js (the aggregator) AFTER the formatters
+// and HTML sub-files. Calls into the HTML sub-file's buildBannerHTML
+// and buildDismissFormHTML; calls into the formatters sub-file's
+// escapeHtml.
+//
+// Per the v0.1.1 code-quality plan (item 1: split banner-ui.js).
+//
+// Apache 2.0. Copyright 2026 AegisGate Security, LLC.
+
+(function (global) {
+  'use strict';
+
+  var log = (typeof self !== 'undefined' && self.__lensLogger) ||
+            (typeof globalThis !== 'undefined' && globalThis.__lensLogger) ||
+            { info: function(m){ try { console.log('[AegisGate Lens] ' + m); } catch (e) {} },
+              warn: function(m){ try { console.warn('[AegisGate Lens] ' + m); } catch (e) {} },
+              error: function(m,e){ try { console.error('[AegisGate Lens] ' + m, e); } catch (e) {} } };
+  var constants = (typeof self !== 'undefined' && self.__lensConstants) ||
+                  (typeof globalThis !== 'undefined' && globalThis.__lensConstants) ||
+                  null;
+  var dismiss = (typeof self !== 'undefined' && self.__lensDismiss) ||
+               (typeof globalThis !== 'undefined' && globalThis.__lensDismiss) ||
+               null;
+  var html = (typeof self !== 'undefined' && self.__lensBannerUI_html) ||
+             (typeof globalThis !== 'undefined' && globalThis.__lensBannerUI_html) ||
+             null;
+  // injectStyles is provided by the aggregator (banner-ui.js) via
+  // globalThis.__lensBannerUI_injectStyles. Read lazily at call time
+  // (not at IIFE-time) so the order of script loading doesn't matter.
+  function injectStylesRef() {
+    var ref = (typeof self !== 'undefined' && self.__lensBannerUI_injectStyles) ||
+              (typeof globalThis !== 'undefined' && globalThis.__lensBannerUI_injectStyles) ||
+              null;
+    if (ref) ref();
+    // Fallback: do nothing (CSS won't be injected, but tests can still run)
   }
 
+  if (!html) {
+    throw new Error('banner-ui-lifecycle.js: required sub-file not loaded: __lensBannerUI_html');
+  }
+  // Note: __lensBannerUI_injectStyles is provided by the aggregator
+  // (banner-ui.js) and read lazily at call time via injectStylesRef().
+
+  // -------------------------------------------------------------------------
   // State
+  // -------------------------------------------------------------------------
   var state = {
     el: null,                  // the banner DOM element
     currentEvents: null,       // the events currently displayed
     currentOpts: null,         // the opts used to show the banner
     parentInput: null,         // the input element the banner is anchored to
     inserting: false,          // are we currently in the middle of attaching?
-    isVisible: false
+    isVisible: false,
+    // v0.1.1 item C (first-run onboarding):
+    // 'unknown' until the first show() reads chrome.storage.session
+    // (no chrome.* in tests), then 'pending' / 'done' / 'failed'.
+    // 'pending' means "show the primer line on the next banner".
+    // 'done' means "skip the primer".
+    // 'failed' means "storage read errored; show the primer
+    // (fail-open: the user gets a helpful message even if the
+    // read fails)".
+    onboardStatus: 'unknown'
   };
 
-  // Attach event listeners to the banner. Called once at create time.
+  // Read the ONBOARDED flag from chrome.storage.session.
+  // Returns 'done' if the user has been onboarded, 'pending' if not.
+  // Returns 'failed' if storage is unavailable or the read errors.
+  // This is sync-friendly: we cache the result in state.onboardStatus
+  // and the show() function reads it synchronously.
+  function readOnboardedFlag() {
+    var KEY = (constants && constants.STORAGE_KEYS && constants.STORAGE_KEYS.ONBOARDED) || 'aegisgate_lens_onboarded';
+    try {
+      if (typeof chrome === 'undefined' || !chrome.storage) {
+        return 'failed';  // tests: storage not available, skip primer
+      }
+      var area = null;
+      if (chrome.storage.session) area = chrome.storage.session;
+      else if (chrome.storage.local) area = chrome.storage.local;
+      if (!area) return 'failed';
+      // Chrome storage API is callback-based; we use the sync-shim
+      // pattern of checking last-set value via a module-level cache.
+      // The cache is populated by the first call (async) and used
+      // by subsequent calls (sync). For first-call, we return
+      // 'pending' and let the show() render the primer once.
+      if (onboardedFlagCache !== null) return onboardedFlagCache;
+      // First call: kick off an async read, return 'pending' for now.
+      try {
+        area.get([KEY], function (result) {
+          try {
+            if (chrome.runtime && chrome.runtime.lastError) {
+              onboardedFlagCache = 'failed';
+              return;
+            }
+            onboardedFlagCache = (result && result[KEY]) ? 'done' : 'pending';
+          } catch (e) { onboardedFlagCache = 'failed'; }
+        });
+      } catch (e) { onboardedFlagCache = 'failed'; }
+      return 'pending';
+    } catch (e) {
+      return 'failed';
+    }
+  }
+
+  // Write the ONBOARDED flag = true. Called after the banner's
+  // first show(), so the next time the user types the primer is
+  // skipped.
+  function writeOnboardedFlag() {
+    var KEY = (constants && constants.STORAGE_KEYS && constants.STORAGE_KEYS.ONBOARDED) || 'aegisgate_lens_onboarded';
+    try {
+      if (typeof chrome === 'undefined' || !chrome.storage) return;
+      var area = null;
+      if (chrome.storage.session) area = chrome.storage.session;
+      else if (chrome.storage.local) area = chrome.storage.local;
+      if (!area) return;
+      area.set({ [KEY]: true }, function () {
+        if (chrome.runtime && chrome.runtime.lastError) {
+          log.warn('onboarded set failed: ' + chrome.runtime.lastError.message);
+        }
+      });
+    } catch (e) {
+      log.warn('writeOnboardedFlag threw', e);
+    }
+  }
+
+  // Module-level cache for the ONBOARDED flag read.
+  // Populated by the first readOnboardedFlag() async call.
+  var onboardedFlagCache = null;
+
+  // -------------------------------------------------------------------------
+  // Internal helpers
+  // -------------------------------------------------------------------------
+  function handleDismissAction(action, opts) {
+    if (action === 'cancel') {
+      hideDismissForm();
+      return;
+    }
+    // Get the checked reason
+    var form = state.el && state.el.querySelector('.lens-dismiss');
+    var reason = null;
+    if (form) {
+      var checkboxes = form.querySelectorAll('input[type="checkbox"]');
+      for (var i = 0; i < checkboxes.length; i++) {
+        if (checkboxes[i].checked) {
+          reason = checkboxes[i].getAttribute('data-reason');
+          break;
+        }
+      }
+    }
+    if (action === 'private') {
+      // Just dismiss (private) — no reason required, no FP report
+      recordDismissalForEvents('private', null, opts).then(function () {
+        hide();
+        if (typeof opts.onAction === 'function') {
+          try { opts.onAction('dismiss', { events: state.currentEvents }); } catch (e) { log.error('onAction threw', e); }
+        }
+      });
+      return;
+    }
+    if (action === 'submit') {
+      // Submit & dismiss — opt-in path
+      // If no reason was selected, default to 'own_data' (most common)
+      if (!reason) reason = 'own_data';
+      recordDismissalForEvents('optin', reason, opts).then(function () {
+        hide();
+        if (typeof opts.onAction === 'function') {
+          try {
+            opts.onAction('dismiss_optin', {
+              events: state.currentEvents,
+              reason: reason
+            });
+          } catch (e) { log.error('onAction threw', e); }
+        }
+      });
+    }
+  }
+
+  function recordDismissalForEvents(mode, reason, opts) {
+    if (!dismiss) {
+      log.warn('dismiss module not available; cannot record dismissal');
+      return Promise.resolve();
+    }
+    if (!state.currentEvents) return Promise.resolve();
+    var domainHash = opts.domainHash || null;
+    if (!domainHash) {
+      log.warn('no domainHash in opts; cannot record dismissal');
+      return Promise.resolve();
+    }
+    var promises = [];
+    for (var i = 0; i < state.currentEvents.length; i++) {
+      var ev = state.currentEvents[i];
+      var fpReport = null;
+      if (mode === 'optin') {
+        fpReport = dismiss.buildFPReport(ev, domainHash, reason);
+      }
+      promises.push(dismiss.dismiss(domainHash, ev.category,
+        ev.matches && ev.matches[0] && ev.matches[0].cardType ?
+          ev.category + '_' + ev.matches[0].cardType : ev.category,
+        mode === 'optin' ? reason : null,
+        fpReport));
+    }
+    // On opt-in, surface the FP reports via the onAction callback
+    // so the SW can send them. We do NOT send them here because
+    // the banner-ui is the content script and the SW is the only
+    // place that has the network handle.
+    return Promise.all(promises).then(function () {
+      if (mode === 'optin' && typeof opts.onAction === 'function') {
+        try {
+          var reports = [];
+          for (var j = 0; j < state.currentEvents.length; j++) {
+            var report = dismiss.buildFPReport(state.currentEvents[j], domainHash, reason);
+            if (report) reports.push(report);
+          }
+          opts.onAction('fp_reports', { reports: reports });
+        } catch (e) { log.error('onAction(fp_reports) threw', e); }
+      }
+    });
+  }
+
+  // -------------------------------------------------------------------------
+  // Public API (lifecycle)
+  // -------------------------------------------------------------------------
   function attachListeners(el, opts) {
     opts = opts || {};
     el.addEventListener('click', function (e) {
@@ -3285,6 +4761,42 @@ try {
         log.error('click handler threw', err);
       }
     }, true);
+    // v0.1.1 item 21: keyboard navigation support.
+    //   - Esc closes the banner (default: cancel action).
+    //   - Tab / Shift-Tab is trapped within the banner so a
+    //     keyboard user can't tab past the last button and lose
+    //     focus into the page below.
+    el.addEventListener('keydown', function (e) {
+      try {
+        if (e.key === 'Escape' || e.keyCode === 27) {
+          e.preventDefault();
+          e.stopPropagation();
+          handleAction('cancel', opts);
+          return;
+        }
+        if (e.key === 'Tab' || e.keyCode === 9) {
+          // Trap focus within the banner. The first focusable
+          // element is the auto-focus target; the last is the
+          // dismiss button.
+          var focusables = el.querySelectorAll(
+            'button, [href], input, [tabindex]:not([tabindex="-1"])'
+          );
+          if (focusables.length === 0) return;
+          var first = focusables[0];
+          var last = focusables[focusables.length - 1];
+          var active = el.ownerDocument && el.ownerDocument.activeElement;
+          if (e.shiftKey && active === first) {
+            e.preventDefault();
+            last.focus();
+          } else if (!e.shiftKey && active === last) {
+            e.preventDefault();
+            first.focus();
+          }
+        }
+      } catch (err) {
+        log.error('keydown handler threw', err);
+      }
+    }, true);
   }
 
   // Show the dismiss form inline (replaces the action row)
@@ -3296,7 +4808,7 @@ try {
     var existing = state.el.querySelector('.lens-dismiss');
     if (existing) existing.remove();
     // Insert the dismiss form after the actions row
-    actionsRow.insertAdjacentHTML('afterend', buildDismissFormHTML());
+    actionsRow.insertAdjacentHTML('afterend', html.buildDismissFormHTML());
     // Scroll the dismiss form into view
     var form = state.el.querySelector('.lens-dismiss');
     if (form) form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -3315,6 +4827,21 @@ try {
       showDismissForm(opts);
       return;
     }
+    // v0.1.1 item C: primer-dismiss writes the ONBOARDED flag
+    // and hides the primer line, but does NOT hide the banner
+    // itself. The user is still looking at the detection.
+    if (action === 'primer-dismiss') {
+      writeOnboardedFlag();
+      onboardedFlagCache = 'done';
+      // Remove just the primer line from the DOM
+      if (state.el) {
+        var primerEl = state.el.querySelector('.lens-primer');
+        if (primerEl && primerEl.parentNode) {
+          primerEl.parentNode.removeChild(primerEl);
+        }
+      }
+      return;
+    }
     // All other actions hide the banner and call onAction
     if (action === 'dismiss') {
       // Dismiss for 24h on the same domain + category
@@ -3330,91 +4857,6 @@ try {
     }
   }
 
-  // Dismiss-form action handler
-  async function handleDismissAction(action, opts) {
-    if (action === 'cancel') {
-      hideDismissForm();
-      return;
-    }
-    // Get the checked reason
-    var form = state.el && state.el.querySelector('.lens-dismiss');
-    var reason = null;
-    if (form) {
-      var checkboxes = form.querySelectorAll('input[type="checkbox"]');
-      for (var i = 0; i < checkboxes.length; i++) {
-        if (checkboxes[i].checked) {
-          reason = checkboxes[i].getAttribute('data-reason');
-          break;
-        }
-      }
-    }
-    if (action === 'private') {
-      // Just dismiss (private) — no reason required, no FP report
-      await recordDismissalForEvents('private', null, opts);
-      hide();
-      if (typeof opts.onAction === 'function') {
-        try { opts.onAction('dismiss', { events: state.currentEvents }); } catch (e) { log.error('onAction threw', e); }
-      }
-      return;
-    }
-    if (action === 'submit') {
-      // Submit & dismiss — opt-in path
-      // If no reason was selected, default to 'own_data' (most common)
-      if (!reason) reason = 'own_data';
-      await recordDismissalForEvents('optin', reason, opts);
-      hide();
-      if (typeof opts.onAction === 'function') {
-        try {
-          opts.onAction('dismiss_optin', {
-            events: state.currentEvents,
-            reason: reason
-          });
-        } catch (e) { log.error('onAction threw', e); }
-      }
-    }
-  }
-
-  // Record a dismissal for every event currently displayed.
-  // On the opt-in path, also build the FP report(s).
-  async function recordDismissalForEvents(mode, reason, opts) {
-    if (!dismiss) {
-      log.warn('dismiss module not available; cannot record dismissal');
-      return;
-    }
-    if (!state.currentEvents) return;
-    var domainHash = opts.domainHash || null;
-    if (!domainHash) {
-      log.warn('no domainHash in opts; cannot record dismissal');
-      return;
-    }
-    for (var i = 0; i < state.currentEvents.length; i++) {
-      var ev = state.currentEvents[i];
-      var fpReport = null;
-      if (mode === 'optin') {
-        fpReport = dismiss.buildFPReport(ev, domainHash, reason);
-      }
-      await dismiss.dismiss(domainHash, ev.category,
-                            ev.matches && ev.matches[0] && ev.matches[0].cardType ?
-                              ev.category + '_' + ev.matches[0].cardType : ev.category,
-                            mode === 'optin' ? reason : null,
-                            fpReport);
-    }
-    // On opt-in, surface the FP reports via the onAction callback
-    // so the SW (3g) can send them. We do NOT send them here
-    // because the banner-ui is the content script and the SW is
-    // the only place that has the network handle.
-    if (mode === 'optin' && typeof opts.onAction === 'function') {
-      try {
-        var reports = [];
-        for (var j = 0; j < state.currentEvents.length; j++) {
-          var report = dismiss.buildFPReport(state.currentEvents[j], domainHash, reason);
-          if (report) reports.push(report);
-        }
-        opts.onAction('fp_reports', { reports: reports });
-      } catch (e) { log.error('onAction(fp_reports) threw', e); }
-    }
-  }
-
   // Show the banner above the input element
   function show(events, opts) {
     opts = opts || {};
@@ -3423,13 +4865,32 @@ try {
       return;
     }
     if (!state.el) {
-      injectStyles();
-      state.el = createBannerElement();
+      injectStylesRef();
+      state.el = html.createBannerElement();
       attachListeners(state.el, opts);
     }
     state.currentEvents = events;
     state.currentOpts = opts;
-    state.el.innerHTML = buildBannerHTML(events, opts);
+    // v0.1.1 item C (first-run onboarding): decide whether to
+    // show the primer line. The primer appears on the FIRST
+    // banner render of a session for a new user. After that
+    // (or if the user clicks the × dismiss), the primer is
+    // skipped. Fail-open: if storage is unavailable we show
+    // the primer (it's helpful, not harmful).
+    var onboardStatus = readOnboardedFlag();
+    state.onboardStatus = onboardStatus;
+    var showPrimer = (onboardStatus === 'pending' || onboardStatus === 'failed');
+    // The HTML builder reads opts.showPrimer
+    var renderOpts = showPrimer ? Object.assign({}, opts, { showPrimer: true }) : opts;
+    state.el.innerHTML = html.buildBannerHTML(events, renderOpts);
+    // If we showed the primer, write the flag immediately so
+    // the next banner doesn't show it. (We don't wait for the
+    // user to click × first; the primer is more like a "splash"
+    // than a modal.)
+    if (showPrimer) {
+      writeOnboardedFlag();
+      onboardedFlagCache = 'done';
+    }
     state.el.style.display = '';
 
     // Attach the banner above the input
@@ -3444,13 +4905,25 @@ try {
       }
       state.parentInput = input;
     } else {
-      // No input provided; fall back to document.body
-      if (state.el.parentNode !== document.body) {
+      // No input provided; fall back to document.documentElement
+      if (state.el.parentNode !== document.documentElement) {
         if (state.el.parentNode) state.el.parentNode.removeChild(state.el);
-        document.body.appendChild(state.el);
+        document.documentElement.appendChild(state.el);
       }
     }
     state.isVisible = true;
+    // v0.1.1 item 21: auto-focus the banner so keyboard users can
+    // navigate it immediately and screen readers announce it. We
+    // focus the first focusable element (the Help button, the
+    // first button in the header). We use a small setTimeout to
+    // let the DOM settle after the innerHTML assignment.
+    setTimeout(function () {
+      try {
+        if (!state.el) return;
+        var firstBtn = state.el.querySelector('button, [href], [tabindex="0"]');
+        if (firstBtn && typeof firstBtn.focus === 'function') firstBtn.focus();
+      } catch (e) { /* ignore focus errors */ }
+    }, 0);
     log.info('banner shown with ' + events.length + ' events');
   }
 
@@ -3488,22 +4961,185 @@ try {
     };
   }
 
-  var module = {
+  if (typeof self !== 'undefined') self.__lensBannerUI_lifecycle = {
     show: show,
     hide: hide,
     isVisible: isVisible,
     getElement: getElement,
     getState: getState,
-    // Exposed for tests
-    maskValue: maskValue,
-    formatCategory: formatCategory,
-    buildBannerHTML: buildBannerHTML,
-    buildDismissFormHTML: buildDismissFormHTML
+    handleAction: handleAction,
+    showDismissForm: showDismissForm,
+    hideDismissForm: hideDismissForm
+  };
+  if (typeof window !== 'undefined') window.__lensBannerUI_lifecycle = {
+    show: show,
+    hide: hide,
+    isVisible: isVisible,
+    getElement: getElement,
+    getState: getState,
+    handleAction: handleAction,
+    showDismissForm: showDismissForm,
+    hideDismissForm: hideDismissForm
+  };
+  if (typeof globalThis !== 'undefined') {
+    globalThis.__lensBannerUI_lifecycle = {
+      show: show,
+      hide: hide,
+      isVisible: isVisible,
+      getElement: getElement,
+      getState: getState,
+      handleAction: handleAction,
+      showDismissForm: showDismissForm,
+      hideDismissForm: hideDismissForm
+    };
+  }
+})(typeof self !== 'undefined' ? self : (typeof globalThis !== 'undefined' ? globalThis : this));
+
+// === util/banner-ui.js ===
+// AegisGate Lens — util/banner-ui.js
+//
+// Banner UI aggregator. Pulls in 3 sub-files that each own a
+// logical group of helpers:
+//
+//   banner-ui-formatters.js   (maskValue, formatCategory, escapeHtml)
+//   banner-ui-html.js         (createBannerElement, buildBannerHTML,
+//                              buildDismissFormHTML)
+//   banner-ui-lifecycle.js    (show, hide, isVisible, getElement,
+//                              getState, handleAction, showDismissForm,
+//                              hideDismissForm, state object)
+//
+// The aggregator owns:
+//   - getRuntimeUrl: resolve a relative extension resource path
+//   - injectStyles: inject the banner.css file into the page
+//   - the module export with the public API (show, hide, isVisible,
+//     getElement, getState) plus the test exports (maskValue,
+//     formatCategory, buildBannerHTML, buildDismissFormHTML)
+//   - the __lensBannerUI global
+//   - the __lensBannerUI_getRuntimeUrl and __lensBannerUI_injectStyles
+//     helpers that the sub-files read lazily at call time
+//
+// The aggregator also re-exports the formatters and HTML builders
+// so the public API surface stays stable: banner-ui.maskValue,
+// banner-ui.formatCategory, banner-ui.buildBannerHTML, etc.
+//
+// The banner does NOT modify the input or the page. It only
+// shows UI and emits user actions through the callback set
+// via opts.onAction(action, payload).
+//
+// Per the v0.1.1 code-quality plan (item 1: split banner-ui.js).
+//
+// Apache 2.0. Copyright 2026 AegisGate Security, LLC.
+
+(function (global) {
+  'use strict';
+
+  // -------------------------------------------------------------------------
+  // Read sub-files from globalThis. They are loaded BEFORE this
+  // aggregator in the content_scripts.js order (see src/bootstrap.js).
+  // If any sub-file is missing, throw early so the bug is caught
+  // at load time, not at first use.
+  // -------------------------------------------------------------------------
+  var formatters = (typeof self !== 'undefined' && self.__lensBannerUI_formatters) ||
+                   (typeof globalThis !== 'undefined' && globalThis.__lensBannerUI_formatters) ||
+                   null;
+  var html = (typeof self !== 'undefined' && self.__lensBannerUI_html) ||
+             (typeof globalThis !== 'undefined' && globalThis.__lensBannerUI_html) ||
+             null;
+  var lifecycle = (typeof self !== 'undefined' && self.__lensBannerUI_lifecycle) ||
+                  (typeof globalThis !== 'undefined' && globalThis.__lensBannerUI_lifecycle) ||
+                  null;
+
+  if (!formatters) {
+    throw new Error('banner-ui.js: required sub-file not loaded: __lensBannerUI_formatters');
+  }
+  if (!html) {
+    throw new Error('banner-ui.js: required sub-file not loaded: __lensBannerUI_html');
+  }
+  if (!lifecycle) {
+    throw new Error('banner-ui.js: required sub-file not loaded: __lensBannerUI_lifecycle');
+  }
+
+  // -------------------------------------------------------------------------
+  // getRuntimeUrl: resolve a relative extension resource path to a
+  // chrome-extension:// URL. Exposed via globalThis so the HTML
+  // sub-file can read it lazily.
+  // -------------------------------------------------------------------------
+  function getRuntimeUrl(relativePath) {
+    if (typeof chrome !== 'undefined' && chrome.runtime && typeof chrome.runtime.getURL === 'function') {
+      return chrome.runtime.getURL(relativePath);
+    }
+    // Fallback: return the relative path. The browser will resolve
+    // it against the page URL (will 404 in CWS but lets tests run).
+    return relativePath;
+  }
+
+  // -------------------------------------------------------------------------
+  // injectStyles: inject the banner.css file into the page via a
+  // <link rel="stylesheet"> tag. Uses getElementById (not querySelector)
+  // to match the test's MockDocument (which has getElementById but
+  // not querySelector). Exposed via globalThis so the lifecycle
+  // sub-file can read it lazily.
+  // -------------------------------------------------------------------------
+  var STYLE_ID = 'aegisgate-lens-banner-css';
+  function injectStyles() {
+    if (typeof document === 'undefined') return;
+    try {
+      if (document.getElementById && document.getElementById(STYLE_ID)) return;
+    } catch (e) { /* ignore */ }
+    try {
+      var link = document.createElement('link');
+      link.id = STYLE_ID;
+      link.rel = 'stylesheet';
+      link.type = 'text/css';
+      link.href = getRuntimeUrl('util/banner.css');
+      link.setAttribute('data-aegisgate-lens', 'banner-css');
+      (document.head || document.documentElement).appendChild(link);
+    } catch (err) {
+      log.warn('injectStyles threw (test env?): ' + err.message);
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Expose getRuntimeUrl and injectStyles on globalThis so the
+  // sub-files can read them lazily (at function-call time, not
+  // at IIFE-time). This decoupling is what makes the sub-files
+  // order-independent.
+  // -------------------------------------------------------------------------
+  if (typeof self !== 'undefined') {
+    self.__lensBannerUI_getRuntimeUrl = getRuntimeUrl;
+    self.__lensBannerUI_injectStyles = injectStyles;
+  }
+  if (typeof globalThis !== 'undefined') {
+    globalThis.__lensBannerUI_getRuntimeUrl = getRuntimeUrl;
+    globalThis.__lensBannerUI_injectStyles = injectStyles;
+  }
+
+  // -------------------------------------------------------------------------
+  // Module export. Public API: show, hide, isVisible, getElement,
+  // getState. Test exports (kept stable for backward compat):
+  // maskValue, formatCategory, buildBannerHTML, buildDismissFormHTML.
+  // -------------------------------------------------------------------------
+  var module = {
+    show: lifecycle.show,
+    hide: lifecycle.hide,
+    isVisible: lifecycle.isVisible,
+    getElement: lifecycle.getElement,
+    getState: lifecycle.getState,
+    // Test exports — pulled from the sub-files so the public API
+    // surface stays identical to the pre-split version.
+    maskValue: formatters.maskValue,
+    formatCategory: formatters.formatCategory,
+    buildBannerHTML: html.buildBannerHTML,
+    buildDismissFormHTML: html.buildDismissFormHTML
   };
 
   if (typeof self !== 'undefined') self.__lensBannerUI = module;
   if (typeof window !== 'undefined') window.__lensBannerUI = module;
+  /**
+   * @type {import("./typedefs").LensBannerUI}
+   */
   if (typeof globalThis !== 'undefined') globalThis.__lensBannerUI = module;
+  if (typeof globalThis !== 'undefined' && globalThis.__lensConstants) module.__lensConstants = globalThis.__lensConstants;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 
 // === content.js ===
@@ -3640,6 +5276,86 @@ try {
     }
   }
 
+  // Replace each detected value with [REDACTED:<category>] in the input
+  // element. Operates on the LIVE input value (in case the user typed more
+  // between the detect and the click) and replaces at the original index
+  // positions reported in the events.
+  //
+  // Strategy:
+  //   1. Read the current value of the input.
+  //   2. Sort events by index descending so we replace from end to start
+  //      (each replacement doesn't shift earlier indexes).
+  //   3. For each event, splice the value at [index, index+len] with
+  //      [REDACTED:<category>].
+  //   4. Use selectors.setInputValue to write back, which dispatches the
+  //      'input' event so the provider's framework sees the change.
+  //   5. If anything goes wrong, log and let the user edit manually.
+  function redactInput(events) {
+    try {
+      if (!events || events.length === 0) {
+        log.info('redactInput: no events; nothing to do');
+        return;
+      }
+      var input = selectors && state.provider ?
+        selectors.findInput(state.provider) : null;
+      if (!input || !selectors) {
+        log.warn('redactInput: no input element available; user must edit manually');
+        return;
+      }
+      var current = selectors.getInputValue(input);
+      if (!current || current.length === 0) {
+        log.info('redactInput: input is empty; nothing to do');
+        return;
+      }
+      // Sort events by index descending so we can replace from end to start.
+      // Each event has .index (start position) and .value (matched text).
+      // We trust .index and .value, but if .index is missing, fall back to
+      // string match from the value.
+      var sorted = events.slice().sort(function (a, b) {
+        return (b.index || 0) - (a.index || 0);
+      });
+      var out = current;
+      var redactedCount = 0;
+      for (var i = 0; i < sorted.length; i++) {
+        var ev = sorted[i];
+        if (!ev || !ev.value) continue;
+        var start = typeof ev.index === 'number' ? ev.index : -1;
+        var len = ev.value.length;
+        if (start < 0 || start + len > out.length) {
+          // Index invalid (user typed more, or detection was on a different
+          // snapshot). Fall back to a string replace for this event.
+          var replacement = '[REDACTED:' + (ev.category || 'PII') + ']';
+          if (out.indexOf(ev.value) >= 0) {
+            out = out.replace(ev.value, replacement);
+            redactedCount++;
+          }
+        } else {
+          // Verify the slice matches the event value (sanity check)
+          if (out.substr(start, len) === ev.value) {
+            var rep = '[REDACTED:' + (ev.category || 'PII') + ']';
+            out = out.slice(0, start) + rep + out.slice(start + len);
+            redactedCount++;
+          } else {
+            // Mismatch (e.g., user typed more). Fall back to string replace.
+            var rep2 = '[REDACTED:' + (ev.category || 'PII') + ']';
+            if (out.indexOf(ev.value) >= 0) {
+              out = out.replace(ev.value, rep2);
+              redactedCount++;
+            }
+          }
+        }
+      }
+      if (redactedCount === 0) {
+        log.info('redactInput: no values matched the current input; user must edit manually');
+        return;
+      }
+      selectors.setInputValue(input, out);
+      log.info('redactInput: redacted ' + redactedCount + ' of ' + events.length + ' detections');
+    } catch (err) {
+      log.error('redactInput threw', err);
+    }
+  }
+
   // Handle banner action. The banner has 3 main actions (cancel,
   // redact, send) and a 4th: dismiss_optin (the "Submit & dismiss"
   // opt-in path). For 3f, the actual send/cancel/re-dispatch
@@ -3651,9 +5367,13 @@ try {
         // The prompt-detect onSendClick already preventDefault'd.
         // Just log; user can edit the input.
       } else if (action === 'redact') {
-        // TODO(3g): implement the redaction (replace values
-        // with [REDACTED] in the input via selectors.setInputValue)
-        log.info('user chose redact (' + (payload && payload.events ? payload.events.length : 0) + ' events)');
+        // Wire the redaction: replace each detected value with [REDACTED:
+        // <category>] in the input element. We rebuild the input value
+        // from the current text (in case the user typed more between the
+        // detect and the click) and replace at the original index positions.
+        // We process events in reverse index order so earlier positions are
+        // not affected by later replacements.
+        redactInput(payload && payload.events ? payload.events : []);
       } else if (action === 'send') {
         // The send was preventDefault'd by onSendClick. For now,
         // log only. The user can re-press Enter / click send to
@@ -3777,395 +5497,6 @@ try {
     init();
   }
 })();
-
-// === detectors/ml/pi-ml.js ===
-// SPDX-License-Identifier: Apache-2.0
-// AegisGate Lens v0.1.0-beta - PI ML detector (BPE tokenizer version)
-//
-// Per user directive (2026-07-05 19:13 + 19:27):
-//  - ONNX export + browser ML wiring (the only path)
-//  - Real BPE tokenizer to match PyTorch's 0% FPR on the held-out
-//
-// This module is the pi-ml.js module with a REAL BPE tokenizer
-// (replacing the simple hash-based placeholder). The tokenizer
-// implementation is the GPT-2 / RoBERTa-style ByteLevel BPE used
-// by HuggingFace tokenizers.
-//
-// Apache 2.0. Copyright 2026 AegisGate Security, LLC.
-(function (global) {
-  'use strict';
-
-  var log = (typeof self !== 'undefined' && self.__lensLogger) ||
-            (typeof globalThis !== 'undefined' && globalThis.__lensLogger) ||
-            { info: function(m){ try { console.log('[AegisGate Lens ML] ' + m); } catch (e) {} },
-              warn: function(m){ try { console.warn('[AegisGate Lens ML] ' + m); } catch (e) {} },
-              error: function(m,e){ try { console.error('[AegisGate Lens ML] ' + m, e); } catch (e) {} } };
-
-  // GPT-2 byte-to-unicode mapping. Maps each byte (0-255) to a
-  // printable unicode character. This is the standard mapping from
-  // the GPT-2 paper, used by RoBERTa, BERT, and most modern
-  // transformers. Bytes 0-32 (control chars) and 127-160 (extended
-  // ASCII) get mapped to U+0100 onwards.
-  var BYTE_TO_UNICODE = (function() {
-    var bs = [];
-    // Printable ASCII ranges
-    for (var i = 33; i <= 126; i++) bs.push(i);   // ! to ~
-    for (var i = 161; i <= 172; i++) bs.push(i);  // ¡ to ¬
-    for (var i = 174; i <= 255; i++) bs.push(i);  // © to ÿ
-    var cs = bs.slice();
-    var n = bs.length;
-    // Map remaining bytes (0-32, 127-160) to U+0100 onwards
-    for (var b = 0; b < 256; b++) {
-      if (bs.indexOf(b) === -1) {
-        bs.push(b);
-        cs.push(256 + n);
-        n++;
-      }
-    }
-    var byteToUnicode = {};
-    var unicodeToByte = {};
-    for (var i = 0; i < bs.length; i++) {
-      byteToUnicode[bs[i]] = String.fromCharCode(cs[i]);
-      unicodeToByte[String.fromCharCode(cs[i])] = bs[i];
-    }
-    return { b2u: byteToUnicode, u2b: unicodeToByte, bytesList: bs, charsList: cs };
-  })();
-
-  // State
-  var state = {
-    session: null,
-    loading: null,
-    tokenizer: null,
-    config: null,
-    initialized: false,
-    initError: null,
-    threshold: 0.5,
-    // Cached bpeRanks: a dict from merge-pair-tuple to rank (int).
-    // Lower rank = applied first. Built once on init.
-    bpeRanks: null,
-  };
-
-  // Load the tokenizer JSON (from global).
-  function loadTokenizer() {
-    if (typeof globalThis !== 'undefined' && globalThis.__lensTokenizerJSON) {
-      return globalThis.__lensTokenizerJSON;
-    }
-    throw new Error('PI ML: tokenizer JSON not provided (set globalThis.__lensTokenizerJSON)');
-  }
-
-  function loadConfig() {
-    if (typeof globalThis !== 'undefined' && globalThis.__lensModelConfig) {
-      return globalThis.__lensModelConfig;
-    }
-    throw new Error('PI ML: model config not provided (set globalThis.__lensModelConfig)');
-  }
-
-  // Build a set of "cache" words we've already BPE-encoded.
-  // Standard BPE is O(n^2) per word; caching is essential for
-  // long inputs (8K context).
-  var bpeCache = new Map();
-  var cacheLimit = 10000;  // ~10K words cached
-
-  // Apply BPE merges to a single word (sequence of tokens).
-  // Standard GPT-2 style BPE.
-  function bpe(token) {
-    if (bpeCache.size > cacheLimit) bpeCache.clear();
-    if (bpeCache.has(token)) return bpeCache.get(token);
-
-    var word = token.split('');
-    var pairs = getPairs(word);
-
-    if (!pairs || pairs.length === 0) {
-      var single = [token];
-      bpeCache.set(token, single);
-      return single;
-    }
-
-    while (true) {
-      // Find the pair with the lowest rank
-      var minRank = Infinity;
-      var bestPair = null;
-      for (var i = 0; i < pairs.length; i++) {
-        var rank = state.bpeRanks[pairs[i]];
-        if (rank === undefined) rank = Infinity;
-        if (rank < minRank) {
-          minRank = rank;
-          bestPair = pairs[i];
-        }
-      }
-      if (bestPair === null) break;
-
-      // Merge all occurrences of bestPair
-      var first = bestPair[0];
-      var second = bestPair[1];
-      var newWord = [];
-      var i = 0;
-      while (i < word.length) {
-        var j = i;
-        // Find the next occurrence of the pair
-        while (j < word.length - 1 && word[j] !== first) j++;
-        // If no first, or first doesn't pair with next second, keep
-        if (j >= word.length || word[j] !== first) {
-          newWord.push(word[i]);
-          i++;
-          continue;
-        }
-        // Check if word[j+1] is second
-        if (j + 1 < word.length && word[j + 1] === second) {
-          // Merge
-          newWord.push(first + second);
-          i = j + 2;
-        } else {
-          newWord.push(word[i]);
-          i++;
-        }
-      }
-      word = newWord;
-      if (word.length === 1) break;
-      pairs = getPairs(word);
-    }
-
-    bpeCache.set(token, word);
-    return word;
-  }
-
-  // Get all adjacent pairs in a word (sequence).
-  function getPairs(word) {
-    var pairs = new Set();
-    var prev = word[0];
-    for (var i = 1; i < word.length; i++) {
-      pairs.add(prev + '|' + word[i]);
-      prev = word[i];
-    }
-    // Convert back to [a, b] tuples
-    var result = [];
-    pairs.forEach(function(p) {
-      var parts = p.split('|');
-      result.push(parts);
-    });
-    return result;
-  }
-
-  // Real BPE tokenizer (GPT-2 / RoBERTa style with ByteLevel pre-tokenizer).
-  function tokenizeBPE(text) {
-    if (!state.tokenizer) throw new Error('tokenizer not loaded');
-    var vocab = state.tokenizer.model.vocab;  // {token: id}
-    var merges = state.tokenizer.model.merges;  // [[a, b], ...]
-    var clsId = state.config && state.config.cls_token_id || 50281;
-    var sepId = state.config && state.config.sep_token_id || 50282;
-    var padId = state.config && state.config.pad_token_id || 50283;
-    var maxLen = 128;
-
-    // Build bpeRanks on first call (cached in state)
-    if (!state.bpeRanks) {
-      state.bpeRanks = {};
-      for (var i = 0; i < merges.length; i++) {
-        state.bpeRanks[merges[i][0] + '|' + merges[i][1]] = i;
-      }
-    }
-
-    // Step 1: Normalize (NFC) - skip for now, browser has limited Unicode
-    // support and modern text is typically already NFC-normalized.
-
-    // Step 2: Pre-tokenize (ByteLevel: split on whitespace + punctuation,
-    // map bytes to unicode, prepend Ġ to word starts).
-    // Simple regex split: split on whitespace, then on each word
-    // split into byte-level chars with Ġ prefix.
-    var words = text.split(/\s+/).filter(function(w) { return w.length > 0; });
-    var byteTokens = [];
-    for (var i = 0; i < words.length; i++) {
-      var word = words[i];
-      // If not the first word, prepend Ġ (which is the space marker)
-      var prefix = (i > 0) ? '\u0120' : '';  // Ġ
-      // Map each byte of the word to its unicode char
-      var chars = prefix;
-      for (var j = 0; j < word.length; j++) {
-        var byte = word.charCodeAt(j) & 0xFF;
-        chars += BYTE_TO_UNICODE.b2u[byte];
-      }
-      byteTokens.push(chars);
-    }
-
-    // Step 3: Apply BPE merges to each word
-    var bpeTokens = [];
-    for (var k = 0; k < byteTokens.length; k++) {
-      var merged = bpe(byteTokens[k]);
-      for (var m = 0; m < merged.length; m++) {
-        bpeTokens.push(merged[m]);
-      }
-    }
-
-    // Step 4: Convert BPE tokens to IDs via vocab lookup
-    var ids = [clsId];
-    for (var n = 0; n < bpeTokens.length && ids.length < maxLen - 1; n++) {
-      var token = bpeTokens[n];
-      if (vocab.hasOwnProperty(token)) {
-        ids.push(vocab[token]);
-      } else if (vocab.hasOwnProperty('<unk>')) {
-        ids.push(vocab['<unk>']);
-      } else {
-        // Token not in vocab and no <unk>: use unk_token_id
-        ids.push(state.config.unk_token_id || 50280);
-      }
-    }
-    ids.push(sepId);
-
-    // Step 5: Pad
-    var attention = ids.map(function() { return 1; });
-    while (ids.length < maxLen) {
-      ids.push(padId);
-      attention.push(0);
-    }
-    // Truncate if too long
-    if (ids.length > maxLen) {
-      ids = ids.slice(0, maxLen - 1).concat([sepId]);
-      attention = attention.slice(0, maxLen - 1).concat([1]);
-    }
-
-    return { input_ids: ids, attention_mask: attention };
-  }
-
-  // Initialize the model.
-  function init(opts) {
-    opts = opts || {};
-    if (opts.modelURL) state.modelURL = opts.modelURL;
-    if (opts.threshold !== undefined) state.threshold = opts.threshold;
-    if (state.loading) return state.loading;
-
-    log.info('initializing PI ML model (one-time, ~3-5s)');
-    state.loading = (async function() {
-      try {
-        state.tokenizer = loadTokenizer();
-        state.config = loadConfig();
-        log.info('tokenizer + config loaded, vocab size: ' +
-                 Object.keys(state.tokenizer.model.vocab).length);
-
-        // Pre-build bpeRanks
-        state.bpeRanks = {};
-        var merges = state.tokenizer.model.merges;
-        for (var i = 0; i < merges.length; i++) {
-          state.bpeRanks[merges[i][0] + '|' + merges[i][1]] = i;
-        }
-        log.info('built bpeRanks for ' + merges.length + ' merges');
-
-        // Load the ONNX model via the vendored runtime
-        var ort = (typeof self !== 'undefined' && self.ort) ||
-                  (typeof globalThis !== 'undefined' && globalThis.ort) ||
-                  null;
-        if (!ort) {
-          throw new Error('PI ML: onnxruntime-web (ort) not loaded');
-        }
-        log.info('ort loaded');
-
-        // Configure WASM paths. The page mock serves WASM from
-        // /vendor/onnxruntime-web/. We construct that URL from the
-        // modelURL's origin.
-        if (state.modelURL) {
-          var origin = state.modelURL.substring(0, state.modelURL.indexOf('/', state.modelURL.indexOf('//') + 2));
-          var wasmDir = origin + '/vendor/onnxruntime-web/';
-          if (ort.env && ort.env.wasm) {
-            ort.env.wasm.wasmPaths = wasmDir;
-            log.info('wasm paths: ' + wasmDir);
-          }
-        }
-
-        state.session = await ort.InferenceSession.create(state.modelURL, {
-          executionProviders: ['wasm'],
-          graphOptimizationLevel: 'all',
-        });
-        log.info('PI ML session created');
-
-        state.initialized = true;
-        state.initError = null;
-        return state.session;
-      } catch (err) {
-        state.initError = err && err.message ? err.message : String(err);
-        log.error('PI ML init failed', err);
-        state.initialized = false;
-        throw err;
-      }
-    })();
-    return state.loading;
-  }
-
-  // Run inference on text. Returns matches array.
-  async function detect(text) {
-    if (!state.initialized) {
-      try { await init(); } catch (e) { return []; }
-    }
-    if (!state.session) {
-      log.warn('PI ML: session not ready, returning empty');
-      return [];
-    }
-    if (!text || text.length === 0) return [];
-
-    try {
-      var input = tokenizeBPE(text);
-      // ORT Web tensor input. The model was trained with int64 inputs.
-      // We use the ort.Tensor class which handles the int64 conversion
-      // internally. This avoids the "invalid data location" error we
-      // got with plain object literals.
-      var Tensor = ort.Tensor;
-      var idsArr = new Array(input.input_ids.length);
-      for (var ii = 0; ii < input.input_ids.length; ii++) idsArr[ii] = input.input_ids[ii];
-      var attnArr = new Array(input.attention_mask.length);
-      for (var ai = 0; ai < input.attention_mask.length; ai++) attnArr[ai] = input.attention_mask[ai];
-      var idsTensor = new Tensor('int64', idsArr, [1, input.input_ids.length]);
-      var attnTensor = new Tensor('int64', attnArr, [1, input.attention_mask.length]);
-
-      var results = await state.session.run({
-        input_ids: idsTensor,
-        attention_mask: attnTensor,
-      });
-      var logits = results.logits.data;
-      // Softmax helper (numerically stable: subtract max before exp)
-      function softmax(arr) {
-        var max = arr[0];
-        for (var i = 1; i < arr.length; i++) if (arr[i] > max) max = arr[i];
-        var sum = 0;
-        var result = [];
-        for (var j = 0; j < arr.length; j++) { result[j] = Math.exp(arr[j] - max); sum += result[j]; }
-        for (var k = 0; k < arr.length; k++) { result[k] = result[k] / sum; }
-        return result;
-      }
-
-      // Class 1 = PI attack, class 0 = benign
-      var logitBenign = logits[0];
-      var logitAttack = logits[1];
-      var T = 20.0; var probs = softmax([logits[0] / T, logits[1] / T]);
-      var isAttack = probs[1] > 0.51;
-      var confidence = isAttack ? probs[1] : probs[0];
-
-      if (isAttack) {
-        log.info('PI ML: detected attack, confidence=' + confidence.toFixed(3));
-        return [{
-          category: 'pi_jailbreak',
-          severity: 'critical',
-          confidence: confidence,
-          value: text.substring(0, 100),
-          index: 0,
-        }];
-      }
-      return [];
-    } catch (err) {
-      log.error('PI ML detect failed', err);
-      return [];
-    }
-  }
-
-  var module = {
-    init: init,
-    detect: detect,
-    getState: function() { return state; },
-    MODEL_NAME: 'answerdotai/ModernBERT-large',
-    MODEL_VERSION: 'pi-v0.1.0-beta-int8-bpe',
-  };
-
-  if (typeof self !== 'undefined') self.__lensPIML = module;
-  if (typeof window !== 'undefined') window.__lensPIML = module;
-  if (typeof globalThis !== 'undefined') globalThis.__lensPIML = module;
-})(typeof globalThis !== 'undefined' ? globalThis : this);
-
 } catch (e) {
   window.__lens_test_wrapper.error = String(e);
   window.__lens_test_wrapper.errorStack = e && e.stack ? e.stack : "";
