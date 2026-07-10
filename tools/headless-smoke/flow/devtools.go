@@ -24,15 +24,16 @@ import (
 
 // CDPClient is a minimal Chrome DevTools Protocol client.
 type CDPClient struct {
-	wsURL    string
-	conn     *websocket.Conn
-	mu       sync.Mutex
-	nextID   int
-	pending  map[int]chan json.RawMessage
-	events   chan json.RawMessage
-	closeEv  chan struct{}
-	closed   bool
-	timeout  time.Duration
+	wsURL     string
+	conn      *websocket.Conn
+	mu        sync.Mutex
+	nextID    int
+	pending   map[int]chan json.RawMessage
+	events    chan json.RawMessage
+	closeEv   chan struct{}
+	closed    bool
+	closeOnce sync.Once
+	timeout   time.Duration
 }
 
 type cdpTarget struct {
@@ -100,14 +101,17 @@ func newCDPClient(port int, timeout time.Duration) (*CDPClient, cdpTarget, error
 }
 
 func (c *CDPClient) close() error {
-	if c.closed {
-		return nil
-	}
-	c.closed = true
-	close(c.closeEv)
-	if c.conn != nil {
-		_ = c.conn.Close()
-	}
+	// Use sync.Once to make the close idempotent. The previous version
+	// had a double-close bug: close() did close(c.closeEv) AND
+	// readLoop() also did close(c.closeEv) on conn error, causing
+	// "panic: close of closed channel" (goroutine leak at shutdown).
+	c.closeOnce.Do(func() {
+		c.closed = true
+		close(c.closeEv)
+		if c.conn != nil {
+			_ = c.conn.Close()
+		}
+	})
 	return nil
 }
 
@@ -245,7 +249,8 @@ func (c *CDPClient) readLoop() {
 	for {
 		_, data, err := c.conn.ReadMessage()
 		if err != nil {
-			close(c.closeEv)
+			// The readLoop exits on conn error. The close() call will
+			// handle closing closeEv (via sync.Once). We just return.
 			return
 		}
 		var msg struct {
@@ -301,3 +306,43 @@ func (c *CDPClient) reloadPage(target cdpTarget, timeout time.Duration) error {
 	_, err := c.send("Page.reload", map[string]interface{}{"ignoreCache": true})
 	return err
 }
+
+// clickSelector clicks the first element matching the given CSS
+// selector in the page's main world. Uses the DOM API el.click()
+// (not synthetic mouse events) which dispatches a real click event
+// that the banner event listeners respond to correctly.
+//
+// Returns nil if the click was dispatched, or an error if no
+// element matched the selector.
+//
+// Used by the dismiss flow test (B1-D1).
+func (c *CDPClient) clickSelector(selector string) error {
+	escapedSelector, err := json.Marshal(selector)
+	if err != nil {
+		return fmt.Errorf("escape selector: %w", err)
+	}
+	js := fmt.Sprintf(`(function() {
+		var el = document.querySelector(%s);
+		if (!el) return { error: 'no element matched selector' };
+		el.click();
+		return { ok: true, tag: el.tagName, className: el.className };
+	})()`, string(escapedSelector))
+	res, err := c.evaluate(js, false)
+	if err != nil {
+		return fmt.Errorf("evaluate click: %w", err)
+	}
+	var r struct {
+		Error     string `json:"error"`
+		OK        bool   `json:"ok"`
+		Tag       string `json:"tag"`
+		ClassName string `json:"className"`
+	}
+	if err := json.Unmarshal(res, &r); err != nil {
+		return fmt.Errorf("unmarshal click result: %w (raw=%s)", err, string(res))
+	}
+	if r.Error != "" {
+		return fmt.Errorf("click failed: %s", r.Error)
+	}
+	return nil
+}
+

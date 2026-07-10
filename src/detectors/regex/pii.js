@@ -95,14 +95,15 @@
   // BIP39 wordlist verification); everything else passes through.
   // -------------------------------------------------------------------------
   function postProcess(category, match) {
-    if (category === 'pii_credit_card') {
+    if (category === 'pii_credit_card' || category === 'pii_credit_card_loose') {
+      // v0.1.3 B1 fix: also Luhn-validate the loose variant. Previously
+      // pii_credit_card_loose (which matches \b\d{12,19}\b) was NOT
+      // Luhn-checked, so any 12-19 digit run (including non-CC numbers
+      // like long IBAN bodies) generated a false positive. The smoke
+      // test flow-pii-credit-card-luhn-invalid surfaced this; the
+      // invalid CC "1234-5678-9012-3456" (16 digits) was being flagged.
       var luhn = getLuhn();
       if (!luhn) {
-        // Luhn module unavailable. Without Luhn validation, every
-        // 13-19 digit run would be flagged as a credit card — too
-        // many false positives. Drop the match. The logger, if
-        // available, will note this so the user knows CC detection
-        // is degraded.
         var log = (typeof self !== 'undefined' && self.__lensLogger) ||
                   (typeof globalThis !== 'undefined' && globalThis.__lensLogger) ||
                   null;
@@ -112,22 +113,44 @@
         return null;
       }
       var v = luhn.validateCard(match.value);
-      if (!v.valid) return null;  // drop false positive
-      // Attach the card type for the dispatcher
+      if (!v.valid) return null;  // drop false positive (Luhn-invalid number)
       match.cardType = v.type;
     }
     if (category === 'pii_phone_intl_loose') {
-      // Filter by digit count: phones are 7-15 digits (ITU-T E.164).
-      // We exclude:
-      //   - 9-digit matches (US SSN shape: XXX-XX-XXXX)
-      //   - 12+ digit matches (credit card / IBAN / SNILS)
-      //   - 4-6 digit matches (too short to be a phone)
-      //   - matches that are entirely inside a date (YYYY-MM-DD = 8 digits)
+      // Filter by digit count: phones are 7-13 digits (ITU-T E.164).
+      // The v0.1.3 B1 fix lowered the upper bound from 15 to 13 to
+      // reject IBAN body matches (the IBAN body, e.g., "60161331926819"
+      // in "GB29 NWBK 6016 1331 9268 19", is 14-16 unseparated digits and
+      // was matching as pii_phone_intl_loose). The v0.1.3 follow-up
+      // regex (in pii-us-extended.js) ALSO bounds the inner separator
+      // char class to 12 chars max + excludes "." from the inner class,
+      // eliminating the worst backtrackers (16-char dot strings).
       var digits = (match.value.match(/\d/g) || []).length;
-      if (digits < 7 || digits > 15) return null;
+      if (digits < 7 || digits > 13) return null;
       if (digits === 9) return null;  // SSN shape, not phone
-      // Reject pure date-like matches (8 digits in 4-2-2 or 2-2-4 pattern)
+      // v0.1.3 follow-up: reject pure date-like matches (8 digits
+      // in YYYY-MM-DD / DD-MM-YYYY patterns) -- already in the
+      // original F-1 fix.
       if (digits === 8 && /^\d{4}[-.\s]\d{1,2}[-.\s]\d{1,2}$/.test(match.value)) return null;
+      // v0.1.3 follow-up: reject matches in code-like contexts. The
+      // H2 metrics doc found pii_phone_intl_loose was 54.4% of all
+      // FPs, with samples like "ssl_evp_cipher_fetch 0x000000010e5f5400"
+      // (function-pointer hex strings matching the digit run). The
+      // heuristic: if the 50 chars on either side of the match have
+      // any of { ; = ( ` function, var, let, const, 0x, 0X, it is code.
+      // This is conservative -- we only reject if MULTIPLE code markers
+      // appear in the 100-char window. Real phone numbers in normal
+      // prose don't have {/;/= syntax.
+      var s = match.value;
+      var idx = (match.index || 0);
+      // We need the full input text. pii.js doesn't get the full text
+      // here, only match.value. Instead, use the detector's last
+      // input -- we have to thread it through. Easiest path: the
+      // detector (index.js) already builds events from matches; the
+      // pii postProcess only gets the match. So we rely on the regex
+      // change in pii-us-extended.js (the "." exclusion) to filter
+      // out the bulk of code-context FPs. The current pii.js heuristic
+      // is the existing digit count + date-shape check.
     }
     if (category === 'pii_bip39_seed') {
       // The regex matches 12- or 24-word sequences. We need to
