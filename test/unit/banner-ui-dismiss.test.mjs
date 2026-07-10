@@ -5,7 +5,7 @@
 //   - Header (shield + wordmark + count + help + ×)
 //   - Detection list (severity-colored rows, masked values)
 //   - Privacy footer ("we never sent your prompt")
-//   - Action row (Cancel / Edit & redact / Send anyway / False positive link)
+//   - Action row (Cancel send / Edit manually / Send anyway / False positive link)
 //   - Dismiss form (expanded on click, 3 reasons, 2 submit paths)
 //
 // These tests run in Node with a minimal DOM mock. We do NOT
@@ -20,6 +20,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
+import { loadModule } from '../helpers/load-module.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const LENS_ROOT = join(__dirname, '..', '..');
 
@@ -202,15 +203,14 @@ globalThis.chrome = {
   }
 };
 
-function loadModule(relPath, globalKey) {
-  const src = readFileSync(join(LENS_ROOT, relPath), 'utf8');
-  (0, eval)(src);
-  return globalThis[globalKey];
-}
-
 function loadAll() {
   loadModule('src/util/logger.js', '__lensLogger');
   loadModule('src/detectors/luhn.js', '__lensLuhn');
+  // Load the 4 PII sub-files FIRST, then pii.js (the aggregator).
+  loadModule('src/detectors/regex/pii-us-core.js',          '__lensPII_us_core');
+  loadModule('src/detectors/regex/pii-us-extended.js',      '__lensPII_us_extended');
+  loadModule('src/detectors/regex/pii-international-id.js', '__lensPII_international_id');
+  loadModule('src/detectors/regex/pii-financial.js',        '__lensPII_financial');
   loadModule('src/detectors/regex/pii.js', '__lensPII');
   loadModule('src/detectors/regex/secrets.js', '__lensSecrets');
   loadModule('src/detectors/regex/source_xss.js', '__lensXSS');
@@ -220,6 +220,11 @@ function loadAll() {
   loadModule('src/util/selectors.js', '__lensSelectors');
   loadModule('src/util/banner-icons.js', '__lensBannerIcons');
   loadModule('src/util/dismiss.js', '__lensDismiss');
+  // Load the 3 banner-ui sub-files FIRST, then the aggregator.
+  // This mirrors the production content_scripts.js load order in manifest.json.
+  loadModule('src/util/banner-ui-formatters.js',  '__lensBannerUI_formatters');
+  loadModule('src/util/banner-ui-html.js',        '__lensBannerUI_html');
+  loadModule('src/util/banner-ui-lifecycle.js',   '__lensBannerUI_lifecycle');
   loadModule('src/util/banner-ui.js', '__lensBannerUI');
 }
 
@@ -262,6 +267,31 @@ test('banner: maskValue handles short strings', () => {
   // 10 chars or less: first 2 + … + last 2
   assert.equal(b.maskValue('short'), 'sh…rt');
   assert.equal(b.maskValue('a'), 'a…a');
+});
+
+test('banner: maskValue handles grapheme clusters (emoji, CJK)', () => {
+  loadAll();
+  var b = globalThis.__lensBannerUI;
+  // v0.1.1 item 16: Intl.Segmenter counts graphemes, not UTF-16 code
+  // units. Emoji and CJK chars are full graphemes that should not
+  // be split mid-codepoint. Long-string threshold (> 10 graphemes)
+  // gives "first 4 + … + last 4" with the ellipsis centered.
+  // - 'A' + ZWJ + 'B' + ZWJ + 'C' is 1 grapheme (👨‍👩‍👧 = 5 codepoints)
+  // - '中文测试' is 4 graphemes (1 each), but we use a longer string
+  // - Use 12 CJK chars to force the long-string branch
+  var cjk12 = '中文测试中文测试中文测试'; // 12 chars, 12 graphemes
+  var r1 = b.maskValue(cjk12);
+  // Long form: "中文测…测试" (first 4 + ellipsis + last 4)
+  // We just check the result is non-empty, contains the ellipsis,
+  // and doesn't contain the full value (it's a mask).
+  assert.ok(r1.length > 0, 'CJK mask should be non-empty');
+  assert.ok(r1.indexOf('\u2026') !== -1, 'CJK mask should contain ellipsis');
+  assert.ok(r1.indexOf(cjk12) === -1, 'CJK mask should NOT contain the full value');
+  // Single emoji is 1 grapheme; falls into the "short" branch.
+  var r2 = b.maskValue('🎉');
+  // 'a' -> 'a…a'; '🎉' (1 grapheme) should also produce '\u{1F389}…\u{1F389}'
+  // even though the emoji is 2 UTF-16 code units.
+  assert.equal(r2.length, 5, 'emoji mask should be 5 UTF-16 code units (2 + 1 ellipsis + 2)');
 });
 
 // ============================================================
@@ -334,6 +364,26 @@ test('banner: buildBannerHTML includes 3 main action buttons', () => {
   assert.ok(html.includes('data-action="send"'), 'send button');
   assert.ok(html.includes('data-action="false-positive"'), 'false positive link');
   assert.ok(html.includes('data-action="dismiss"'), 'dismiss × button');
+});
+
+// v0.1.1 item C: first-run onboarding primer.
+test('banner: buildBannerHTML omits primer by default', () => {
+  loadAll();
+  var b = globalThis.__lensBannerUI;
+  var html = b.buildBannerHTML(
+    [{facet:'pii',category:'pii_ssn',severity:'critical',count:1}], {});
+  assert.equal(html.indexOf('lens-primer'), -1, 'no .lens-primer by default');
+});
+
+test('banner: buildBannerHTML includes primer when opts.showPrimer', () => {
+  loadAll();
+  var b = globalThis.__lensBannerUI;
+  var html = b.buildBannerHTML(
+    [{facet:'pii',category:'pii_ssn',severity:'critical',count:1}],
+    { showPrimer: true });
+  assert.ok(html.indexOf('lens-primer') !== -1, '.lens-primer present');
+  assert.ok(html.indexOf('Welcome to AegisGate Lens') !== -1, 'primer text present');
+  assert.ok(html.indexOf('data-action="primer-dismiss"') !== -1, 'dismiss button');
 });
 
 test('banner: buildBannerHTML includes severity-colored rows', () => {

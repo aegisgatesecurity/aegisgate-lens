@@ -41,7 +41,7 @@ The detector is **4 regex facets, 120 patterns, sub-1ms latency** — no network
 | **PII facet precision** | **76.51%** | When the detector fires, 77% of the time it's real PII |
 | **Latency p50** | 0.156ms | Per-keystroke detection |
 | **Latency p99** | **0.847ms** | 60× better than the 50ms target |
-| **Unit tests** | **325/325 passing** | 11 .mjs test files in `test/unit/` |
+| **Unit tests** | **328/328 passing** | 10 .mjs test files in `test/unit/` |
 | **Headless smoke** | **6/6 PASS** | Real Chromium 149 in `test/headless-smoke/` |
 | **Patterns** | **120 total** | 54 PII + 41 Secrets + 12 XSS + 24 Compliance |
 | **Providers** | **8** | chatgpt, claude, gemini, copilot, perplexity, duck_ai, grok, mistral |
@@ -86,6 +86,25 @@ The 8 supported providers are matched via `hostname`. When a page loads, the con
 | **Cost to serve per user** | $0 | Variable | Variable | Variable |
 
 **The core differentiator:** we are the only tool where the privacy guarantee is **enforced by what we cannot do**, not what we promise. No server, no logs, no prompt content ever crosses a wire. For SOC 2 / HIPAA / GDPR / EU AI Act compliance, that architectural fact matters.
+
+## Why AegisGate Lens With Chrome (or Firefox, or Safari, etc.)?
+
+Chrome 130+ has a built-in **Sensitive Content Detection** feature that works well for a single user on Google Search. AegisGate Lens is designed to be a **complement** to that (not a replacement), adding value on three dimensions: more detection patterns, more provider coverage, and full auditability. Here's how the two compare:
+
+| Concern | Chrome's built-in | AegisGate Lens |
+|---|---|---|
+| **Where detection runs** | Inside Chrome's native UI, but the rules are defined by Google | Inside our open-source extension code, auditable by anyone |
+| **Who sees the data** | Google (rule matches are logged to chrome://components) | Nobody — no telemetry, no logs, no sync |
+| **Which providers it covers** | Only the browser's built-in input surfaces (Google Search, AI experiments) | 8 of the top consumer AI chat tools (chatgpt.com, claude.ai, gemini.google.com, copilot.microsoft.com, perplexity.ai, duck.ai, grok.com, chat.mistral.ai) |
+| **What it detects** | Credit cards, mostly | 120 patterns across 4 facets: PII, Secrets, XSS / source-code risks, Compliance (OWASP / MITRE ATLAS / EU AI Act / NIST CSF / ISO 27001 / CCPA / LGPD / PIPEDA / POPIA) |
+| **False positives** | Some — the banner shows a generic alert, no remediation guidance | Tuned to 7.40% FPR on 30,000 real user prompts; banner explains the category, severity, and mask; offers Cancel / Edit manually / Send anyway / False positive |
+| **Customization** | None — Google's rules are fixed | Open source. You (or your security team) can read every regex. |
+| **Auditability** | Closed-source native code | Apache 2.0; threat model published at [`docs/THREAT-MODEL.md`](docs/THREAT-MODEL.md); 328 unit tests, 6 headless smoke tests, 100K-prompt benchmark |
+| **Compliance posture** | "Trust us" — Google does not publish a threat model or privacy policy for this feature | "Verify us" — 9.5/10 threat-model score; CC-BY-4.0 threat model; SOC 2 / HIPAA / GDPR / EU AI Act / OWASP LLM Top 10 / MITRE ATLAS / NIST CSF / ISO 27001 mapped in `docs/THREAT-MODEL.md` |
+| **Pricing** | Free (bundled with Chrome) | Free, forever (Apache 2.0, no telemetry, no "Pro" tier, no "Enterprise" upsell on the Lens itself) |
+| **Platform integration** | None | AegisGate Platform (server-side enforcement, automated redaction, custom patterns, SSO) when your team is ready. The Lens is the TOFU; the Platform is the BOFU. |
+
+**The short version:** Chrome's built-in is great for a single user. AegisGate Lens is for the 95% of AI users who don't fit that profile — people who use multiple AI tools, paste regulated or proprietary content, need to defend their configuration to a security review, and want zero-telemetry warnings before they hit send. It's a complement, not a replacement.
 
 ## Installation
 

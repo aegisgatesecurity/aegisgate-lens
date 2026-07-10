@@ -215,5 +215,8 @@
 
   if (typeof self !== 'undefined') self.__lensCompliance = module;
   if (typeof window !== 'undefined') window.__lensCompliance = module;
+  /**
+   * @type {import("./typedefs").LensDetector}
+   */
   if (typeof globalThis !== 'undefined') globalThis.__lensCompliance = module;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

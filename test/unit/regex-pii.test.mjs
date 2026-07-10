@@ -14,19 +14,16 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
+import { loadModule } from '../helpers/load-module.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const LENS_ROOT = join(__dirname, '..', '..');
 
-function loadModule(srcPath, globalKey) {
-  const src = readFileSync(join(LENS_ROOT, srcPath), 'utf8');
-  // Each module does (function(global) { ...; globalThis.__lensFoo = module; })(globalThis)
-  // We eval it in a scope where globalThis is the Node global, then
-  // read back the exposed module.
-  // eslint-disable-next-line no-eval
-  (0, eval)(src);
-  return globalThis[globalKey];
-}
-
+// Load the 4 PII sub-files FIRST, then pii.js (the aggregator).
+// This mirrors the production content_scripts.js load order in manifest.json.
+const pii_us_core          = loadModule('src/detectors/regex/pii-us-core.js',          '__lensPII_us_core');
+const pii_us_extended      = loadModule('src/detectors/regex/pii-us-extended.js',      '__lensPII_us_extended');
+const pii_international_id = loadModule('src/detectors/regex/pii-international-id.js', '__lensPII_international_id');
+const pii_financial        = loadModule('src/detectors/regex/pii-financial.js',        '__lensPII_financial');
 const pii = loadModule('src/detectors/regex/pii.js', '__lensPII');
 const luhn = loadModule('src/detectors/luhn.js', '__lensLuhn');
 

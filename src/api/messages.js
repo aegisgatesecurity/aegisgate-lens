@@ -185,5 +185,8 @@
 
   if (typeof self !== 'undefined') self.__lensMessages = module;
   if (typeof window !== 'undefined') window.__lensMessages = module;
+  /**
+   * @type {import("./typedefs").LensMessages}
+   */
   if (typeof globalThis !== 'undefined') globalThis.__lensMessages = module;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

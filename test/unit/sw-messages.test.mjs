@@ -20,111 +20,31 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { dirname, join } from 'node:path';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
-
+import { loadModule } from '../helpers/load-module.js';
+import { installMockChrome, resetMockChrome, MockChrome, MockStorage, MockRuntime, MockTabs } from '../helpers/mock-chrome.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const LENS_ROOT = join(__dirname, '..', '..');
 
 // ============================================================
-// Mocks
+// Mocks: see ../helpers/mock-chrome.js for the MockChrome
+// class and friends. The mock was extracted from this file
+// as part of v0.1.1 item 8 (test infrastructure refactor).
 // ============================================================
-
-// Mock chrome.* APIs (storage, runtime, tabs, extension)
-class MockStorage {
-  constructor() { this._data = {}; }
-  get(keys, cb) {
-    var result = {};
-    if (Array.isArray(keys)) {
-      for (var i = 0; i < keys.length; i++) {
-        if (this._data[keys[i]] !== undefined) result[keys[i]] = this._data[keys[i]];
-      }
-    } else if (typeof keys === 'string') {
-      if (this._data[keys] !== undefined) result[keys] = this._data[keys];
-    } else {
-      // Object (defaults)
-      Object.assign(result, this._data);
-    }
-    if (cb) setTimeout(function () { cb(result); }, 0);
-    return Promise.resolve(result);
-  }
-  set(obj, cb) {
-    Object.assign(this._data, obj);
-    if (cb) setTimeout(function () { cb(); }, 0);
-    return Promise.resolve();
-  }
-  remove(keys, cb) {
-    if (Array.isArray(keys)) {
-      for (var i = 0; i < keys.length; i++) delete this._data[keys[i]];
-    }
-    if (cb) setTimeout(function () { cb(); }, 0);
-    return Promise.resolve();
-  }
-  clear() { this._data = {}; }
-}
-
-class MockRuntime {
-  constructor() {
-    this.id = 'test-extension-id';
-    this.lastError = null;
-    this.listeners = {};
-    this.onMessage = { addListener: function (fn) { globalThis.__onMessageHandler = fn; } };
-    this.onInstalled = { addListener: function (fn) { globalThis.__onInstalledHandler = fn; } };
-    this.onStartup = { addListener: function (fn) { globalThis.__onStartupHandler = fn; } };
-  }
-  getURL(path) { return 'chrome-extension://' + this.id + '/' + path; }
-  sendMessage(msg) { /* SW can also send messages, but we test inbound */ }
-  onMessage_addListener(fn) { this.listeners.message = fn; }
-  onInstalled_addListener(fn) { this.listeners.installed = fn; }
-  onStartup_addListener(fn) { this.listeners.startup = fn; }
-}
-
-class MockTabs {
-  constructor() { this.tabs = []; }
-  create(opts) { this.tabs.push(opts); return Promise.resolve({ id: this.tabs.length }); }
-  onUpdated = { _listeners: [], addListener(fn) { this._listeners.push(fn); } };
-  onRemoved = { _listeners: [], addListener(fn) { this._listeners.push(fn); } };
-  onActivated = { _listeners: [], addListener(fn) { this._listeners.push(fn); } };
-  query() { return Promise.resolve(this.tabs); }
-  get() { return Promise.resolve(this.tabs[0]); }
-  update() { return Promise.resolve(); }
-  remove() { return Promise.resolve(); }
-}
-
-class MockChrome {
-  constructor() {
-    this.storage = { local: new MockStorage() };
-    
-      this.runtime = new MockRuntime();
-    this.tabs = new MockTabs();
-  }
-}
-
-// Set up event handlers as instance properties (avoids class field issues)
-MockChrome.prototype.onMessage = {
-  addListener: function (fn) { globalThis.__onMessageHandler = fn; }
-};
-MockChrome.prototype.onInstalled = {
-  addListener: function (fn) { globalThis.__onInstalledHandler = fn; }
-};
-MockChrome.prototype.onStartup = {
-  addListener: function (fn) { globalThis.__onStartupHandler = fn; }
-};
 
 let mockFetch = null;
 let fetchCalls = [];
 
 function loadMessages() {
-  const src = readFileSync(join(LENS_ROOT, 'src/api/messages.js'), 'utf8');
-  (0, eval)(src);
-  return globalThis.__lensMessages;
+  return loadModule('src/api/messages.js', '__lensMessages');
 }
 
 function loadSW() {
   // Set up mocks BEFORE loading background.js
-  globalThis.chrome = new MockChrome();
+  installMockChrome();
   globalThis.fetch = function (url, opts) {
     fetchCalls.push({ url: url, opts: opts });
     if (mockFetch) return mockFetch(url, opts);
@@ -155,10 +75,8 @@ function loadSW() {
   // Polyfill console methods used by the SW's logger
   globalThis.console = console;
 
-  // Load the SW
-  const src = readFileSync(join(LENS_ROOT, 'src/background.js'), 'utf8');
-  (0, eval)(src);
-  return globalThis.__lensSW;
+  // Load the SW via the shared load-module helper (v0.1.1 item 9).
+  return loadModule('src/background.js', '__lensSW');
 }
 
 function resetSW() {

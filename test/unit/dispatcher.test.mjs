@@ -9,6 +9,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
+import { loadModule } from '../helpers/load-module.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const LENS_ROOT = join(__dirname, '..', '..');
 
@@ -28,15 +29,15 @@ globalThis.clearTimeout = clearTimeout;
 globalThis.Event = class { constructor(type, init) { Object.assign(this, { type, ...init }); } };
 globalThis.HTMLTextAreaElement = { prototype: { value: { set: function(v) { this._value = v; } } } };
 
-function loadModule(relPath, globalKey) {
-  const src = readFileSync(join(LENS_ROOT, relPath), 'utf8');
-  (0, eval)(src);
-  return globalThis[globalKey];
-}
-
 function loadAll() {
   loadModule('src/util/logger.js', '__lensLogger');
   loadModule('src/detectors/luhn.js', '__lensLuhn');
+  // Load the 4 PII sub-files FIRST, then pii.js (the aggregator).
+  // This mirrors the production content_scripts.js load order in manifest.json.
+  loadModule('src/detectors/regex/pii-us-core.js',          '__lensPII_us_core');
+  loadModule('src/detectors/regex/pii-us-extended.js',      '__lensPII_us_extended');
+  loadModule('src/detectors/regex/pii-international-id.js', '__lensPII_international_id');
+  loadModule('src/detectors/regex/pii-financial.js',        '__lensPII_financial');
   loadModule('src/detectors/regex/pii.js', '__lensPII');
   loadModule('src/detectors/regex/secrets.js', '__lensSecrets');
   loadModule('src/detectors/regex/source_xss.js', '__lensXSS');

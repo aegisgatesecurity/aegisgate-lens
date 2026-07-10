@@ -12,8 +12,14 @@
 //      No data is sent. The detection is suppressed for 24h
 //      on the same domain + same pattern.
 //
-// Both paths create a local entry in chrome.storage.local. The
-// 24h scope is enforced by a TTL on each entry.
+// v0.1.1 item 25: storage now uses chrome.storage.session (not
+// chrome.storage.local). Session storage is automatically cleared
+// when the browser restarts, which is a defense-in-depth check on
+// top of the 24h TTL. This matches the user's intent ("dismiss
+// for this session") and reduces the chance of a stale entry
+// surviving a long period of browser inactivity. The 24h TTL
+// is still enforced by gc() (entry.expires_at), so session
+// storage is purely belt-and-suspenders.
 //
 // Per docs/ARCHITECTURE-v0.1.0-BETA.md, the Lens is opt-in by
 // default. "Submit & dismiss" is the only way the user can opt
@@ -24,20 +30,36 @@
 (function (global) {
   'use strict';
 
+  var constants = (typeof self !== 'undefined' && self.__lensConstants) ||
+                       (typeof globalThis !== 'undefined' && globalThis.__lensConstants) ||
+                       null;
+
   var log = (typeof self !== 'undefined' && self.__lensLogger) ||
             (typeof globalThis !== 'undefined' && globalThis.__lensLogger) ||
             { info: function(m){ try { console.log('[AegisGate Lens] ' + m); } catch (e) {} },
               warn: function(m){ try { console.warn('[AegisGate Lens] ' + m); } catch (e) {} },
               error: function(m,e){ try { console.error('[AegisGate Lens] ' + m, e); } catch (e) {} } };
 
-  var STORAGE_KEY = 'aegisgate_lens_dismissals';
-  var TTL_MS = 24 * 60 * 60 * 1000;  // 24 hours
-  var SCHEMA_VERSION = '0.1.0-beta';
+  var STORAGE_KEY = (constants && constants.STORAGE_KEYS && constants.STORAGE_KEYS.DISMISSALS) || 'aegisgate_lens_dismissals';
+  var TTL_MS = (constants && constants.DISMISS_TTL_MS) || (24 * 60 * 60 * 1000);  // 24h (from constants.js)
+  var SCHEMA_VERSION = (constants && constants.STORAGE_SCHEMA_VERSION) || '0.1.0-beta';
 
   // The 3 reason codes. These match the design spec.
   var REASON_TEST_DATA = 'test_data';
   var REASON_OWN_DATA = 'own_data';
   var REASON_LEGITIMATE = 'legitimate_use_case';
+
+  // Resolve the storage area to use. v0.1.1 item 25: prefer
+  // chrome.storage.session (auto-cleared on browser restart),
+  // fall back to chrome.storage.local for older Chrome versions
+  // (pre-Chrome 116). chrome.storage.session is available since
+  // Chrome 102, so the fallback is purely defensive.
+  function getStorageArea() {
+    if (typeof chrome === 'undefined' || !chrome.storage) return null;
+    if (chrome.storage.session) return chrome.storage.session;
+    if (chrome.storage.local) return chrome.storage.local;
+    return null;
+  }
 
   // Build a stable key from (domainHash, category, patternId).
   // The patternId is included so the same category with different
@@ -55,11 +77,11 @@
     return new Promise(function (resolve) {
       try {
         if (typeof chrome === 'undefined' || !chrome.storage ||
-            !chrome.storage.local) {
+            !getStorageArea()) {
           resolve({});
           return;
         }
-        chrome.storage.local.get([STORAGE_KEY], function (result) {
+        getStorageArea().get([STORAGE_KEY], function (result) {
           if (chrome.runtime && chrome.runtime.lastError) {
             var err = chrome.runtime.lastError.message;
             if (err.includes('Extension context invalidated')) {
@@ -90,11 +112,11 @@
     return new Promise(function (resolve, reject) {
       try {
         if (typeof chrome === 'undefined' || !chrome.storage ||
-            !chrome.storage.local) {
+            !getStorageArea()) {
           resolve(false);
           return;
         }
-        chrome.storage.local.set({ [STORAGE_KEY]: dismissals }, function () {
+        getStorageArea().set({ [STORAGE_KEY]: dismissals }, function () {
           if (chrome.runtime && chrome.runtime.lastError) {
             var err = chrome.runtime.lastError.message;
             if (err.includes('Extension context invalidated')) {
@@ -229,9 +251,9 @@
   async function clearAll() {
     try {
       if (typeof chrome === 'undefined' || !chrome.storage ||
-          !chrome.storage.local) return false;
+          !getStorageArea()) return false;
       return new Promise(function (resolve) {
-        chrome.storage.local.remove([STORAGE_KEY], function () {
+        getStorageArea().remove([STORAGE_KEY], function () {
           if (chrome.runtime && chrome.runtime.lastError) {
             var err = chrome.runtime.lastError.message;
             if (err.includes('Extension context invalidated')) {
@@ -279,5 +301,9 @@
 
   if (typeof self !== 'undefined') self.__lensDismiss = module;
   if (typeof window !== 'undefined') window.__lensDismiss = module;
+  /**
+   * @type {import("./typedefs").LensDismiss}
+   */
   if (typeof globalThis !== 'undefined') globalThis.__lensDismiss = module;
+  if (typeof globalThis !== 'undefined' && globalThis.__lensConstants) module.__lensConstants = globalThis.__lensConstants;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

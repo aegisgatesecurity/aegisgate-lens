@@ -7,14 +7,9 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
+import { loadModule } from '../helpers/load-module.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const LENS_ROOT = join(__dirname, '..', '..');
-
-function loadModule(relPath, globalKey) {
-  const src = readFileSync(join(LENS_ROOT, relPath), 'utf8');
-  (0, eval)(src);
-  return globalThis[globalKey];
-}
 
 const comp = loadModule('src/detectors/regex/compliance.js', '__lensCompliance');
 if (!comp) throw new Error('Failed to load compliance module');

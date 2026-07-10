@@ -73,5 +73,8 @@
 
   if (typeof self !== 'undefined') self.__lensLuhn = module;
   if (typeof window !== 'undefined') window.__lensLuhn = module;
+  /**
+   * @type {{validateLuhn: (n: string) => boolean, version: string}}
+   */
   if (typeof globalThis !== 'undefined') globalThis.__lensLuhn = module;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

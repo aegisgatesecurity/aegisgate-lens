@@ -237,5 +237,8 @@
 
   if (typeof self !== 'undefined') self.__lensSelectors = module;
   if (typeof window !== 'undefined') window.__lensSelectors = module;
+  /**
+   * @type {import("./typedefs").LensSelectors}
+   */
   if (typeof globalThis !== 'undefined') globalThis.__lensSelectors = module;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
