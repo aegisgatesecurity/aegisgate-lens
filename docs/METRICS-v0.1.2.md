@@ -348,6 +348,75 @@ through F-14 + B-tier). The pii_phone fix is still a good change
 the main FPR reducer on this corpus.
 
 
+
+## F-2 + F-10 isolation (FULL 6,500 prompts) = 0 contribution
+
+After F-1 (0) and pii_phone regex tightening (0) both proved
+non-contributors, the next isolation was F-2 + F-10.
+
+**F-2** (commit 6f1bcfd, "unify opt-in storage key + nested-object
+shape"): unified the opt-in state read/written by 3 modules
+(welcome.js, popup.js, background.js) on a single canonical key
+(aegisgate_lens_opt_in) with a nested-object shape
+({ enabled, lastChangedAt, lensVersion }). This was a **plumbing
+fix** — the user's opt-in state wasn't propagating correctly
+between modules, but it had **no runtime effect on detection**.
+
+**F-10** (commit 1b17d22, "popup uses SW message path for opt-in
+read"): changed popup.js to call `chrome.runtime.sendMessage(
+GET_OPT_IN_STATE)` instead of reading chrome.storage.local
+directly. This was a **plumbing fix** — the SW is now the single
+source of truth for opt-in state, but the popup's display logic
+is unchanged.
+
+**Method**: reverted both F-2 and F-10 by checking out the
+affected files (popup.js, welcome.js, background.js) from the
+v0.1.1 merge commit (ea72cf1) — which is BEFORE both F-2 and
+F-10 — and rebuilt the bundle. F-1 and pii_phone regex tightening
+remained at their v0.1.3 (HEAD) state. Ran the platform's
+TestNormalUsage_FPR_Batched on the full 6,500 prompts.
+
+**Results**:
+
+| Bundle | Total FPs | FPR | Delta |
+|---|---|---|---|
+| v0.1.3 (F-1 + regex + strict + F-2 + F-10) | 158 | 2.43% | (baseline) |
+| v0.1.3 (F-2 + F-10 REVERTED) | 158 | 2.43% | 0 |
+| **F-2 + F-10 alone** | **0** | **0%** | **0** |
+
+**Honest finding**: F-2 and F-10 contribute ZERO to the WildChat
+FPR reduction. Both are plumbing changes (opt-in state
+management) with no runtime effect on detection.
+
+**Where does the 5.1x reduction actually come from?**
+
+By elimination, the 5.1x reduction must be in the **v0.1.1
+merge (ea72cf1, 19 commits)** which included:
+- Schema fix (commit 3b8c7d5 per the v0.1.2 doc)
+- Bucket A refactor (split pii.js into 4 sub-files)
+- Bucket B test infrastructure
+- Bucket C UX (Yellow Argon pre-CWS fixes, prompt-detect rewrite)
+- Bucket D a11y
+
+The most likely contributors from this list are:
+- **Schema fix**: corrected category names and added new ones
+- **Yellow Argon pre-CWS fixes**: regex tightening on
+  multiple patterns
+- **Prompt-detect rewrite**: the entire keystroke-detection
+  pipeline was rewritten
+
+To isolate these properly, the next test would revert the
+**v0.1.1 merge** entirely (revert ea72cf1) and see if that
+reproduces the 5.1x reduction. If yes, the 5.1x reduction
+comes from the v0.1.1 changes. If no, the reduction comes from
+the **v0.1.0-beta to v0.1.0 era** (a v0.0.x branch or uncommitted
+work).
+
+The v0.1.1 merge is large (19 commits) and reverting it as a
+single block would isolate the 5.1x reduction to a specific
+time window. This is the recommended next isolation.
+
+
 ## Honest caveats
 
 1. **Per-pattern corpus includes v0.2.0 patterns.** A
