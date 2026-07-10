@@ -34,7 +34,7 @@ generates the data that makes the Gateway smarter.
 6. Apache 2.0 OSS from day one. Code, threat model, architecture public.
 7. Privacy policy published before ship to Chrome Web Store.
 8. Zero runtime external dependencies. No `package.json`, no `node_modules`.
-9. Data retention: 90 days for events, indefinite for aggregated stats.
+9. **Local-only by default; opt-in telemetry is hashed, not retained.** The v0.1.0-beta Lens does not retain any event data on a server. Detection runs 100% in the browser. If the user opts in to false-positive reporting (the only opt-in path in v0.1.0-beta), the report payload is domain-hashed (SHA-256 truncated to 16 hex chars) and category-only; no prompt text, URL, page content, or user identifier is sent. The on-device chrome.storage.local cap is MAX_EVENTS_RING (1000) + MAX_USER_ACTIONS (100); the per-dismissal 24h TTL caps the dismiss map. A server-side retention policy (90 days events, indefinite aggregated stats) is described in the v0.2.0 design but is NOT shipped in v0.1.x. The v0.1.0-beta Lens is offline-capable.
 10. API rate-limited: 100 events/min per installation, 10K/min per backend.
 11. Backend TLS-only (1.2+). HSTS enabled. HTTP rejected.
 12. Threat model updated whenever architecture changes.

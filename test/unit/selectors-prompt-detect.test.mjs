@@ -200,12 +200,53 @@ test('selectors: identifyProvider matches duck.ai to duck_ai', () => {
   assert.equal(p.id, 'duck_ai');
 });
 
-test('selectors: identifyProvider matches x.com to grok', () => {
+test('selectors: identifyProvider returns null for x.com (v0.1.2 removed)', () => {
+  // v0.1.2: x.com and twitter.com are no longer supported Grok hosts.
+  // The Grok tab lives at grok.com (and www.grok.com); posting to x.com
+  // itself is a different surface and out of v0.1.x scope.
   globalThis.window = { location: { hostname: 'x.com' } };
   const sels = loadModule('src/util/selectors.js', '__lensSelectors');
   const p = sels.identifyProvider();
-  assert.ok(p, 'should identify provider for x.com');
+  assert.equal(p, null, 'x.com should not match any provider in v0.1.2+');
+});
+
+test('selectors: identifyProvider returns null for twitter.com (v0.1.2 removed)', () => {
+  globalThis.window = { location: { hostname: 'twitter.com' } };
+  const sels = loadModule('src/util/selectors.js', '__lensSelectors');
+  const p = sels.identifyProvider();
+  assert.equal(p, null, 'twitter.com should not match any provider in v0.1.2+');
+});
+
+test('selectors: identifyProvider returns null for duckduckgo.com (v0.1.2 removed)', () => {
+  // v0.1.2: duckduckgo.com is the search engine, not the AI chat.
+  // The Duck.ai chat lives at duck.ai.
+  globalThis.window = { location: { hostname: 'duckduckgo.com' } };
+  const sels = loadModule('src/util/selectors.js', '__lensSelectors');
+  const p = sels.identifyProvider();
+  assert.equal(p, null, 'duckduckgo.com should not match any provider in v0.1.2+');
+});
+
+test('selectors: identifyProvider matches www.grok.com to grok (v0.1.2 adds)', () => {
+  // v0.1.2: www.grok.com is now supported (it was in the manifest
+  // but the selectors.js provider list only had grok.com, so a user
+  // landing on www.grok.com would get the content script injected but
+  // no provider identified — no banner).
+  globalThis.window = { location: { hostname: 'www.grok.com' } };
+  const sels = loadModule('src/util/selectors.js', '__lensSelectors');
+  const p = sels.identifyProvider();
+  assert.ok(p, 'should identify provider for www.grok.com');
   assert.equal(p.id, 'grok');
+});
+
+test('selectors: identifyProvider matches copilot.cloud.microsoft to copilot (v0.1.2 adds)', () => {
+  // v0.1.2: copilot.cloud.microsoft is now in both the manifest and
+  // the selectors.js provider list (it was in selectors but not in
+  // the manifest, so the content script never loaded there).
+  globalThis.window = { location: { hostname: 'copilot.cloud.microsoft' } };
+  const sels = loadModule('src/util/selectors.js', '__lensSelectors');
+  const p = sels.identifyProvider();
+  assert.ok(p, 'should identify provider for copilot.cloud.microsoft');
+  assert.equal(p.id, 'copilot');
 });
 
 test('selectors: identifyProvider returns null for unknown', () => {

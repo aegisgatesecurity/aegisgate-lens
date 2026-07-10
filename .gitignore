@@ -111,6 +111,7 @@ test/headless-smoke/piml-runner
 # /.plans/ — repo for Lens plans, lessons, retrospectives (gitignored parent per user)
 # /.workingdirectory/ — AI working directory (not /tmp/ per Standing Rule 2.1)
 .plans/
+.plans/v0.2-burndown/
 .workingdirectory/
 
 # Benchmark data + results (private, gitignored per standing rule)
@@ -140,3 +141,12 @@ node_modules/
 *.log
 *.tmp
 *.bak
+
+# v0.1.2 F-5: burned-down v0.2.0 research artifacts
+docs/PHASE-5*
+
+# v0.1.2 F-5: burned-down v0.2.0 research artifacts
+docs/VERIFICATION-3*
+
+# v0.1.2 F-5: burned-down v0.2.0 research artifacts
+docs/TRAINING-RUN-1*
