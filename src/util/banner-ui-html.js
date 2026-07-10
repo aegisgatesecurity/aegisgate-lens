@@ -132,7 +132,7 @@
         '<button type="button" class="lens-btn lens-btn-secondary" data-action="cancel">Cancel send</button>' +
         '<button type="button" class="lens-btn lens-btn-primary" data-action="redact">Edit manually</button>' +
         '<button type="button" class="lens-btn lens-btn-ghost" data-action="send">Send anyway</button>' +
-        '<button type="button" class="lens-false-positive-link" data-action="false-positive">' +
+        '<button type="button" class="lens-false-positive-link" data-action="false-positive" aria-label="Mark this detection as a false positive and report it">' +
           (icons && icons.ICONS.chevronDown ? icons.ICONS.chevronDown : '') +
           'This is a false positive' +
         '</button>' +
