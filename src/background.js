@@ -456,15 +456,24 @@
       }
       
       // Check if this is one of our provider domains
+      // Provider domains. Mirrors src/util/selectors.js PROVIDERS +
+      // src/manifest.json content_scripts.matches. The three sets MUST
+      // stay in sync; the test/unit/manifest-hosts.test.mjs test asserts
+      // this on every CI run.
+      //
+      // x.com, twitter.com, and duckduckgo.com were removed in v0.1.2:
+      //   - x.com / twitter.com: the Grok tab lives at grok.com (not x.com);
+      //     posting to x.com is a different surface and not in v0.1.x scope.
+      //   - duckduckgo.com: Duck.ai lives at duck.ai; duckduckgo.com is the
+      //     search engine, not the AI chat.
       var providerDomains = [
         'chat.openai.com', 'chatgpt.com',
         'claude.ai',
         'gemini.google.com',
-        'copilot.microsoft.com',
+        'copilot.microsoft.com', 'copilot.cloud.microsoft',
         'duck.ai',
-        'duckduckgo.com',
         'perplexity.ai', 'www.perplexity.ai',
-        'grok.com', 'x.com', 'twitter.com',
+        'grok.com', 'www.grok.com',
         'chat.mistral.ai', 'le-chat.mistral.ai'
       ];
       
