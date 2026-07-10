@@ -311,6 +311,22 @@ should not be cited publicly.
    The 2.43% FPR vs. 12.49% FPR IS a direct comparison. The
    5.1× improvement is real.
 
+   **Schema fix (this turn)**: the original F-1 isolation test
+   failed because the v0.1.2 bundle emitted 11+ categories that
+   were not in the schema's VALID_CATEGORIES map (e.g.,
+   `pii_letter_only_id`, `pii_id_generic_alphanumeric`,
+   `pii_credit_card_loose`, `pii_passport_generic`,
+   `pii_id_multisegment`, `pii_street_intl`, `pii_ssn_ru`,
+   `pii_ssn_fr`, `pii_tax_id_ch`, `pii_email_intl`,
+   `toxicity_sexual`, `toxicity_self_harm`, `xss_meta_refresh`).
+   The dispatcher's metadata validation was dropping these
+   events, leading to spurious 0-FP results. The schema was
+   updated in this turn to include all 11+ missing categories
+   in their appropriate facets. The full F-1 isolation on
+   6,500 prompts (this turn) confirms F-1 alone contributes
+   EXACTLY 0 to the FPR reduction on this corpus (158 FPs
+   with F-1 vs 158 FPs with F-1 reverted).
+
 3. **The v0.1.2 code includes changes that REDUCE FPR**:
    - F-1: pii_phone_intl_loose digit bound lowered 15 → 13
    - F-2: opt-in storage key + shape unification
