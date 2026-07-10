@@ -76,8 +76,8 @@ The 8 supported providers are matched via `hostname`. When a page loads, the con
 | **Sees prompt content** | ❌ Never | ✅ Yes | ✅ Yes | ✅ Yes |
 | **Network round-trip** | ❌ None | ✅ Required | ✅ Required | ✅ Required |
 | **Latency (per keystroke)** | **0.85ms p99** | 50–200ms | 100–300ms | 50–150ms |
-| **Detection type** | Regex (120 patterns) | ML + heuristics | ML | ML + rules |
-| **OWASP LLM Top 10 coverage** | 6/10 | 10/10 | 10/10 | 9/10 |
+| **Detection type** | Regex (131 patterns) | ML + heuristics | ML | ML + rules |
+| **OWASP LLM Top 10 coverage** | 5/10 patterns¹ | 10/10 | 10/10 | 9/10 |
 | **MITRE ATLAS coverage** | 15 techniques | Unknown | 8 techniques | 12 techniques |
 | **EU AI Act coverage** | 4 articles | Yes | Yes | Partial |
 | **Open source** | ✅ Apache 2.0 | ❌ | ❌ | ❌ |
@@ -86,6 +86,8 @@ The 8 supported providers are matched via `hostname`. When a page loads, the con
 | **Cost to serve per user** | $0 | Variable | Variable | Variable |
 
 **The core differentiator:** we are the only tool where the privacy guarantee is **enforced by what we cannot do**, not what we promise. No server, no logs, no prompt content ever crosses a wire. For SOC 2 / HIPAA / GDPR / EU AI Act compliance, that architectural fact matters.
+
+¹ AegisGate Lens defines all 10 `owasp_llm0N` categories in `src/privacy/schema.js` (the 6 unimplemented patterns are `02_insecure_output`, `03_training_data_poisoning`, `05_supply_chain`, `06_sensitive_info_disclosure`, `07_insecure_plugin`; v0.2.0 work to close the gap). The shipped detector implements 5 of the 10 categories (LLM01 prompt injection, LLM04 model DoS, LLM08 excessive agency, LLM09 overreliance, LLM10 model theft). The other competitors' "10/10" claims refer to cloud-side ML detectors that the Lens does not match because the Lens is on-device regex-only by design (see Architecture doc §2 for the 12 non-negotiables).
 
 ## Why AegisGate Lens With Chrome (or Firefox, or Safari, etc.)?
 
