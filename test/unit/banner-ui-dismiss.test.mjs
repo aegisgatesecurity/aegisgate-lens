@@ -133,16 +133,14 @@ class MockElement {
   set classList(val) { this._classList = val; }
   get classList() {
     // Return a real Set augmented with the methods the banner
-    // uses (add, remove, contains/has). This avoids the
+    // uses (add, remove, has). This avoids the
     // "classList.remove is not a function" error that fires
     // when the hide() setTimeout runs after the test ends.
-    // v0.1.3 B4: added 'remove' alias for 'delete' (the real
-    // DOMTokenList has 'remove', not 'delete'; the B4 inline
-    // style cleanup changed el.style.display = 'none' to
-    // el.classList.add/remove('hidden')).
     if (!this._classList || typeof this._classList.add !== 'function') {
       this._classList = new Set();
-      this._classList.remove = function (val) { this.delete(val); }.bind(this._classList);
+      var el = this;
+      var origHas = Set.prototype.has.bind(this._classList);
+      this._classList.has = origHas;
     }
     return this._classList;
   }
@@ -165,14 +163,6 @@ class MockDocument {
 
 globalThis.window = { location: { hostname: 'chat.openai.com' } };
 globalThis.document = new MockDocument();
-// v0.1.3 B4: Set.prototype doesn't have 'remove' (it has 'delete'),
-// but the real DOMTokenList does. Add 'remove' to Set.prototype so
-// any classList.remove(...) call in the source code works in tests.
-if (!Set.prototype.remove) {
-  Set.prototype.remove = function (val) { this.delete(val); };
-}
-
-
 globalThis.MutationObserver = class { constructor() {} observe() {} disconnect() {} };
 globalThis.setTimeout = setTimeout;
 globalThis.clearTimeout = clearTimeout;
