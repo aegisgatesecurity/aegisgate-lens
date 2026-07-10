@@ -378,7 +378,7 @@
       writeOnboardedFlag();
       onboardedFlagCache = 'done';
     }
-    state.el.style.display = '';
+    state.el.classList.remove('hidden');
 
     // Attach the banner above the input
     var input = opts.input || null;
@@ -423,7 +423,7 @@
     try { el.classList.add('lens-hiding'); } catch (e) { /* ignore */ }
     setTimeout(function () {
       try {
-        el.style.display = 'none';
+        el.classList.add('hidden');
         try { el.classList.remove('lens-hiding'); } catch (e2) { /* ignore */ }
         if (el.parentNode) el.parentNode.removeChild(el);
       } catch (e3) {

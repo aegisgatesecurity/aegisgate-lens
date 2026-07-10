@@ -56,7 +56,7 @@
     el.setAttribute('data-aegisgate-lens', 'banner');
     el.setAttribute('role', 'alert');
     el.setAttribute('aria-live', 'polite');
-    el.style.display = 'none';
+    el.classList.add('hidden');
     return el;
   }
 
