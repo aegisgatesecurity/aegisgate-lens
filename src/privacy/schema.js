@@ -32,7 +32,7 @@
   // Format: { facetName: [category, category, ...] }
   var VALID_CATEGORIES = {
     pii: [
-      'pii_ssn', 'pii_email', 'pii_phone', 'pii_credit_card',
+      'pii_ssn', 'pii_email', 'pii_phone', 'pii_credit_card', 'pii_phone_intl_loose',
       'pii_address', 'pii_dob', 'pii_driver_license', 'pii_passport',
       'pii_bip39_seed',
       'pii_tax_id', 'pii_bank_account', 'pii_ip_address',
@@ -54,7 +54,7 @@
       'secret_jwt', 'secret_api_key_generic', 'secret_db_connection_string',
       'secret_slack_token', 'secret_stripe_key', 'secret_twilio_key',
       'secret_sendgrid_key', 'secret_mailgun_key', 'secret_openai_key',
-      'secret_anthropic_key', 'secret_heroku_key',
+      'secret_anthropic_key', 'secret_heroku_key', 'secret_azure_devops', 'secret_gitea_token', 'secret_heroku_token_legacy', 'secret_slack_legacy',
       'secret_aws_account_id', 'secret_github_actions_token',
       'secret_github_finegrained', 'secret_gitlab_token', 'secret_gitlab_pat',
       'secret_linode_token', 'secret_digitalocean_token', 'secret_rackspace_token',
@@ -64,7 +64,7 @@
       'secret_internal_api_key', 'secret_supabase', 'secret_db_url_with_password'
     ],
     xss: [
-      'xss_script_tag', 'xss_event_handler', 'xss_javascript_url',
+      'xss_javascript_data_url', 'xss_script_tag', 'xss_event_handler', 'xss_mutation_xss', 'xss_polyglot', 'xss_svg_namespace_abuse', 'xss_svg_use_external', 'xss_javascript_url',
       'xss_data_url', 'xss_svg_script', 'xss_dom_clobbering'
     ],
     compliance: [
@@ -88,8 +88,9 @@
       'eu_ai_act_robustness',
       'anp_personal_data',
       'anp_special_category',
-      'cu_consumer_rights',
-      'cu_minor_protection'
+      'cu_consumer_rights', 'cu_minor_protection',
+      'ccpa_reference', 'iso_27001_reference', 'lgpd_reference', 'nist_csf_reference', 'pipeda_reference', 'popia_reference',
+      'cu_minor_protection',
     ],
     toxicity: [
       'toxicity_hate', 'toxicity_insult', 'toxicity_obscene',
