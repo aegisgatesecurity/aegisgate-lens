@@ -63,7 +63,48 @@ export class MockRuntime {
     this.listeners = {};
   }
   getURL(path) { return 'chrome-extension://' + this.id + '/' + path; }
-  sendMessage(msg) { /* SW can also send messages, but we test inbound */ }
+  // v0.1.2 F-10: sendMessage now dispatches to the registered
+  // __onMessageHandler (the SW's onMessage listener). The
+  // handler is expected to call the response callback
+  // synchronously or asynchronously. If no handler is
+  // registered, the callback is invoked with a "no
+  // receiver" error. This mirrors Chrome's actual behavior
+  // when chrome.runtime.sendMessage has no listener.
+  sendMessage(msg, responseCallback) {
+    var cr = this;
+    var respond = function (response) {
+      if (typeof responseCallback === 'function') {
+        // chrome.runtime.lastError is set when there's no
+        // receiver; tests can set it before calling
+        // sendMessage to simulate the error path.
+        responseCallback(response || undefined);
+      }
+    };
+    if (globalThis.__onMessageHandler) {
+      try {
+        // Chrome sends a fake sender; we use {} since the
+        // SW validates sender.id which we don't have here.
+        var result = globalThis.__onMessageHandler(msg, { id: cr.id }, respond);
+        // If the handler returned true, it will call respond
+        // asynchronously. If false, it already called respond
+        // synchronously. If undefined, it called respond
+        // synchronously too. Either way, our job is done.
+        if (result === true) {
+          // async response expected; the handler will call respond
+        }
+        return;
+      } catch (e) {
+        // Fall through to error path
+        cr.lastError = { message: (e && e.message) || String(e) };
+        respond();
+        return;
+      }
+    }
+    // No receiver: Chrome sets lastError and calls back with
+    // no response. (See F-10 popup.js readOptInViaMessage.)
+    cr.lastError = { message: 'Could not establish connection. Receiving end does not exist.' };
+    respond();
+  }
   onMessage_addListener(fn) { this.listeners.message = fn; }
   onInstalled_addListener(fn) { this.listeners.installed = fn; }
   onStartup_addListener(fn) { this.listeners.startup = fn; }
