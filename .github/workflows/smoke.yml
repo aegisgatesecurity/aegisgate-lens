@@ -97,6 +97,15 @@ jobs:
           # Verify the binary was built (also at the absolute path)
           test -f ${GITHUB_WORKSPACE}/test/headless-smoke/headless-smoke-bin && echo "Binary built OK" || (echo "Binary NOT built"; exit 1)
           ls -la ${GITHUB_WORKSPACE}/test/headless-smoke/headless-smoke-bin
+      - name: Run the Go unit tests
+        # The Go smoke binary has its own unit tests (in
+        # tools/headless-smoke/flow/devtools_test.go). These cover
+        # the close() idempotency contract that prevents the
+        # "close of closed channel" panic. Run them before the
+        # heavier smoke test so a regression here fails fast.
+        run: |
+          cd tools/headless-smoke/flow
+          go test -v ./...
 
       - name: Build the test bundle
         # The smoke loads test/headless-smoke/dist/ which is the SHIP-READY

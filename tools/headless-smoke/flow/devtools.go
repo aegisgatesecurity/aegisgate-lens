@@ -24,15 +24,16 @@ import (
 
 // CDPClient is a minimal Chrome DevTools Protocol client.
 type CDPClient struct {
-	wsURL    string
-	conn     *websocket.Conn
-	mu       sync.Mutex
-	nextID   int
-	pending  map[int]chan json.RawMessage
-	events   chan json.RawMessage
-	closeEv  chan struct{}
-	closed   bool
-	timeout  time.Duration
+	wsURL     string
+	conn      *websocket.Conn
+	mu        sync.Mutex
+	nextID    int
+	pending   map[int]chan json.RawMessage
+	events    chan json.RawMessage
+	closeEv   chan struct{}
+	closed    bool
+	closeOnce sync.Once
+	timeout   time.Duration
 }
 
 type cdpTarget struct {
@@ -100,14 +101,17 @@ func newCDPClient(port int, timeout time.Duration) (*CDPClient, cdpTarget, error
 }
 
 func (c *CDPClient) close() error {
-	if c.closed {
-		return nil
-	}
-	c.closed = true
-	close(c.closeEv)
-	if c.conn != nil {
-		_ = c.conn.Close()
-	}
+	// Use sync.Once to make the close idempotent. The previous version
+	// had a double-close bug: close() did close(c.closeEv) AND
+	// readLoop() also did close(c.closeEv) on conn error, causing
+	// "panic: close of closed channel" (goroutine leak at shutdown).
+	c.closeOnce.Do(func() {
+		c.closed = true
+		close(c.closeEv)
+		if c.conn != nil {
+			_ = c.conn.Close()
+		}
+	})
 	return nil
 }
 
@@ -245,7 +249,8 @@ func (c *CDPClient) readLoop() {
 	for {
 		_, data, err := c.conn.ReadMessage()
 		if err != nil {
-			close(c.closeEv)
+			// The readLoop exits on conn error. The close() call will
+			// handle closing closeEv (via sync.Once). We just return.
 			return
 		}
 		var msg struct {
