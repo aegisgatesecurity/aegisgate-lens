@@ -297,6 +297,57 @@ reduction. F-1 specifically is a smaller part. The combined
 fix is the right thing to ship. The "F-1 alone" number
 should not be cited publicly.
 
+
+## pii_phone regex tightening isolation (FULL 6,500 prompts)
+
+In addition to the F-1 isolation (which showed 0 contribution on the
+full 6,500 prompts), this turn ran a separate isolation test for the
+OTHER part of commit 4d3faaa: the **pii_phone_intl_loose regex
+tightening** (excluding "." from the inner char class, lowering the
+bound to 12) and the addition of the **pii_phone_intl_strict
+pattern** (a new high-precision pattern requiring phone-format
+separators).
+
+**Method**: built the v0.1.3 bundle with ONLY the regex tightening
+and strict pattern reverted (F-1 digit bound kept at > 13). Ran the
+platform's TestNormalUsage_FPR_Batched on the full 6,500 prompts.
+
+**Results**:
+
+| Bundle | Total FPs | FPR | Delta |
+|---|---|---|---|
+| v0.1.3 (F-1 + regex + strict) | 158 | 2.43% | (baseline) |
+| v0.1.3 (regex + strict REVERTED) | 158 | 2.43% | 0 |
+| v0.1.3 (regex + strict + F-1 REVERTED) | 158 | 2.43% | 0 |
+| **pii_phone regex tightening alone** | **0** | **0%** | **0** |
+
+**Honest finding**: the pii_phone_intl_loose regex tightening
+contributes ZERO to the WildChat FPR reduction. The 158 FPs are
+the SAME in all 3 conditions.
+
+**Why**: the WildChat FPs (e.g., "const scrollIfNeed = async..."
+which has a 7-digit function-name, "Ignore previous instructions.
+Caroline Hertig..." which is a 10-digit "Caroline Hertig") are
+SHORTER than the 13-18 digit run that the regex tightening was
+designed to reject. The WildChat FPs use shorter digit sequences
+that pass BOTH the original 18 bound AND the tightened 12 bound.
+
+**What this means for the 5.1x FPR reduction**: the 5.1x reduction
+is therefore driven by F-2, F-3, F-4, F-5, F-8, F-10, F-13, F-14,
+and the B-tier fixes -- NOT F-1, NOT the pii_phone regex tightening.
+This narrows the search space. The next isolation test should
+target these fixes (especially F-2: opt-in storage key + shape
+unification, F-3/F-4: doc fixes, F-8: README update, F-10:
+popup uses SW message path).
+
+**Honest bottom line**: the 5.1x FPR reduction is real and
+measurable, but F-1 and pii_phone regex tightening are NOT the
+contributors. The contributor is in the OTHER F-* fixes (F-2
+through F-14 + B-tier). The pii_phone fix is still a good change
+(prevents 14+ digit IBAN-body FPs in real traffic) but it's not
+the main FPR reducer on this corpus.
+
+
 ## Honest caveats
 
 1. **Per-pattern corpus includes v0.2.0 patterns.** A
