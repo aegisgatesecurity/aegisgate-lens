@@ -58,7 +58,7 @@
     // Show upgrade banner for Lens users (free tier)
     var banner = document.getElementById('upgrade-banner');
     if (banner) {
-      banner.style.display = 'block';
+      banner.classList.remove('hidden');
     }
   }
 
