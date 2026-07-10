@@ -100,23 +100,31 @@ jobs:
 
       - name: Build the test bundle
         # The smoke loads test/headless-smoke/dist/ which is the SHIP-READY
-        # bundle (NOT the source). We build it from src/ in this CI run.
+        # bundle (NOT the source). It is NOT in git (it's a build artifact);
+        # we build it from src/ in this CI run.
+        #
+        # IMPORTANT: On a fresh checkout, test/headless-smoke/dist/ does
+        # NOT exist (it's gitignored). We must create it before the
+        # copy. Then we copy the entire src/ tree into it (including
+        # banner-{1x,2x,3x}.png from B5), then run build-bundle.py
+        # to regenerate bundle.js.
         run: |
-          # Step 1: clear dist/ (preserve .gitkeep)
-          cd test/headless-smoke/dist
-          find . -type f -not -name ".gitkeep" -delete
-          cd ../../../
-          # Step 2: copy src/ to dist/
+          # Step 1: ensure dist/ exists (it's gitignored)
+          mkdir -p test/headless-smoke/dist
+          # Step 2: clear any stale content (preserve .gitkeep if present)
+          find test/headless-smoke/dist -type f -not -name ".gitkeep" -delete
+          # Step 3: copy src/ to dist/ (this includes all source + the
+          # banner-{1x,2x,3x}.png icons from B5)
           cp -r src/. test/headless-smoke/dist/
-          # Step 3: build bundle.js
+          # Step 4: build bundle.js from the new dist/
           python3 tools/ci/build-bundle.py
-          # Step 4: verify dist/ has the right structure
+          # Step 5: verify dist/ has the right structure
           ls test/headless-smoke/dist/ | head -20
           ls test/headless-smoke/dist/icons/ | head -10
           # The banner-{1x,2x,3x}.png should be in icons/
-          test -f test/headless-smoke/dist/icons/banner-1x.png && echo "banner-1x.png present"
-          test -f test/headless-smoke/dist/icons/banner-2x.png && echo "banner-2x.png present"
-          test -f test/headless-smoke/dist/icons/banner-3x.png && echo "banner-3x.png present"
+          test -f test/headless-smoke/dist/icons/banner-1x.png && echo "banner-1x.png present" || (echo "banner-1x.png MISSING"; exit 1)
+          test -f test/headless-smoke/dist/icons/banner-2x.png && echo "banner-2x.png present" || (echo "banner-2x.png MISSING"; exit 1)
+          test -f test/headless-smoke/dist/icons/banner-3x.png && echo "banner-3x.png present" || (echo "banner-3x.png MISSING"; exit 1)
 
       - name: Run the headless smoke test
         # The smoke runs 15 detection cases in real Chrome 150+ and
