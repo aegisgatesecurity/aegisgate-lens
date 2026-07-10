@@ -104,10 +104,14 @@
     },
     {
       id: 'grok',
-      name: 'Grok (x.com)',
-      hosts: ['grok.com', 'x.com', 'twitter.com'],
-      // Grok: textarea in the Grok tab, x.com post composer
-      inputSelector: 'textarea[placeholder*="message" i], textarea[placeholder*="Ask" i], textarea[placeholder*="Post" i], textarea[placeholder*="Create" i], div[contenteditable="true"]',
+      name: 'Grok',
+      hosts: ['grok.com', 'www.grok.com'],
+      // Grok: textarea in the Grok composer area
+      // Note: x.com and twitter.com are NOT supported. The Grok tab on
+      // x.com lives at grok.com (and www.grok.com). Posting to x.com
+      // itself is a different surface; the v0.1.0-beta scope is
+      // limited to the dedicated Grok chat.
+      inputSelector: 'textarea[placeholder*="message" i], textarea[placeholder*="Ask" i], div[contenteditable="true"]',
       sendSelector: 'button[aria-label*="Send" i], button[aria-label*="Post" i], button[type="submit"]',
       containerSelector: 'form, div[role="group"], div[role="textbox"]',
       submitMethod: 'enter',

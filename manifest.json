@@ -31,11 +31,14 @@
         "https://claude.ai/*",
         "https://gemini.google.com/*",
         "https://copilot.microsoft.com/*",
+        "https://copilot.cloud.microsoft/*",
         "https://duck.ai/*",
-        "https://duckduckgo.com/*",
         "https://perplexity.ai/*",
+        "https://www.perplexity.ai/*",
         "https://grok.com/*",
-        "https://x.com/*"
+        "https://www.grok.com/*",
+        "https://chat.mistral.ai/*",
+        "https://le-chat.mistral.ai/*"
       ],
       "js": [
         "src/util/logger.js",
