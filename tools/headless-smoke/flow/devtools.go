@@ -23,17 +23,12 @@ import (
 )
 
 // CDPClient is a minimal Chrome DevTools Protocol client.
-//
-// The pending map keys on "id:sessionId" so that responses for
-// session-attached targets (used by the cross-tab test) are routed
-// to the right caller. The main session uses an empty sessionId
-// (e.g., "42:" for request id 42).
 type CDPClient struct {
 	wsURL     string
 	conn      *websocket.Conn
 	mu        sync.Mutex
 	nextID    int
-	pending   map[string]chan json.RawMessage
+	pending   map[int]chan json.RawMessage
 	events    chan json.RawMessage
 	closeEv   chan struct{}
 	closed    bool
@@ -96,7 +91,7 @@ func newCDPClient(port int, timeout time.Duration) (*CDPClient, cdpTarget, error
 		wsURL:   pageWS,
 		conn:    conn,
 		nextID:  1,
-		pending: make(map[string]chan json.RawMessage),
+		pending: make(map[int]chan json.RawMessage),
 		events:  make(chan json.RawMessage, 64),
 		closeEv: make(chan struct{}),
 		timeout: timeout,
@@ -122,28 +117,17 @@ func (c *CDPClient) close() error {
 
 // send sends a CDP method call and returns the response.
 func (c *CDPClient) send(method string, params interface{}) (json.RawMessage, error) {
-	return c.sendSession("", method, params)
-}
-
-// sendSession sends a CDP method call (optionally to a specific
-// session) and returns the response. The key is the "id:sessionId"
-// pair so session-specific responses are routed correctly.
-func (c *CDPClient) sendSession(sessionID, method string, params interface{}) (json.RawMessage, error) {
 	c.mu.Lock()
 	id := c.nextID
 	c.nextID++
 	ch := make(chan json.RawMessage, 1)
-	key := fmt.Sprintf("%d:%s", id, sessionID)
-	c.pending[key] = ch
+	c.pending[id] = ch
 	c.mu.Unlock()
 
 	msg := map[string]interface{}{
 		"id":     id,
 		"method": method,
 		"params": params,
-	}
-	if sessionID != "" {
-		msg["sessionId"] = sessionID
 	}
 	data, _ := json.Marshal(msg)
 	if err := c.conn.WriteMessage(websocket.TextMessage, data); err != nil {
@@ -154,6 +138,7 @@ func (c *CDPClient) sendSession(sessionID, method string, params interface{}) (j
 	defer cancel()
 	select {
 	case resp := <-ch:
+		// Check for error
 		var r struct {
 			Error  *struct{ Code int; Message string } `json:"error"`
 			Result json.RawMessage                       `json:"result"`
@@ -268,24 +253,18 @@ func (c *CDPClient) readLoop() {
 			// handle closing closeEv (via sync.Once). We just return.
 			return
 		}
-		// Parse the message to find the response id AND the sessionId
-		// (responses for session-attached targets include a sessionId).
 		var msg struct {
-			ID        int    `json:"id"`
-			Method    string `json:"method"`
-			SessionID string `json:"sessionId"`
+			ID     int             `json:"id"`
+			Method string          `json:"method"`
 		}
 		if err := json.Unmarshal(data, &msg); err != nil {
 			continue
 		}
 		if msg.ID != 0 {
-			// Response to a send() call. Look up the pending channel
-			// by the (id, sessionId) pair.
-			key := fmt.Sprintf("%d:%s", msg.ID, msg.SessionID)
 			c.mu.Lock()
-			ch, ok := c.pending[key]
+			ch, ok := c.pending[msg.ID]
 			if ok {
-				delete(c.pending, key)
+				delete(c.pending, msg.ID)
 			}
 			c.mu.Unlock()
 			if ok {
@@ -328,40 +307,6 @@ func (c *CDPClient) reloadPage(target cdpTarget, timeout time.Duration) error {
 	return err
 }
 
-
-func (c *CDPClient) evaluateInSession(sessionID, expression string, awaitPromise bool) (json.RawMessage, error) {
-	params := map[string]interface{}{
-		"expression":    expression,
-		"returnByValue": true,
-		"awaitPromise":  awaitPromise,
-	}
-	res, err := c.sendToSession(sessionID, "Runtime.evaluate", params)
-	if err != nil {
-		return nil, err
-	}
-	// First try: single-envelope shape (matches evaluate())
-	var r1 struct {
-		Type        string          `json:"type"`
-		Value       json.RawMessage `json:"value"`
-		Description string          `json:"description"`
-	}
-	if err := json.Unmarshal(res, &r1); err == nil && r1.Value != nil {
-		return r1.Value, nil
-	}
-	// Second try: double-envelope shape (session-attached)
-	var r2 struct {
-		Result struct {
-			Type        string          `json:"type"`
-			Value       json.RawMessage `json:"value"`
-			Description string          `json:"description"`
-		} `json:"result"`
-	}
-	if err := json.Unmarshal(res, &r2); err != nil {
-		return nil, fmt.Errorf("unmarshal evaluate envelope (both shapes failed): %v (raw=%s)", err, string(res))
-	}
-	return r2.Result.Value, nil
-}
-
 // clickSelector clicks the first element matching the given CSS
 // selector in the page's main world. Uses the DOM API el.click()
 // (not synthetic mouse events) which dispatches a real click event
@@ -401,47 +346,3 @@ func (c *CDPClient) clickSelector(selector string) error {
 	return nil
 }
 
-
-func (c *CDPClient) openNewTab(url string) (string, string, error) {
-	res, err := c.send("Target.createTarget", map[string]interface{}{"url": "about:blank"})
-	if err != nil {
-		return "", "", fmt.Errorf("createTarget: %w", err)
-	}
-	var r struct {
-		TargetID string `json:"targetId"`
-	}
-	if err := json.Unmarshal(res, &r); err != nil {
-		return "", "", fmt.Errorf("parse createTarget result: %w", err)
-	}
-	if r.TargetID == "" {
-		return "", "", fmt.Errorf("no targetId from createTarget")
-	}
-	// Attach to the new target. Note: a full implementation would
-	// multiplex CDP messages across sessions; for the cross-tab test
-	// we use the simpler "sendToTarget" approach (inherited from
-	// the sessionId) - which requires the conn to know about the
-	// session. Since our conn has only one session, we send the
-	// sessionId in the params and Chrome routes the message to the
-	// right target.
-	attachRes, err := c.send("Target.attachToTarget", map[string]interface{}{
-		"targetId": r.TargetID,
-		"flatten":   true,
-	})
-	if err != nil {
-		return r.TargetID, "", fmt.Errorf("attachToTarget: %w", err)
-	}
-	var ar struct {
-		SessionID string `json:"sessionId"`
-	}
-	if err := json.Unmarshal(attachRes, &ar); err != nil {
-		return r.TargetID, "", fmt.Errorf("parse attach result: %w", err)
-	}
-	return r.TargetID, ar.SessionID, nil
-}
-
-// sendToSession sends a CDP method to a specific session.
-// This is used by the cross-tab test (B1-D2) to inject the bundle
-// into the 2nd tab.
-func (c *CDPClient) sendToSession(sessionID, method string, params interface{}) (json.RawMessage, error) {
-	return c.sendSession(sessionID, method, params)
-}
