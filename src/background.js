@@ -154,7 +154,14 @@
   // message arrives).
 
   var FP_QUEUE_KEY = 'aegisgate_lens_fp_queue';
-  var OPT_IN_KEY = 'aegisgate_lens_opt_in';
+  // v0.1.2 F-2: OPT_IN_KEY now matches constants.js STORAGE_KEYS.OPT_IN
+  // (aegisgate_lens_opt_in). Previously the SW and the welcome page used
+  // different keys; the two opt-in states never synced. The fix unifies
+  // on a single nested-object shape { enabled, last_changed_at, lens_version }.
+  // The key is centralized in constants.js; this string literal is a
+  // defensive fallback for the case where constants.js fails to load.
+  var OPT_IN_KEY = (C && C.STORAGE_KEYS && C.STORAGE_KEYS.OPT_IN) || 'aegisgate_lens_opt_in';
+  var LENS_VERSION = (C && C.STORAGE_SCHEMA_VERSION) || '0.1.1';
   var LAST_SEND_KEY = 'aegisgate_lens_last_fp_send';
 
   // The backend endpoint. Default: the corporate Platform
@@ -171,12 +178,45 @@
     });
   }
 
+  // v0.1.2 F-2: getOptIn now reads the unified nested-object shape
+  // { enabled, last_changed_at, lens_version } written by welcome.js
+  // and setOptIn (below). Returns { enabled: bool, lastChangedAt: number|null,
+  // lensVersion: string|null } so callers can show the user when they
+  // last changed their opt-in state.
   function getOptIn() {
-    return storageGet(OPT_IN_KEY).then(function (v) { return !!v; });
+    return storageGet(OPT_IN_KEY).then(function (v) {
+      if (!v) return { enabled: false, lastChangedAt: null, lensVersion: null };
+      if (typeof v === 'boolean') {
+        // Backwards-compat: v0.1.0-beta wrote a bare boolean. Treat as enabled
+        // with a synthetic last_changed_at = null (we don't know when).
+        return { enabled: v === true, lastChangedAt: null, lensVersion: null };
+      }
+      if (typeof v === 'object') {
+        return {
+          enabled: v.enabled === true,
+          lastChangedAt: typeof v.last_changed_at === 'number' ? v.last_changed_at : null,
+          lensVersion: typeof v.lens_version === 'string' ? v.lens_version : null
+        };
+      }
+      return { enabled: false, lastChangedAt: null, lensVersion: null };
+    });
   }
 
+  // v0.1.2 F-2: setOptIn now writes the unified nested-object shape.
+  // Preserves the previous lens_version if there is one (in case the
+  // user opted in on an older version and is upgrading).
   function setOptIn(optedIn) {
-    return storageSet(OPT_IN_KEY, !!optedIn);
+    return storageGet(OPT_IN_KEY).then(function (prev) {
+      var prevVersion = (prev && typeof prev === 'object' && typeof prev.lens_version === 'string')
+        ? prev.lens_version
+        : LENS_VERSION;
+      var payload = {
+        enabled: !!optedIn,
+        last_changed_at: Math.floor(Date.now() / 1000),
+        lens_version: prevVersion
+      };
+      return storageSet(OPT_IN_KEY, payload);
+    });
   }
 
   // Add a report (or array of reports) to the queue
@@ -205,7 +245,9 @@
     ]).then(function (results) {
       var queue = results[0] || [];
       var backend = results[1];
-      var optedIn = results[2];
+      // v0.1.2 F-2: getOptIn now returns { enabled, lastChangedAt, lensVersion }.
+      var optInState = results[2] || { enabled: false, lastChangedAt: null, lensVersion: null };
+      var optedIn = optInState.enabled === true;
       if (queue.length === 0) return { sent: 0, failed: 0 };
       if (!optedIn) {
         // The user revoked opt-in between sending and now.
@@ -372,11 +414,23 @@
   }
 
   // GET_OPT_IN_STATE: the popup (3j) asks whether the user
-  // has opted in
+  // has opted in. v0.1.2 F-2: the response now includes the full
+  // { enabled, last_changed_at, lens_version } state so the popup
+  // can show the user when they last changed their opt-in.
+  // Backwards-compat: still includes a flat `opted_in` boolean for
+  // any older popup that reads only the boolean.
   function handleGetOptInState(msg, sender, sendResponse) {
-    getOptIn().then(function (optedIn) {
-      sendResponse({ type: M.TYPE.OPT_IN_STATE, version: msg.version,
-                     payload: { opted_in: optedIn } });
+    getOptIn().then(function (optInState) {
+      sendResponse({
+        type: M.TYPE.OPT_IN_STATE,
+        version: msg.version,
+        payload: {
+          opted_in: optInState.enabled === true,
+          enabled: optInState.enabled === true,
+          last_changed_at: optInState.lastChangedAt,
+          lens_version: optInState.lensVersion
+        }
+      });
     });
   }
 
@@ -456,15 +510,24 @@
       }
       
       // Check if this is one of our provider domains
+      // Provider domains. Mirrors src/util/selectors.js PROVIDERS +
+      // src/manifest.json content_scripts.matches. The three sets MUST
+      // stay in sync; the test/unit/manifest-hosts.test.mjs test asserts
+      // this on every CI run.
+      //
+      // x.com, twitter.com, and duckduckgo.com were removed in v0.1.2:
+      //   - x.com / twitter.com: the Grok tab lives at grok.com (not x.com);
+      //     posting to x.com is a different surface and not in v0.1.x scope.
+      //   - duckduckgo.com: Duck.ai lives at duck.ai; duckduckgo.com is the
+      //     search engine, not the AI chat.
       var providerDomains = [
         'chat.openai.com', 'chatgpt.com',
         'claude.ai',
         'gemini.google.com',
-        'copilot.microsoft.com',
+        'copilot.microsoft.com', 'copilot.cloud.microsoft',
         'duck.ai',
-        'duckduckgo.com',
         'perplexity.ai', 'www.perplexity.ai',
-        'grok.com', 'x.com', 'twitter.com',
+        'grok.com', 'www.grok.com',
         'chat.mistral.ai', 'le-chat.mistral.ai'
       ];
       
@@ -567,6 +630,10 @@
       handleUserAction: handleUserAction,
       handleFPReports: handleFPReports,
       handleGetOptInState: handleGetOptInState,
+      // v0.1.2 F-2: exposed for unit tests that round-trip the opt-in
+      // state through the canonical STORAGE_KEYS.OPT_IN key.
+      getOptIn: getOptIn,
+      setOptIn: setOptIn,
       isValidEnvelope: M.isValidEnvelope,
       isValidDetection: M.isValidDetection,
       isValidFPReports: M.isValidFPReports,

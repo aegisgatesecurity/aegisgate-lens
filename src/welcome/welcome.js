@@ -5,6 +5,12 @@
 // persist the user's choice. The choice is stored in chrome.storage.local
 // (on-device; never synced off-device) per the privacy policy.
 //
+// v0.1.2 F-2: the storage key is now STORAGE_KEYS.OPT_IN (aegisgate_lens_opt_in)
+// — the same canonical key the SW and popup use. Previously welcome.js wrote
+// to a bare 'opt_in' key while background.js read from
+// 'aegisgate_lens_opt_in'; the two states never synced. The fix unifies
+// on a single nested-object shape { enabled, last_changed_at, lens_version }.
+//
 // Apache 2.0. Copyright 2026 AegisGate Security, LLC.
 
 /**
@@ -24,6 +30,19 @@
     return (typeof chrome !== 'undefined') ? chrome : null;
   }
 
+  // The canonical storage key for the user's threat-intel opt-in state.
+  // Per v0.1.2 F-2, this is the same key the SW and popup use, so the
+  // three modules see one consistent opt-in state. Centralized here so
+  // a typo in one place doesn't silently desync the state.
+  // (The constants module is loaded by the content script; on the
+  // welcome page it isn't always available at load time, so we fall
+  // back to the literal string. The test suite asserts the literal
+  // matches constants.js.)
+  var OPT_IN_KEY = (typeof globalThis !== 'undefined' && globalThis.__lensConstants &&
+                    globalThis.__lensConstants.STORAGE_KEYS &&
+                    globalThis.__lensConstants.STORAGE_KEYS.OPT_IN) ||
+                    'aegisgate_lens_opt_in';
+
   function persistChoice(enabled) {
     return new Promise(function (resolve, reject) {
       var cr = getChrome();
@@ -32,7 +51,9 @@
         return;
       }
       var payload = {
-        opt_in: {
+        // v0.1.2 F-2: use the canonical STORAGE_KEYS.OPT_IN key (was 'opt_in').
+        // The shape is unchanged: nested { enabled, last_changed_at, lens_version }.
+        [OPT_IN_KEY]: {
           enabled: enabled,
           last_changed_at: Math.floor(Date.now() / 1000),
           lens_version: '0.1.0-beta'
