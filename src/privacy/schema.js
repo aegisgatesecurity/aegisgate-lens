@@ -46,11 +46,7 @@
       'pii_digital_cashapp', 'pii_nid_de', 'pii_nid_es',
       'pii_nid_fr', 'pii_nid_it', 'pii_nid_jp',
       'pii_crypto_btc', 'pii_crypto_eth', 'pii_crypto_bnb',
-      'pii_crypto_ltc', 'pii_crypto_sol', 'pii_letter_only_id',
-      'pii_id_generic_alphanumeric', 'pii_id_multisegment',
-      'pii_passport_generic', 'pii_street_intl', 'pii_ssn_ru',
-      'pii_ssn_fr', 'pii_tax_id_ch', 'pii_credit_card_loose',
-      'pii_email_intl'
+      'pii_crypto_ltc', 'pii_crypto_sol'
     ],
     secrets: [
       'secret_aws_key', 'secret_github_token', 'secret_gcp_key',
