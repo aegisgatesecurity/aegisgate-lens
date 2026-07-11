@@ -146,3 +146,22 @@ test('Manifest fix: root manifest.json icons use bare paths (no src/ prefix)', (
     'root manifest.json icons block has a "src/" prefix. ' +
     'The B5 fix: icons should use bare paths (e.g., icons/icon-16.png).');
 });
+
+// === v0.1.4 follow-up: pii_phone_intl_loose rejects 4-4-4 CC pattern ===
+// Per the smoke CI failure (run 29126063364), the smoke test
+// flow-pii-credit-card-luhn-invalid failed because pii_phone_intl_loose
+// matched the 12-digit CC segment '1234-5678-9012'. The fix is in
+// pii.js postProcess: the 4-4-4 CC pattern is rejected.
+test('v0.1.4 F-1 follow-up: pii.js postProcess rejects 4-4-4 CC pattern', () => {
+  const pii = readSource('src/detectors/regex/pii.js');
+  // The fix: in the pii_phone_intl_loose block, there's a 4-4-4 check
+  const blockMatch = pii.match(/if \(category === 'pii_phone_intl_loose'\) \{([\s\S]+?)\n  \}/);
+  assert.ok(blockMatch, 'pii_phone_intl_loose block not found in pii.js');
+  const block = blockMatch[1];
+  // The check pattern: 4 digits, separator, 4 digits, separator, 4 digits
+  const hasCheck = /\\d\{4\}\[-\.\\s\]\\d\{4\}\[-\.\\s\]\\d\{4\}/.test(block);
+  assert.ok(hasCheck,
+    'pii_phone_intl_loose postProcess must reject 4-4-4 CC patterns. ' +
+    'Without this check, 12-digit CC segments (e.g., 1234-5678-9012) match as phones. ' +
+    'Block content: ' + block);
+});
