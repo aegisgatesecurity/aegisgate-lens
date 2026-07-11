@@ -53,12 +53,14 @@
           // v0.1.4: requires an ID label word (id/code/number/ref/license/
           // certificate/document/serial/account/passport) before the match.
           severity: 'critical',
-          re: /(?<=\b(?:id|code|number|ref|license|certificate|document|serial|account|passport)\b\s+)\\b(?=[A-Z0-9]*[A-Z])(?=[A-Z0-9]*\\d)[A-Z0-9]{6,9}\\b/g\n        },
+          re: /(?<=(?:id|ID|code|CODE|number|NUMBER|ref|REF|license|LICENSE|certificate|CERTIFICATE|document|DOCUMENT|serial|SERIAL|account|ACCOUNT|passport|PASSPORT)\s*)\\b(?=[A-Z0-9]*[A-Z])(?=[A-Z0-9]*\\d)[A-Z0-9]{6,9}\\b/g
+},
         pii_id_generic_alphanumeric: {
           // COVERAGE: bare 4-15 char alphanumeric ID-shaped strings WITH CONTEXT WORD (id/code/number/ref/license/passport/certificate/serial/account) before the match.
           // Pure letters and pure numbers excluded by dual lookaheads.
           severity: 'high',
-          re: /(?<=\b(?:id|code|number|ref|license|certificate|document|serial|account|passport)\b\s+)\\b(?=[A-Z0-9]*[A-Z])(?=[A-Z0-9]*\\d)[A-Z0-9]{4,15}\\b/g\n        },
+          re: /(?<=(?:id|ID|code|CODE|number|NUMBER|ref|REF|license|LICENSE|certificate|CERTIFICATE|document|DOCUMENT|serial|SERIAL|account|ACCOUNT|passport|PASSPORT)\s*)\\b(?=[A-Z0-9]*[A-Z])(?=[A-Z0-9]*\\d)[A-Z0-9]{4,15}\\b/g
+},
         pii_ssn_fr: {
           // COVERAGE: French INSEE SSN (synthetic 13-digit ai4privacy
           // format, plus the real 15-digit format with key).
@@ -86,7 +88,8 @@
           // Common words like API/JSON/BANK are too short (<8).
           // FP risk: 0.69% on real user prompts (proper nouns).
           severity: 'high',
-          re: /(?<=\b(?:id|code|number|ref|license|certificate|document|serial|account|passport)\b\s+)\\b[A-Z]{8,12}\\b/g\n        },
+          re: /(?<=(?:id|ID|code|CODE|number|NUMBER|ref|REF|license|LICENSE|certificate|CERTIFICATE|document|DOCUMENT|serial|SERIAL|account|ACCOUNT|passport|PASSPORT)\s*)\\b[A-Z]{8,12}\\b/g
+},
         pii_id_multisegment: {
           // COVERAGE: multi-segment ID codes with dots or dashes.
           // Examples: SHERZ.790015.S9.027, ROOHI-4120021-R9-745.
