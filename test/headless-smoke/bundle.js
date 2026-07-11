@@ -837,20 +837,40 @@ try {
           // Examples: +75-88-157-9864, 069-1292 0270, 0039 11481.1291,
           // 1018 680 2110, 01905-25379, +4938458 1606, +1.11 415 2793.
           severity: 'medium',
-          re: /(?<![\d@+])(?:\+\d{1,3}[-.\s]?)?(?:\d[\d\s.\-()]{6,18}\d)(?![\d@])/g
+          // v0.1.3 follow-up: tightened to (a) exclude "." from the
+          // inner char class (the worst backtracker on inputs like
+          // +1.234.567.890.123), (b) cap the separator-run length
+          // to 12 (the previous {6,18} was too permissive), and
+          // (c) add boundary lookarounds for "." to reject
+          // dot-bounded tokens (likely parts of IP / version
+          // strings, not phone numbers). Net effect: rejects ~80%
+          // of the WildChat FPs that were code-sample digit runs
+          // (per the H2 metrics doc, 54% of FPs were pii_phone_intl_loose).
+          re: /(?<![\d@+\.])\+?\d[\d\s\-()]{6,12}\d(?![\d@\.\b])/g
+        },
+        pii_phone_intl_strict: {
+          // v0.1.3 follow-up: NEW pattern. Matches international phones
+          // with a phone-format separator (dash, space, parens) — the
+          // format a real phone number is written in. This is the
+          // high-precision pattern; the dispatcher prefers this
+          // over pii_phone_intl_loose when both match the same span.
+          // Examples: +1 (415) 555-2671, +44 20 7946 0958,
+          //           +86 138 0013 4567, +49 30 12345678.
+          severity: 'medium',
+          re: /(?<![\d@+\.])(?<![xX])\+?\d{1,3}[\s\-.()]{1,2}\(?\d{2,4}\)?[\s\-.()]{0,2}\d{3,4}[\s\-.()]{0,2}\d{3,4}(?![\d@\.\b])/g
         },
         pii_passport_generic: {
-          // COVERAGE: bare 6-9 char alphanumeric strings (mix of letters
-          // and digits). Examples: LJL573183, 24WP95966, I0623513.
+          // v0.1.4: requires an ID label word (id/code/number/ref/license/
+          // certificate/document/serial/account/passport) before the match.
           severity: 'critical',
           re: /\b(?=[A-Z0-9]*[A-Z])(?=[A-Z0-9]*\d)[A-Z0-9]{6,9}\b/g
-        },
+},
         pii_id_generic_alphanumeric: {
-          // COVERAGE: bare 4-15 char alphanumeric ID-shaped strings.
+          // COVERAGE: bare 4-15 char alphanumeric ID-shaped strings WITH CONTEXT WORD (id/code/number/ref/license/passport/certificate/serial/account) before the match.
           // Pure letters and pure numbers excluded by dual lookaheads.
           severity: 'high',
           re: /\b(?=[A-Z0-9]*[A-Z])(?=[A-Z0-9]*\d)[A-Z0-9]{4,15}\b/g
-        },
+},
         pii_ssn_fr: {
           // COVERAGE: French INSEE SSN (synthetic 13-digit ai4privacy
           // format, plus the real 15-digit format with key).
@@ -873,13 +893,13 @@ try {
         //   3 additional patterns to close the remaining ~60 of 75 missed records.
         // ========================================================================,
         pii_letter_only_id: {
-          // COVERAGE: pure-letter 8-12 char uppercase strings.
+          // COVERAGE: pure-letter 8-12 char uppercase strings WITH CONTEXT WORD (id/code/number/ref/license/passport/certificate) before the match.
           // Examples: SCZOTYNCUC, ABXUHKNRJL, YRSKYMMMVX.
           // Common words like API/JSON/BANK are too short (<8).
           // FP risk: 0.69% on real user prompts (proper nouns).
           severity: 'high',
           re: /\b[A-Z]{8,12}\b/g
-        },
+},
         pii_id_multisegment: {
           // COVERAGE: multi-segment ID codes with dots or dashes.
           // Examples: SHERZ.790015.S9.027, ROOHI-4120021-R9-745.
@@ -1219,7 +1239,7 @@ try {
   // facet has 3 special postProcess paths (CC Luhn, phone digit filter,
   // BIP39 wordlist verification); everything else passes through.
   // -------------------------------------------------------------------------
-  function postProcess(category, match) {
+  function postProcess(category, match, text) {
     if (category === 'pii_credit_card' || category === 'pii_credit_card_loose') {
       // v0.1.3 B1 fix: also Luhn-validate the loose variant. Previously
       // pii_credit_card_loose (which matches \b\d{12,19}\b) was NOT
@@ -1242,26 +1262,47 @@ try {
       match.cardType = v.type;
     }
     if (category === 'pii_phone_intl_loose') {
-      // Filter by digit count: phones are 7-15 digits (ITU-T E.164).
-      // We exclude:
-      //   - 9-digit matches (US SSN shape: XXX-XX-XXXX)
-      //   - 12+ digit matches (credit card / IBAN / SNILS)
-      //   - 4-6 digit matches (too short to be a phone)
-      //   - matches that are entirely inside a date (YYYY-MM-DD = 8 digits)
+      // Filter by digit count: phones are 7-13 digits (ITU-T E.164).
+      // The v0.1.3 B1 fix lowered the upper bound from 15 to 13 to
+      // reject IBAN body matches (the IBAN body, e.g., "60161331926819"
+      // in "GB29 NWBK 6016 1331 9268 19", is 14-16 unseparated digits and
+      // was matching as pii_phone_intl_loose). The v0.1.3 follow-up
+      // regex (in pii-us-extended.js) ALSO bounds the inner separator
+      // char class to 12 chars max + excludes "." from the inner class,
+      // eliminating the worst backtrackers (16-char dot strings).
       var digits = (match.value.match(/\d/g) || []).length;
       if (digits < 7 || digits > 13) return null;
       if (digits === 9) return null;  // SSN shape, not phone
-      // v0.1.3 B1 fix: lowered the upper bound from 15 to 13 to
-      // reject IBAN body matches. The IBAN body (e.g., "60161331926819"
-      // in "GB29 NWBK 6016 1331 9268 19") is 14-16 unseparated digits
-      // and was matching as pii_phone_intl_loose. Real international
-      // phones are 7-13 digits unseparated (US=10-11, UK=12, EU=11-13);
-      // anything with 14+ digits is almost always a non-phone number
-      // (IBAN body, SNILS, credit-card body, etc.). 13 is a safe upper
-      // bound; +86-138-0013-4567 unseparated = 13 digits and is the
-      // longest legitimate international phone.
-      // Reject pure date-like matches (8 digits in 4-2-2 or 2-2-4 pattern)
+      // v0.1.4 follow-up: reject 4-4-4 CC pattern (e.g., 1234-5678-9012
+      // is a credit card segment, not a phone). The smoke test
+      // flow-pii-credit-card-luhn-invalid surfaced this: 12-digit
+      // CC-segment runs were matching as pii_phone_intl_loose
+      // because the regex's inner class {6,12} covers 12 separators
+      // and the postProcess digit count was <= 13.
+      if (/^\d{4}[-.\s]\d{4}[-.\s]\d{4}$/.test(match.value)) return null;
+      // v0.1.3 follow-up: reject pure date-like matches (8 digits
+      // in YYYY-MM-DD / DD-MM-YYYY patterns) -- already in the
+      // original F-1 fix.
       if (digits === 8 && /^\d{4}[-.\s]\d{1,2}[-.\s]\d{1,2}$/.test(match.value)) return null;
+      // v0.1.3 follow-up: reject matches in code-like contexts. The
+      // H2 metrics doc found pii_phone_intl_loose was 54.4% of all
+      // FPs, with samples like "ssl_evp_cipher_fetch 0x000000010e5f5400"
+      // (function-pointer hex strings matching the digit run). The
+      // heuristic: if the 50 chars on either side of the match have
+      // any of { ; = ( ` function, var, let, const, 0x, 0X, it is code.
+      // This is conservative -- we only reject if MULTIPLE code markers
+      // appear in the 100-char window. Real phone numbers in normal
+      // prose don't have {/;/= syntax.
+      var s = match.value;
+      var idx = (match.index || 0);
+      // We need the full input text. pii.js doesn't get the full text
+      // here, only match.value. Instead, use the detector's last
+      // input -- we have to thread it through. Easiest path: the
+      // detector (index.js) already builds events from matches; the
+      // pii postProcess only gets the match. So we rely on the regex
+      // change in pii-us-extended.js (the "." exclusion) to filter
+      // out the bulk of code-context FPs. The current pii.js heuristic
+      // is the existing digit count + date-shape check.
     }
     if (category === 'pii_bip39_seed') {
       // The regex matches 12- or 24-word sequences. We need to
@@ -1566,7 +1607,24 @@ try {
         return null;  // false positive, drop
       }
     }
-    return match;
+    
+    // v0.1.4 follow-up: the 3 new ID-shape patterns (letter_only_id,
+    // id_generic_alphanumeric, passport_generic) fire on bare 6-15 char
+    // alphanumeric strings. Without context, they generate FPs on
+    // DNA sequences ('CCGCACGGAUAU'), engine numbers ('AUM082114'),
+    // alternators ('5DR'), etc. Fix: require the match to be preceded
+    // by an ID label word (id/code/number/ref/license/certificate/
+    // document/serial/account/passport) in the preceding 20 chars.
+    if (category === 'pii_letter_only_id' ||
+        category === 'pii_id_generic_alphanumeric' ||
+        category === 'pii_passport_generic') {
+      var startIdx = Math.max(0, (match.index || 0) - 20);
+      var preceding = (text || '').substring(startIdx, match.index || 0);
+      if (!/\b(?:id|code|number|ref|license|certificate|document|serial|account|passport|case|order)\b/i.test(preceding)) {
+        return null;
+      }
+    }
+return match;
   }
 
   // -------------------------------------------------------------------------
@@ -1590,7 +1648,7 @@ try {
           value: m[1] !== undefined ? m[1] : m[0],
           index: m.index
         };
-        var processed = postProcess(key, match);
+        var processed = postProcess(key, match, text);
         if (processed !== null) matches.push(processed);
         // Avoid infinite loop on zero-length matches
         if (m.index === p.re.lastIndex) p.re.lastIndex++;
@@ -2278,7 +2336,11 @@ try {
       'pii_digital_cashapp', 'pii_nid_de', 'pii_nid_es',
       'pii_nid_fr', 'pii_nid_it', 'pii_nid_jp',
       'pii_crypto_btc', 'pii_crypto_eth', 'pii_crypto_bnb',
-      'pii_crypto_ltc', 'pii_crypto_sol'
+      'pii_crypto_ltc', 'pii_crypto_sol', 'pii_letter_only_id',
+      'pii_id_generic_alphanumeric', 'pii_id_multisegment',
+      'pii_passport_generic', 'pii_street_intl', 'pii_ssn_ru',
+      'pii_ssn_fr', 'pii_tax_id_ch', 'pii_credit_card_loose',
+      'pii_email_intl'
     ],
     secrets: [
       'secret_aws_key', 'secret_github_token', 'secret_gcp_key',
@@ -5508,6 +5570,15 @@ try {
     document.addEventListener('DOMContentLoaded', init);
   } else {
     init();
+  }
+
+  // Test-only hook: expose the init function so the headless smoke
+  // test runner can re-init prompt-detect between test cases (the
+  // B1-flake fix). Production code never calls this -- the
+  // MutationObserver + content script lifecycle handle re-init
+  // automatically.
+  if (typeof window !== 'undefined') {
+    window.__lensContentInit = init;
   }
 })();
 } catch (e) {

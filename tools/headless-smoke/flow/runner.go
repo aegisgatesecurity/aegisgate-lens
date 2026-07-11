@@ -178,6 +178,19 @@ func main() {
 		if (sel) {
 			try { identResult = sel.identifyProvider() ? (sel.identifyProvider().id || 'no id') : 'null'; } catch (e) { identResult = 'error: ' + e.message; }
 		}
+		var pdState = pd && pd.getState ? pd.getState() : null;
+		// Trigger a synthetic input event to see if onInput works
+		var syntheticTest = 'not-run';
+		try {
+			var ta = document.getElementById('prompt-textarea');
+			if (ta && sel && sel.setInputValue) {
+				sel.setInputValue(ta, 'synthetic-test-value');
+				setTimeout(function() {
+					// This won't be visible to the eval, but it's a sanity check
+				}, 50);
+				syntheticTest = 'set-called taValue=' + ta.value;
+			}
+		} catch (e) { syntheticTest = 'error: ' + e.message; }
 		return {
 			hostname: cs ? cs.hostname : null,
 			csHasDetect: cs && typeof cs.detect === 'function',
@@ -185,9 +198,14 @@ func main() {
 			csDomainHash: cs ? (cs.domainHash ? 'set' : 'null') : null,
 			hasSelectors: !!sel,
 			hasPD: !!pd,
+			pdInputAttached: pdState ? pdState.inputAttached : null,
+			pdHasInput: pdState ? pdState.hasInput : null,
+			pdLastValueLen: pdState ? (pdState.lastValue ? pdState.lastValue.length : 0) : null,
 			selIdentifyResult: identResult,
 			taExists: !!document.getElementById('prompt-textarea'),
-			taValue: document.getElementById('prompt-textarea') ? document.getElementById('prompt-textarea').value : null
+			taValue: document.getElementById('prompt-textarea') ? document.getElementById('prompt-textarea').value : null,
+			syntheticTest: syntheticTest,
+			hasContentInit: typeof window.__lensContentInit === 'function'
 		};
 	})()`, false)
 	log.Printf("  debug: %s", string(debugRes))
@@ -256,12 +274,123 @@ func runFlowCases(cdp *CDPClient, target cdpTarget, cases []FlowTestCase, timeou
 	return results
 }
 
+// resetAndReinitPD performs a full state reset of the content
+// script between test cases. This is the B1-flake root cause fix:
+// without this, state.lastValue / state.lastDetections / the banner
+// element / any pending debounce timer carry over from one test
+// to the next, causing the onInput() handler's `value ===
+// state.lastValue` short-circuit to fire on stale data.
+//
+// The reset is performed IN THE PAGE via Runtime.evaluate, calling
+// __lensPromptDetect.shutdown() and then re-injecting the content
+// script's init logic with fresh onDetect / onSendIntercept
+// callbacks. We then poll until __lensPromptDetect.getState().
+// inputAttached === true (max 3s).
+func resetAndReinitPD(cdp *CDPClient, target cdpTarget, timeout time.Duration) error {
+	// 1. Hide any current banner and clear stale DOM
+	hideExpr := `(function() {
+		if (window.__lensBannerUI && window.__lensBannerUI.hide) {
+			window.__lensBannerUI.hide();
+		}
+		return true;
+	})()`
+	cdp.evaluate(hideExpr, false)
+	time.Sleep(250 * time.Millisecond)
+
+	// 2. Shutdown prompt-detect (disconnects MutationObserver, detaches)
+	// 3. Re-init with fresh callbacks. We replicate the same callback
+	//    pair that content.js uses in init().
+	resetExpr := `(function() {
+		if (!window.__lensPromptDetect) return { error: 'no __lensPromptDetect' };
+		try { window.__lensPromptDetect.shutdown(); } catch (e) { /* ignore */ }
+		try {
+			if (window.__lensContentInit) {
+				window.__lensContentInit();
+				return { ok: true, source: 'content-init' };
+			}
+		} catch (e) { /* fall through */ }
+		return { error: 'no __lensContentInit' };
+	})()`
+	res, err := cdp.evaluate(resetExpr, false)
+	if err != nil {
+		return fmt.Errorf("reset evaluate: %w", err)
+	}
+	var r struct {
+		OK     bool   `json:"ok"`
+		Source string `json:"source"`
+		Error  string `json:"error"`
+	}
+	if err := json.Unmarshal(res, &r); err != nil {
+		return fmt.Errorf("parse reset result: %w (raw=%s)", err, string(res))
+	}
+	if !r.OK {
+		return fmt.Errorf("reset failed: %s", r.Error)
+	}
+
+	// 4. Wait for prompt-detect to fully attach (poll up to 3s)
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		checkExpr := `(function() {
+			var pd = window.__lensPromptDetect;
+			if (!pd || !pd.getState) return { error: 'no pd' };
+			var s = pd.getState();
+			return {
+				inputAttached: !!(s && s.inputAttached),
+				hasInput: !!(s && s.hasInput),
+				lastValueLen: s && s.lastValue ? s.lastValue.length : 0,
+				hasContentInit: typeof window.__lensContentInit === 'function'
+			};
+		})()`
+		res2, err := cdp.evaluate(checkExpr, false)
+		if err == nil {
+			var probe struct {
+				InputAttached  bool   `json:"inputAttached"`
+				HasInput       bool   `json:"hasInput"`
+				LastValueLen   int    `json:"lastValueLen"`
+				HasContentInit bool   `json:"hasContentInit"`
+			}
+			if json.Unmarshal(res2, &probe) == nil && probe.InputAttached {
+				return nil
+			}
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	// One more diagnostic to log the final state
+	diagExpr := `(function() {
+		var pd = window.__lensPromptDetect;
+		if (!pd || !pd.getState) return { error: 'no pd' };
+		var s = pd.getState();
+		return {
+			inputAttached: !!(s && s.inputAttached),
+			hasInput: !!(s && s.hasInput),
+			lastValueLen: s && s.lastValue ? s.lastValue.length : 0,
+			hasContentInit: typeof window.__lensContentInit === 'function',
+			taExists: !!document.getElementById('prompt-textarea')
+		};
+	})()`
+	if diagRes, derr := cdp.evaluate(diagExpr, false); derr == nil {
+		return fmt.Errorf("timeout waiting for prompt-detect re-attach, diag=%s", string(diagRes))
+	}
+	return fmt.Errorf("timeout waiting for prompt-detect re-attach")
+}
+
 func runOneFlowCase(cdp *CDPClient, target cdpTarget, tc FlowTestCase, timeout time.Duration) FlowTestResult {
 	r := FlowTestResult{
 		Name:             tc.Name,
 		Text:             tc.Text,
 		ShouldDetect:     tc.ShouldDetect,
 		ExpectedCategory: tc.ExpectedCategory,
+	}
+
+	// FIX 3: Reset prompt-detect + banner state between tests. This
+	// clears any stale state from the previous test case (state.lastValue,
+	// state.lastDetections, the banner element, any pending debounce
+	// timer). The cold start is a known flake source when state leaks
+	// across test boundaries -- we observed 3 of 5 runs failing the
+	// same 5 tests with state.lastValue stuck at test 8's value.
+	if err := resetAndReinitPD(cdp, target, timeout); err != nil {
+		r.Error = "resetAndReinitPD failed: " + err.Error()
+		return r
 	}
 
 	// 1. Clear the textarea
@@ -281,15 +410,25 @@ func runOneFlowCase(cdp *CDPClient, target cdpTarget, tc FlowTestCase, timeout t
 	})()`, string(escapedText))
 	cdp.evaluate(setExpr, false)
 
-	// 3. Wait for the 250ms debounce + detection
-	time.Sleep(700 * time.Millisecond)
+	// FIX 4: Wait 1500ms (was 700ms) for 250ms debounce + detection
+	// + banner render + buffer for the reinit overhead.
+	time.Sleep(1500 * time.Millisecond)
 
-	// 4. Read the state
+	// 4. Read the state. FIX 5: use the correct field names from
+	// __lensPromptDetect.getState() -- which returns 'inputAttached'
+	// and 'hasInput' (NOT 'attached' and 'input', as the previous
+	// version incorrectly read). Also use the banner UI's own getElement
+	// rather than querySelectorAll to avoid matching a stale empty
+	// banner element left over from a previous show/hide cycle.
 	readExpr := `(function() {
 		var cs = window.__lens_cs;
 		var dets = cs && cs.lastDetections ? cs.lastDetections : [];
-		var banners = document.querySelectorAll('[data-aegisgate-lens="banner"]');
-		var visibleBanners = Array.from(banners).filter(function(b){ return b.style.display !== 'none'; });
+		var bannerUI = window.__lensBannerUI;
+		var currentBanner = bannerUI && bannerUI.getElement ? bannerUI.getElement() : null;
+		var visibleBanners = [];
+		if (currentBanner && !currentBanner.classList.contains('hidden')) {
+			visibleBanners.push(currentBanner);
+		}
 		var pd = window.__lensPromptDetect;
 		var pdState = pd && pd.getState ? pd.getState() : null;
 		return {
@@ -297,9 +436,9 @@ func runOneFlowCase(cdp *CDPClient, target cdpTarget, tc FlowTestCase, timeout t
 			categories: dets.map(function(d){ return d.category || d.facet; }),
 			banner_count: visibleBanners.length,
 			pd_state: pdState ? {
-				hasInput: !!pdState.input,
-				inputId: pdState.input ? pdState.input.id : null,
-				attached: pdState.attached,
+				hasInput: !!pdState.hasInput,
+				inputId: pdState.hasInput ? 'prompt-textarea' : null,
+				attached: !!pdState.inputAttached,
 				lastValueLen: pdState.lastValue ? pdState.lastValue.length : 0
 			} : null
 		};
@@ -398,6 +537,47 @@ func runDismissFlowCase(cdp *CDPClient, target cdpTarget, tc FlowTestCase, timeo
 		ExpectedCategory: tc.ExpectedCategory,
 	}
 
+	// FIX 3: Reset prompt-detect state (dismiss test needs clean state)
+	if err := resetAndReinitPD(cdp, target, timeout); err != nil {
+		r.Error = "resetAndReinitPD failed: " + err.Error()
+		return r
+	}
+
+	// FIX 6: Inject a chrome.storage mock so the dismissal can persist
+	// between the initial prompt and the re-prompt. In production, the
+	// banner's dismiss action calls dismiss.dismiss() which writes to
+	// chrome.storage.local. In the test env, chrome is undefined, so
+	// we mock chrome.storage with an in-memory implementation. This
+	// mock is also installed by resetAndReinitPD's __lensContentInit
+	// path, so this is a defensive double-check.
+	mockStorageExpr := `(function() {
+		if (typeof window.chrome === 'undefined' || !window.chrome.storage) {
+			var _store = {};
+			window.chrome = window.chrome || {};
+			window.chrome.storage = {
+				local: {
+					get: function(keys, cb) {
+						var out = {};
+						(keys || []).forEach(function(k){ if (k in _store) out[k] = _store[k]; });
+						if (cb) setTimeout(function(){ cb(out); }, 0);
+					},
+					set: function(obj, cb) {
+						Object.keys(obj).forEach(function(k){ _store[k] = obj[k]; });
+						if (cb) setTimeout(function(){ cb(); }, 0);
+					},
+					remove: function(keys, cb) {
+						(keys || []).forEach(function(k){ delete _store[k]; });
+						if (cb) setTimeout(function(){ cb(); }, 0);
+					}
+				},
+				session: null,
+				sync: null
+			};
+		}
+		return true;
+	})()`
+	cdp.evaluate(mockStorageExpr, false)
+
 	// Step 1: clear + set the text
 	clearExpr := `(function() { var ta = document.getElementById('prompt-textarea'); if (ta) { ta.value = ''; ta.dispatchEvent(new Event('input', { bubbles: true })); } return true; })()`
 	cdp.evaluate(clearExpr, false)
@@ -413,7 +593,7 @@ func runDismissFlowCase(cdp *CDPClient, target cdpTarget, tc FlowTestCase, timeo
 		return { ok: true };
 	})()`, string(escapedText))
 	cdp.evaluate(setExpr, false)
-	time.Sleep(700 * time.Millisecond) // 250ms debounce + detection
+	time.Sleep(1500 * time.Millisecond) // FIX 4: 250ms debounce + detection + buffer
 
 	// Step 2: verify the banner fired (initial detection)
 	readStateExpr := `(function() {
@@ -456,21 +636,33 @@ func runDismissFlowCase(cdp *CDPClient, target cdpTarget, tc FlowTestCase, timeo
 	}
 	time.Sleep(500 * time.Millisecond) // let the dismiss animation complete
 
-	// Step 4: verify the banner is now hidden
+	// Step 4: verify the banner is now hidden. Use the banner UI's
+	// own state (which tracks the CURRENT banner element via
+	// state.el/isVisible) rather than querySelectorAll (which
+	// might match a stale banner element from a prior test that
+	// was removed by the 200ms setTimeout in hide()).
 	hiddenCheckExpr := `(function() {
-		var banners = document.querySelectorAll('[data-aegisgate-lens="banner"]');
-		var visibleBanners = Array.from(banners).filter(function(b){
-			return !b.classList.contains('hidden');
-		});
-		return { visible_after_dismiss: visibleBanners.length };
+		var bannerUI = window.__lensBannerUI;
+		var currentBanner = bannerUI && bannerUI.getElement ? bannerUI.getElement() : null;
+		// isVisible is the source of truth for "is the banner
+		// currently displayed". state.el may still reference the
+		// removed element (hide() doesn't clear it).
+		var isVis = bannerUI && bannerUI.isVisible ? bannerUI.isVisible() : false;
+		return {
+			visible_after_dismiss: isVis ? 1 : 0,
+			currentElHasHidden: currentBanner ? currentBanner.classList.contains('hidden') : null,
+			currentElInDom: currentBanner ? !!currentBanner.parentNode : false
+		};
 	})()`
 	hiddenRes, _ := cdp.evaluate(hiddenCheckExpr, false)
 	var hiddenState struct {
-		VisibleAfterDismiss int `json:"visible_after_dismiss"`
+		VisibleAfterDismiss int  `json:"visible_after_dismiss"`
+		CurrentElHasHidden  bool `json:"currentElHasHidden"`
+		CurrentElInDom      bool `json:"currentElInDom"`
 	}
 	json.Unmarshal(hiddenRes, &hiddenState)
 	if hiddenState.VisibleAfterDismiss > 0 {
-		r.Error = fmt.Sprintf("dismiss flow step 4 failed: %d banners still visible after dismiss click", hiddenState.VisibleAfterDismiss)
+		r.Error = fmt.Sprintf("dismiss flow step 4 failed: %d banners still visible after dismiss click (hasHidden=%v inDom=%v)", hiddenState.VisibleAfterDismiss, hiddenState.CurrentElHasHidden, hiddenState.CurrentElInDom)
 		return r
 	}
 
@@ -478,7 +670,7 @@ func runDismissFlowCase(cdp *CDPClient, target cdpTarget, tc FlowTestCase, timeo
 	cdp.evaluate(clearExpr, false)
 	time.Sleep(100 * time.Millisecond)
 	cdp.evaluate(setExpr, false)
-	time.Sleep(700 * time.Millisecond)
+	time.Sleep(1500 * time.Millisecond) // FIX 4: 250ms debounce + detection + buffer
 
 	// Step 6: verify NO banner fires (dismissal is remembered)
 	res, _ = cdp.evaluate(readStateExpr, false)

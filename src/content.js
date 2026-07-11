@@ -351,4 +351,13 @@
   } else {
     init();
   }
+
+  // Test-only hook: expose the init function so the headless smoke
+  // test runner can re-init prompt-detect between test cases (the
+  // B1-flake fix). Production code never calls this -- the
+  // MutationObserver + content script lifecycle handle re-init
+  // automatically.
+  if (typeof window !== 'undefined') {
+    window.__lensContentInit = init;
+  }
 })();
