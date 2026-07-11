@@ -94,7 +94,7 @@
   // facet has 3 special postProcess paths (CC Luhn, phone digit filter,
   // BIP39 wordlist verification); everything else passes through.
   // -------------------------------------------------------------------------
-  function postProcess(category, match) {
+  function postProcess(category, match, text) {
     if (category === 'pii_credit_card' || category === 'pii_credit_card_loose') {
       // v0.1.3 B1 fix: also Luhn-validate the loose variant. Previously
       // pii_credit_card_loose (which matches \b\d{12,19}\b) was NOT
@@ -462,7 +462,24 @@
         return null;  // false positive, drop
       }
     }
-    return match;
+    
+    // v0.1.4 follow-up: the 3 new ID-shape patterns (letter_only_id,
+    // id_generic_alphanumeric, passport_generic) fire on bare 6-15 char
+    // alphanumeric strings. Without context, they generate FPs on
+    // DNA sequences ('CCGCACGGAUAU'), engine numbers ('AUM082114'),
+    // alternators ('5DR'), etc. Fix: require the match to be preceded
+    // by an ID label word (id/code/number/ref/license/certificate/
+    // document/serial/account/passport) in the preceding 20 chars.
+    if (category === 'pii_letter_only_id' ||
+        category === 'pii_id_generic_alphanumeric' ||
+        category === 'pii_passport_generic') {
+      var startIdx = Math.max(0, (match.index || 0) - 20);
+      var preceding = (text || '').substring(startIdx, match.index || 0);
+      if (!/\\b(?:id|code|number|ref|license|certificate|document|serial|account|passport|case|order)\\b/i.test(preceding)) {
+        return null;
+      }
+    }
+return match;
   }
 
   // -------------------------------------------------------------------------
@@ -486,7 +503,7 @@
           value: m[1] !== undefined ? m[1] : m[0],
           index: m.index
         };
-        var processed = postProcess(key, match);
+        var processed = postProcess(key, match, text);
         if (processed !== null) matches.push(processed);
         // Avoid infinite loop on zero-length matches
         if (m.index === p.re.lastIndex) p.re.lastIndex++;
