@@ -53,13 +53,13 @@
           // v0.1.4: requires an ID label word (id/code/number/ref/license/
           // certificate/document/serial/account/passport) before the match.
           severity: 'critical',
-          re: /\b(?=[A-Z0-9]*[A-Z])(?=[A-Z0-9]*\\d)[A-Z0-9]{6,9}\b/g
+          re: /\b(?=[A-Z0-9]*[A-Z])(?=[A-Z0-9]*\d)[A-Z0-9]{6,9}\b/g
 },
         pii_id_generic_alphanumeric: {
           // COVERAGE: bare 4-15 char alphanumeric ID-shaped strings WITH CONTEXT WORD (id/code/number/ref/license/passport/certificate/serial/account) before the match.
           // Pure letters and pure numbers excluded by dual lookaheads.
           severity: 'high',
-          re: /\b(?=[A-Z0-9]*[A-Z])(?=[A-Z0-9]*\\d)[A-Z0-9]{4,15}\b/g
+          re: /\b(?=[A-Z0-9]*[A-Z])(?=[A-Z0-9]*\d)[A-Z0-9]{4,15}\b/g
 },
         pii_ssn_fr: {
           // COVERAGE: French INSEE SSN (synthetic 13-digit ai4privacy
