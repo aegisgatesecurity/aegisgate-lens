@@ -128,6 +128,13 @@
       var digits = (match.value.match(/\d/g) || []).length;
       if (digits < 7 || digits > 13) return null;
       if (digits === 9) return null;  // SSN shape, not phone
+      // v0.1.4 follow-up: reject 4-4-4 CC pattern (e.g., 1234-5678-9012
+      // is a credit card segment, not a phone). The smoke test
+      // flow-pii-credit-card-luhn-invalid surfaced this: 12-digit
+      // CC-segment runs were matching as pii_phone_intl_loose
+      // because the regex's inner class {6,12} covers 12 separators
+      // and the postProcess digit count was <= 13.
+      if (/^\d{4}[-.\s]\d{4}[-.\s]\d{4}$/.test(match.value)) return null;
       // v0.1.3 follow-up: reject pure date-like matches (8 digits
       // in YYYY-MM-DD / DD-MM-YYYY patterns) -- already in the
       // original F-1 fix.
