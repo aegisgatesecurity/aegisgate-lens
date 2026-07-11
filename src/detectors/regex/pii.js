@@ -475,7 +475,7 @@
         category === 'pii_passport_generic') {
       var startIdx = Math.max(0, (match.index || 0) - 20);
       var preceding = (text || '').substring(startIdx, match.index || 0);
-      if (!/\\b(?:id|code|number|ref|license|certificate|document|serial|account|passport|case|order)\\b/i.test(preceding)) {
+      if (!/\b(?:id|code|number|ref|license|certificate|document|serial|account|passport|case|order)\b/i.test(preceding)) {
         return null;
       }
     }
