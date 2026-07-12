@@ -7,7 +7,8 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Version](https://img.shields.io/badge/version-v0.1.3-orange.svg)](https://github.com/aegisgatesecurity/aegisgate-lens/blob/v0.1.3/CHANGELOG.md)
 [![Tests](https://img.shields.io/badge/tests-497%2F497%20%2B%203%2F3%20%2B%2016%2F16%20%2B%20128%2F128-brightgreen.svg)](https://github.com/aegisgatesecurity/aegisgate-lens/blob/v0.1.3/docs/FACTS.md)
-[![FPR](https://img.shields.io/badge/FPR-2.31%25%20on%206%2C500%20WildChat-success.svg)](https://github.com/aegisgatesecurity/aegisgate-lens/blob/v0.1.3/docs/METRICS-v0.1.2.md)
+[![FPR](https://img.shields.io/badge/FPR-2.31%25%20on%206%2C500%20WildChat-success.svg)]
+[![Perf](https://img.shields.io/badge/p99%3C2ms%20(typical)-blue.svg)](https://github.com/aegisgatesecurity/aegisgate-lens/blob/v0.1.3/test/benchmarks/results/v0.1.4-baseline.json)(https://github.com/aegisgatesecurity/aegisgate-lens/blob/v0.1.3/docs/METRICS-v0.1.2.md)
 [![Privacy](https://img.shields.io/badge/privacy-12%20non--negotiables-success.svg)](./docs/SECURITY.md)
 [![Patterns](https://img.shields.io/badge/patterns-132%20regex%20(4%20facets)-blue.svg)](https://github.com/aegisgatesecurity/aegisgate-lens/blob/v0.1.3/docs/FACTS.md)
 [![Chrome 116+](https://img.shields.io/badge/chrome-116%2B-yellow.svg)](https://developer.chrome.com/docs/extensions/mv3)
