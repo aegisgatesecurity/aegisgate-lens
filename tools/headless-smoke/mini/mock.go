@@ -1,14 +1,21 @@
-
 // SPDX-License-Identifier: Apache-2.0
-// AegisGate Lens v0.1.0-beta - Headless Smoke Test: HTTPS mock server
-
-// Self-signed HTTPS server on localhost. Serves a page that mimics
-// the chat.openai.com DOM structure (id="prompt-textarea",
-// data-testid="send-button") so the Lens content_scripts match pattern
-// fires and the prompt-detect selector works.
+// AegisGate Lens v0.1.4 - Headless Smoke Test: Per-Provider HTTPS Mock
 //
-// We use crypto/tls to generate a self-signed cert at startup.
-// Chromium 149 accepts self-signed certs on localhost as a secure context.
+// Self-signed HTTPS server on localhost that serves provider-specific
+// mock HTML based on the Host header. The mini smoke navigates to
+// https://localhost:PORT/ for every host but sets a different Host
+// header (chatgpt.com, claude.ai, gemini.google.com, etc.) so the
+// mock serves the right per-provider DOM shape.
+//
+// The mock HTML files are in test/headless-smoke/mock/platform-testdata/
+// (the 9 active provider mocks: chatgpt, claude, gemini, copilot,
+// perplexity, duck, grok, mistral, plus legacy chat-openai).
+//
+// The mock pages set window.__lensMockHost to the corresponding host
+// so src/util/selectors.js's identifyProvider() returns the right
+// provider config. This is test-only: in production, no real AI
+// page sets window.__lensMockHost.
+
 package main
 
 import (
@@ -23,59 +30,75 @@ import (
 	"math/big"
 	"net"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 )
 
-const mockHTML = `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<title>Mock ChatGPT (AegisGate Lens smoke test)</title>
-<style>
-  body { font-family: -apple-system, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; }
-  #prompt-textarea { width: 100%; min-height: 120px; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 14px; font-family: inherit; }
-  button[data-testid="send-button"] { margin-top: 12px; padding: 8px 16px; background: #10a37f; color: white; border: none; border-radius: 4px; cursor: pointer; }
-  .test-info { background: #f0f0f0; padding: 12px; border-radius: 8px; margin-bottom: 16px; font-size: 13px; }
-</style>
-</head>
-<body>
-<div class="test-info">
-  <strong>AegisGate Lens smoke test mock</strong>
-  <p>This is a local test page that mimics the chat.openai.com DOM structure.
-  The Lens content script should attach to the textarea below and warn when
-  sensitive data is detected.</p>
-  <p>Hostname: <code id="hostname"></code></p>
-  <p id="lens-status">Lens status: <span id="lens-state">checking...</span></p>
-</div>
-<textarea id="prompt-textarea" placeholder="Message ChatGPT..." autofocus></textarea>
-<br>
-<button data-testid="send-button">Send</button>
-<script>
-  document.getElementById('hostname').textContent = window.location.hostname;
-  // Check if Lens is loaded
-  setTimeout(() => {
-    const s = document.getElementById('lens-state');
-    if (window.__lens_cs) {
-      s.textContent = 'LOADED (window.__lens_cs is set)';
-      s.style.color = 'green';
-    } else {
-      s.textContent = 'NOT LOADED (window.__lens_cs is undefined)';
-      s.style.color = 'red';
-    }
-  }, 1000);
-</script>
-</body>
-</html>`
+// MOCK_DIR is the directory containing the 9 per-provider mock HTML files.
+// Per the F-7 e2e tests, this directory must contain: chatgpt.html,
+// chat-openai.html, claude.html, gemini.html, copilot.html, perplexity.html,
+// duck.html, grok.html, mistral.html. The x.html is legacy (Grok on X).
+const MOCK_DIR = "test/headless-smoke/mock/platform-testdata/"
+
+// providerMap: Host header -> mock file name.
+// Hosts are matched case-insensitively. The first match wins.
+// Each entry corresponds to a PROVIDER in src/util/selectors.js.
+var providerMap = map[string]string{
+	"chat.openai.com":          "chat-openai.html", // legacy ChatGPT (old host)
+	"chatgpt.com":              "chatgpt.html",     // current ChatGPT
+	"claude.ai":                "claude.html",      // ProseMirror contenteditable
+	"gemini.google.com":        "gemini.html",      // ql-editor contenteditable
+	"copilot.microsoft.com":    "copilot.html",     // userInput
+	"copilot.cloud.microsoft":  "copilot.html",     // same DOM, alternative host
+	"perplexity.ai":            "perplexity.html",  // user-input textarea
+	"www.perplexity.ai":        "perplexity.html",  // www variant
+	"duck.ai":                  "duck.html",        // Duck.ai
+	"grok.com":                 "grok.html",        // Grok
+	"www.grok.com":             "grok.html",        // www variant
+	"chat.mistral.ai":          "mistral.html",     // prompt-textarea
+	"le-chat.mistral.ai":       "mistral.html",     // same DOM
+	"x.com":                    "x.html",           // legacy Grok on X
+}
+
+// loadMocks reads all mock HTML files at startup. Missing files are
+// skipped (the smoke will fail later in the test when the smoke
+// binary tries to load the missing provider, which is the right
+// failure mode for CI).
+func loadMocks() (map[string]string, error) {
+	mocks := make(map[string]string)
+	// First, find the absolute path of the mocks dir
+	absMockDir := MOCK_DIR
+	if !filepath.IsAbs(absMockDir) {
+		// Resolve relative to current working directory
+		if abs, err := filepath.Abs(absMockDir); err == nil {
+			absMockDir = abs
+		}
+	}
+	// Walk the providerMap and load each file
+	for host, file := range providerMap {
+		path := filepath.Join(absMockDir, file)
+		content, err := os.ReadFile(path)
+		if err != nil {
+			// Skip missing files (e.g., x.html may not exist in CI)
+			fmt.Fprintf(os.Stderr, "mock: skipping %s (%v)\n", path, err)
+			continue
+		}
+		mocks[host] = string(content)
+	}
+	return mocks, nil
+}
 
 type mockServer struct {
 	port   int
+	mocks  map[string]string
 	server *http.Server
 	ln     net.Listener
 }
 
-func newMockServer(port int) *mockServer {
-	return &mockServer{port: port}
+func newMockServer(port int, mocks map[string]string) *mockServer {
+	return &mockServer{port: port, mocks: mocks}
 }
 
 func (m *mockServer) start() error {
@@ -83,15 +106,28 @@ func (m *mockServer) start() error {
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(mockHTML))
+
+		// Route by Host header (case-insensitive). Fall back to
+		// chatgpt.html for unknown hosts (e.g., "localhost:8443"
+		// without an explicit Host header).
+		host := strings.ToLower(r.Host)
+		// Strip the port from the host (e.g., "chatgpt.com:8443" -> "chatgpt.com")
+		if idx := strings.Index(host, ":"); idx >= 0 {
+			host = host[:idx]
+		}
+		content, ok := m.mocks[host]
+		if !ok {
+			// Fall back to chatgpt.html
+			content = m.mocks["chatgpt.com"]
+		}
+		_, _ = w.Write([]byte(content))
 	})
 
 	// Generate self-signed cert for localhost
-	cert, tlsConfig, err := generateSelfSignedCert()
+	_, tlsConfig, err := generateSelfSignedCert()
 	if err != nil {
 		return fmt.Errorf("generate cert: %w", err)
 	}
-	_ = cert
 
 	ln, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", m.port))
 	if err != nil {
@@ -105,12 +141,9 @@ func (m *mockServer) start() error {
 
 	// Start serving in background
 	go func() {
-		// We need to use ServeTLS but the cert is in TLSConfig
-		// Use the listener directly
 		_ = m.server.ServeTLS(ln, "", "")
 	}()
 
-	// Give it a moment to start
 	time.Sleep(100 * time.Millisecond)
 	return nil
 }
@@ -124,13 +157,11 @@ func (m *mockServer) stop() {
 // generateSelfSignedCert creates a self-signed cert for localhost.
 // Returns the PEM cert bytes and a TLS config that uses it.
 func generateSelfSignedCert() ([]byte, *tls.Config, error) {
-	// Generate ECDSA private key
 	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	// Create certificate template
 	serialNumber, err := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
 	if err != nil {
 		return nil, nil, err
@@ -151,19 +182,16 @@ func generateSelfSignedCert() ([]byte, *tls.Config, error) {
 		IPAddresses:           []net.IP{net.ParseIP("127.0.0.1")},
 	}
 
-	// Self-sign
 	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, &priv.PublicKey, priv)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	// Encode cert to PEM
 	certPEM := pem.EncodeToMemory(&pem.Block{
 		Type:  "CERTIFICATE",
 		Bytes: derBytes,
 	})
 
-	// Encode private key to PEM
 	privBytes, err := x509.MarshalECPrivateKey(priv)
 	if err != nil {
 		return nil, nil, err
@@ -173,7 +201,6 @@ func generateSelfSignedCert() ([]byte, *tls.Config, error) {
 		Bytes: privBytes,
 	})
 
-	// Parse back into tls.Certificate
 	cert, err := tls.X509KeyPair(certPEM, keyPEM)
 	if err != nil {
 		return nil, nil, err
@@ -184,9 +211,4 @@ func generateSelfSignedCert() ([]byte, *tls.Config, error) {
 		MinVersion:   tls.VersionTLS12,
 	}
 	return certPEM, tlsConfig, nil
-}
-
-// trim is unused but kept for future expansion
-func trim(s string) string {
-	return strings.TrimSpace(s)
 }
