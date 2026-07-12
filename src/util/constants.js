@@ -54,7 +54,13 @@
     FP_REPORTS_QUEUE: 'aegisgate_lens_fp_reports_queue',
     OPT_IN: 'aegisgate_lens_opt_in',
     SESSION_DISMISS: 'aegisgate_lens_session_dismiss',
-    ONBOARDED: 'aegisgate_lens_onboarded'
+    ONBOARDED: 'aegisgate_lens_onboarded',
+    // v0.1.4: per-popup "Hide Lens active indicator" toggle.
+    // Default ON (show indicator) — no behavior change for existing
+    // users. The content script's prompt-detect-dom.js reads this
+    // synchronously (cached value with onChanged listener) and
+    // early-returns from injectIndicator() when false.
+    SHOW_INDICATOR: 'aegisgate_lens_show_indicator'
   });
 
   // === Telemetry / dismissal ===
