@@ -1,7 +1,7 @@
 # AegisGate Lens — FACTS
 
-**Version**: 0.1.3 (v0.1.3 branch at ad6f9a9, on origin)
-**Last updated**: 2026-07-11 (updated: branch tips post-82e08ff + b0fc1ba)
+**Version**: 0.1.3 (v0.1.3 branch at 79e33e4, on origin — 12 session commits ahead of v0.1.3 release)
+**Last updated**: 2026-07-12 (12 session commits, v0.1.4 polish + mini/ sub-binary + linter)
 **Status**: Shipped to CWS (re-submitted 2026-07-10, awaiting review)
 **Audience**: Maintainers, contributors, marketing copy writers, and anyone writing about AegisGate Lens
 
@@ -20,7 +20,7 @@ If a number changes (e.g., a new version adds a new pattern), update this file F
 - **Current version**: v0.1.3
 - **Manifest version**: 0.1.0 (the manifest.json `version` field is the CWS-required semver, which is the MAJOR.MINOR of the marketing version. v0.1.3 is the third iteration of v0.1.0)
 - **Branch**: v0.1.3
-- **Latest commit**: b0fc1ba (LOCAL ONLY, NOT pushed — CWS review pending)
+- **Latest commit**: 79e33e4 (LOCAL ONLY, NOT pushed — CWS review pending)
 
 ---
 
