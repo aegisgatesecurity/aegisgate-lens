@@ -1,6 +1,6 @@
-# AegisGate Lens v0.1.0-beta — Model Card
+# AegisGate Lens v0.1.4 — Model Card
 
-**Model name:** AegisGate Lens v0.1.0-beta
+**Model name:** AegisGate Lens v0.1.4
 **Model version:** 0.1.0-beta (released 2026-07-04)
 **Model type:** Deterministic pattern-matching algorithm (no ML)
 **Card format:** Google Model Cards v1 (extended for non-ML systems)
@@ -31,7 +31,7 @@ they hit send) when their prompt contains sensitive content.
 
 ## 2. Training Data
 
-**None.** AegisGate Lens v0.1.0-beta is a deterministic
+**None.** AegisGate Lens v0.1.4 is a deterministic
 pattern-matching algorithm. There is no training data,
 no model weights, no ONNX bundle, no TensorFlow Lite
 artifact, no ML inference.
@@ -71,7 +71,7 @@ The model was evaluated against:
    supported providers, run in real Chromium 149 via
    the headless-smoke Go binary.
 
-**Results (v0.1.0-beta, locked 2026-07-08):**
+**Results (v0.1.4, locked 2026-07-08):**
 - In-target PII recall: 98.99% (5,870 of 5,930 high-risk
   PII records caught)
 - Mixed records recall: 99.73% (39,285 of 39,391)
@@ -95,7 +95,7 @@ The model was evaluated against:
 
 ## 4. Model Architecture (Technical Detail)
 
-**Architecture: 4 regex facets, 120 patterns, deterministic.**
+**Architecture: 4 regex facets, 132 patterns, deterministic.**
 
 The detector is composed of 4 facets, each a list of
 `{category, severity, re, postProcess}` tuples:
@@ -158,7 +158,7 @@ These are not learned; they are hand-tuned heuristics.
 ### 5.2 Memory
 
 - **Per-pattern memory:** ~5KB (compiled regex + metadata)
-- **Total detector memory:** ~1.4MB (120 patterns + index)
+- **Total detector memory:** ~1.4MB (132 patterns + index)
 - **Per-detection allocation:** 0 (reuses the result
   arrays from the dispatcher)
 
@@ -178,7 +178,7 @@ These are not learned; they are hand-tuned heuristics.
    by paraphrasing, base64-encoding, OCR-ing, or splitting
    PII across multiple lines. See `docs/THREAT-MODEL-v0.1.0-BETA.md`
    F-15 and F-20.
-2. **Secrets / XSS / Compliance coverage:** the v0.1.0-beta
+2. **Secrets / XSS / Compliance coverage:** the v0.1.4
    benchmark does not include a large-scale secrets / XSS /
    compliance corpus. The detectors exist; their recall on
    real-world data has not been measured.
@@ -237,7 +237,7 @@ substance of what the user is asking the AI to do.
 
 ## 9. License
 
-AegisGate Lens v0.1.0-beta is licensed under Apache 2.0.
+AegisGate Lens v0.1.4 is licensed under Apache 2.0.
 Copyright 2024-2026 AegisGate Security, LLC.
 
 You may copy, modify, and redistribute. You may NOT
@@ -259,8 +259,8 @@ sell the Lens by itself. See `LICENSE` for the full text.
 
 ## 11. Changelog
 
-- **v0.1.0-beta** (2026-07-04): initial public release.
-  4 regex facets, 120 patterns, 8 AI providers,
+- **v0.1.4** (2026-07-04): initial public release.
+  4 regex facets, 132 patterns, 8 AI providers,
   Apache 2.0.
 - (v0.2.0 will add the TinyML tier for adversarial
   robustness.)
@@ -269,4 +269,4 @@ sell the Lens by itself. See `LICENSE` for the full text.
 
 **Signed-off-by:** AegisGate Security <security@aegisgatesecurity.io>
 **Last updated:** 2026-07-09
-**Version:** v0.1.0-beta
+**Version:** v0.1.4
