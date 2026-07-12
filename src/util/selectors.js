@@ -135,7 +135,13 @@
   // Identify which provider matches the current page.
   // Returns the provider config object, or null if no match.
   function identifyProvider() {
-    var hostname = (window.location && window.location.hostname) || '';
+    // Test-only: window.__lensMockHost is a shim set by the mini smoke
+    // mock HTML (tools/headless-smoke/mini/mock.go) so per-host mock
+    // pages can be identified as their respective providers even
+    // though the URL is always https://localhost:PORT/. This is a
+    // no-op in production (no mock page sets this global).
+    var hostname = (window.__lensMockHost) ||
+                   (window.location && window.location.hostname) || '';
     if (!hostname) return null;
     var host = hostname.toLowerCase();
     for (var i = 0; i < PROVIDERS.length; i++) {

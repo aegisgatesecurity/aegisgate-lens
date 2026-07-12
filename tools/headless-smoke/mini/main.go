@@ -206,14 +206,23 @@ func main() {
 	log.Printf("  CDP port: %d (separate from v0.1.3 runner on :9228)", *port)
 	log.Printf("  Mock HTTPS port: %d (separate from v0.1.3 runner on :8443)", *mockPort)
 
-	// Step 1: Start mock server (single-host chatgpt shape)
-	log.Printf("\n=== Step 1: Starting HTTPS mock server on :%d ===", *mockPort)
-	mock := newMockServer(*mockPort)
+	// Step 1: Start per-host mock server. Each of the 8 active provider
+	// hosts gets its own mock HTML (chatgpt.html, claude.html, etc.) and
+	// the server routes by Host header. The smoke navigates to
+	// https://localhost:PORT/ with a per-host Host header so the mock
+	// serves the right DOM shape.
+	log.Printf("\n=== Step 1: Starting per-host HTTPS mock server on :%d ===", *mockPort)
+	mocks, err := loadMocks()
+	if err != nil {
+		log.Fatalf("load mocks: %v", err)
+	}
+	log.Printf("  Loaded %d provider mocks (per-host)", len(mocks))
+	mock := newMockServer(*mockPort, mocks)
 	if err := mock.start(); err != nil {
 		log.Fatalf("start mock server: %v", err)
 	}
 	defer mock.stop()
-	log.Printf("  HTTPS mock listening (single-host chatgpt shape)")
+	log.Printf("  HTTPS mock listening (per-host routing by Host header)")
 
 	// Step 2: Launch Chromium with extension loaded
 	log.Printf("\n=== Step 2: Launching Chromium with --load-extension ===")
@@ -264,6 +273,10 @@ func main() {
 		// v0.1.4 fix: use localhost; mock routes by Host header
 		hostURL := fmt.Sprintf("https://localhost:%d/", *mockPort)
 		log.Printf("  [host=%s] navigating to %s (Host header: %s)", host, hostURL, host)
+		// Set the per-host Host header so the mock serves the right DOM
+		if err := cdp.setHostHeader(host); err != nil {
+			log.Printf("  [host=%s] setHostHeader failed: %v (continuing anyway)", host, err)
+		}
 		if err := cdp.navigate(target, hostURL, *timeout); err != nil {
 			log.Printf("  [host=%s] navigate failed: %v (skipping %d cases for this host)",
 				host, err, len(miniCases))

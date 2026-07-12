@@ -182,6 +182,20 @@ func (c *CDPClient) evaluate(expression string, awaitPromise bool) (json.RawMess
 	return r.Result.Value, nil
 }
 
+// setHostHeader sets the Host header for subsequent requests via
+// Network.setExtraHTTPHeaders. This is the simplest way to override
+// the Host header for a single page navigation. The Host header
+// is used by the per-host mock server to serve the right DOM shape.
+func (c *CDPClient) setHostHeader(host string) error {
+    params := map[string]interface{}{
+        "headers": map[string]interface{}{
+            "Host": host,
+        },
+    }
+    _, err := c.send("Network.setExtraHTTPHeaders", params)
+    return err
+}
+
 // drainEvents empties the events channel of any pending events.
 // Called before each navigate to prevent the channel from being
 // backed up with stale events (e.g., evaluate events from prior
