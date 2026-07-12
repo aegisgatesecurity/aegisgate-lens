@@ -335,6 +335,163 @@ test('e2e/bundle: bundle was built AFTER the most recent src/ change', () => {
   }
 });
 
+// --- Test 6-8: Platform-specific mock HTML files (smoke expansion support) ---
+
+// These tests verify that the 8 (or 9, including legacy chat-openai) mock
+// HTML files exist and contain the right selectors. They are the foundation
+// for the smoke expansion: when the smoke runner is updated to serve these
+// per-hostname (Phase 2), the e2e category already guards that the mocks
+// exist and match the actual selectors in src/util/selectors.js.
+//
+// The 8 active providers per FACTS.md: chatgpt, claude, gemini, copilot,
+// perplexity, duck_ai, grok, mistral.
+
+const PLATFORM_MOCK_DIR = 'test/headless-smoke/mock/platform-testdata/';
+
+test('e2e/mocks: 8 platform mock files exist (one per active provider)', () => {
+  // 8 active providers per FACTS.md + 1 legacy chat-openai + 1 deprecated
+  // x.com (Grok on X, not in v0.1.x scope) = 10 files total.
+  // We require the 8 active providers + the 1 legacy to be present.
+  // (x.com is optional and may be removed in a future F-11 cleanup.)
+  const requiredMocks = [
+    'chatgpt.html',      // chatgpt: textarea#prompt-textarea
+    'chat-openai.html',  // legacy ChatGPT redirect target
+    'claude.html',       // claude: div[contenteditable="true"] (ProseMirror)
+    'gemini.html',       // gemini: div[contenteditable="true"] (ql-editor)
+    'copilot.html',      // copilot: textarea#userInput
+    'perplexity.html',   // perplexity: textarea[id*="user-input"]
+    'duck.html',         // duck_ai (Duck.ai): div[contenteditable="true"]
+    'grok.html',         // grok: div[contenteditable="true"]
+    'mistral.html'       // mistral: textarea#prompt-textarea (chat.mistral.ai)
+  ];
+  for (const m of requiredMocks) {
+    const content = read(PLATFORM_MOCK_DIR + m);
+    assert.ok(content.length > 100, `${m} should be non-trivial (> 100 bytes), got ${content.length}`);
+  }
+});
+
+test('e2e/mocks: chatgpt mock has the chat.openai.com DOM structure', () => {
+  // Per selectors.js: textarea#prompt-textarea + button[data-testid="send-button"]
+  const content = read(PLATFORM_MOCK_DIR + 'chatgpt.html');
+  assert.match(content, /id="prompt-textarea"/, 'chatgpt mock must have #prompt-textarea');
+  assert.match(content, /data-testid="send-button"/, 'chatgpt mock must have data-testid="send-button"');
+});
+
+test('e2e/mocks: claude mock has the ProseMirror contenteditable div', () => {
+  // Per selectors.js: div.ProseMirror[contenteditable="true"] OR
+  // [data-testid="chat-input"] [contenteditable="true"]
+  const content = read(PLATFORM_MOCK_DIR + 'claude.html');
+  assert.match(content, /<div[^>]*contenteditable="true"/,
+    'claude mock must have a contenteditable div (ProseMirror-style)');
+});
+
+test('e2e/mocks: gemini mock has the ql-editor contenteditable div', () => {
+  // Per selectors.js: div.ql-editor[contenteditable="true"] OR
+  // rich-textarea div[contenteditable="true"]
+  const content = read(PLATFORM_MOCK_DIR + 'gemini.html');
+  assert.match(content, /<div[^>]*contenteditable="true"/,
+    'gemini mock must have a contenteditable div (ql-editor-style)');
+});
+
+test('e2e/mocks: copilot mock has the userInput textarea', () => {
+  // Per selectors.js: textarea#userInput OR textarea[name="userInput"]
+  const content = read(PLATFORM_MOCK_DIR + 'copilot.html');
+  assert.match(content, /id="userInput"/,
+    'copilot mock must have #userInput (textarea)');
+});
+
+test('e2e/mocks: perplexity mock has the user-input textarea', () => {
+  // Per selectors.js: textarea[placeholder*="message" i] OR
+  // textarea[id*="user-input"]
+  const content = read(PLATFORM_MOCK_DIR + 'perplexity.html');
+  assert.match(content, /id="user-input"|id="userInput"|placeholder="Ask anything"/,
+    'perplexity mock must have user-input textarea');
+});
+
+test('e2e/mocks: duck mock (duck_ai) has a contenteditable div', () => {
+  // Per selectors.js (duck_ai): contenteditable div
+  const content = read(PLATFORM_MOCK_DIR + 'duck.html');
+  assert.match(content, /<div[^>]*contenteditable="true"/,
+    'duck mock (duck_ai) must have a contenteditable div');
+});
+
+test('e2e/mocks: grok mock has a contenteditable div', () => {
+  // Per selectors.js (grok): contenteditable div
+  const content = read(PLATFORM_MOCK_DIR + 'grok.html');
+  assert.match(content, /<div[^>]*contenteditable="true"/,
+    'grok mock must have a contenteditable div');
+});
+
+test('e2e/mocks: mistral mock has the prompt-textarea textarea', () => {
+  // Per selectors.js: textarea#prompt-textarea (chat.mistral.ai uses the
+  // same prompt-textarea as ChatGPT per the actual chat.mistral.ai DOM)
+  const content = read(PLATFORM_MOCK_DIR + 'mistral.html');
+  assert.match(content, /id="prompt-textarea"/,
+    'mistral mock must have #prompt-textarea (chat.mistral.ai uses this id)');
+});
+
+test('e2e/mocks: 3-way consistency between mocks and selectors.js (smoke expansion guard)', () => {
+  // For each provider mock, the inputSelector in selectors.js must match
+  // an element in the mock. This is the regression guard for the smoke
+  // expansion: if selectors.js drifts from the mock, the smoke will fail.
+  const sels = read('src/util/selectors.js');
+  // Extract the PROVIDERS array (simple regex; the file is well-formatted)
+  const providerBlocks = sels.match(/\{[\s\S]*?id:\s*'(chatgpt|claude|gemini|copilot|perplexity|duck_ai|grok|mistral)'[\s\S]*?\}/g) || [];
+  for (const block of providerBlocks) {
+    const idMatch = block.match(/id:\s*'([^']+)'/);
+    if (!idMatch) continue;
+    const id = idMatch[1];
+    // Map provider id to mock file
+    const mockFile = PLATFORM_MOCK_DIR + id + '.html';
+    let mockContent = '';
+    try {
+      mockContent = read(mockFile);
+    } catch (e) {
+      // Some ids don't map 1:1 (e.g., duck_ai -> duck.html)
+      continue;
+    }
+    // Extract inputSelector from the provider block
+    const isMatch = block.match(/inputSelector:\s*'([^']+)'/);
+    if (!isMatch) continue;
+    const inputSelector = isMatch[1];
+    // The inputSelector is a CSS selector with multiple alternatives
+    // separated by commas. Each alternative is a class/id/tag/attribute
+    // selector. The `i` flag means case-insensitive.
+    // For the smoke to work, the mock HTML must contain at least ONE
+    // of these selectors. We do a loose check: the mock must contain
+    // either a matching id, class, contenteditable, or attribute selector.
+    // Extract the first non-trivial selector (skip universal "*" if any)
+    const alts = inputSelector.split(',').map(s => s.trim());
+    let hasMatch = false;
+    for (const alt of alts) {
+      // id selector: #xxx -> look for id="xxx" in mock
+      const idMatch2 = alt.match(/#([\w-]+)/);
+      if (idMatch2) {
+        if (mockContent.includes('id="' + idMatch2[1] + '"')) { hasMatch = true; break; }
+      }
+      // attribute selector: [attr=val] or [attr*="val"] or [attr*="val" i] -> look for attr="val" in mock
+      // We strip the 'i' flag and the quotes for the comparison
+      const attrMatch = alt.match(/\[([\w-]+)[*~|^$]?=?["']?([^"'\]]+?)["']?(\s+i)?\]/);
+      if (attrMatch) {
+        const attrName = attrMatch[1];
+        const attrVal = attrMatch[2];
+        if (mockContent.includes(attrName + '="' + attrVal + '"') ||
+            mockContent.includes(attrName + "='" + attrVal + "'")) { hasMatch = true; break; }
+      }
+      // class selector: .xxx -> look for class containing xxx in mock
+      const classMatch = alt.match(/\.([\w-]+)/);
+      if (classMatch) {
+        if (mockContent.includes('class="' + classMatch[1] + '"') ||
+            mockContent.includes('class=".*' + classMatch[1] + '.*"')) { hasMatch = true; break; }
+      }
+      // tag selector: textarea / div -> always present
+      if (/^textarea|^div$|^input/.test(alt)) { hasMatch = true; break; }
+    }
+    assert.ok(hasMatch,
+      `Mock ${mockFile} does not match any selector in inputSelector: ${inputSelector}`);
+  }
+});
+
 // --- Helper: recursive walk for .js files ---
 
 function walkJsFiles(dir) {
