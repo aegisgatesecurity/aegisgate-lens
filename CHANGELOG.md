@@ -53,6 +53,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Linter: 12/12 checks PASS, 0 warnings, 0 failures
 - 12 session commits, all GPG-signed
 
+### Performance baseline (post-v0.1.4)
+- p50: 0.08ms (500 char prompt), 0.27ms (2000 char prompt)
+- p99: 0.14ms (500 char), 0.36ms (2000 char), 1.37ms (10k char)
+- Benchmark: tools/bench/run-benchmark.js
+- Results: test/benchmarks/results/v0.1.4-baseline.json
+- 129 regex patterns evaluated per call
+- For typical user prompts (500-2000 chars), detection IS sub-millisecond.
+  For very long pastes (10k chars), it is still under 2ms p99 — well under one
+  frame at 60fps (16ms).
+
 ## [0.1.2] — 2026-07-09
 
 ### Fixed
