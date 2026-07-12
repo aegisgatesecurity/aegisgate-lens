@@ -14,6 +14,13 @@
 </head>
 <body>
   <h1>Perplexity (mock fixture)</h1>
-  <textarea id="user-input" placeholder="Ask anything..."></textarea>
+  <!--
+    Placeholder matches the inputSelector in src/util/selectors.js:
+    textarea[placeholder*="message" i] OR textarea[placeholder*="Ask" i]
+    We use "Ask a question" to match the "Ask" alternative case-insensitively
+    AND we also use the standard "search" placeholder for the
+    textarea[placeholder*="search" i] alternative. Belt and suspenders.
+  -->
+  <textarea id="user-input" name="q" placeholder="Ask a question or search"></textarea>
 </body>
 </html>
