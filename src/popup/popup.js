@@ -233,6 +233,97 @@
       setTelemetry('Storage unavailable');
       console.error('[AegisGate Lens popup] readOptIn failed:', err);
     });
+    // v0.1.4: bind the indicator toggle. Independent of opt-in state
+    // so the UI is usable even when storage is partially broken.
+    bindShowIndicator();
+  }
+
+  // -----------------------------------------------------------------
+  // v0.1.4: "Hide Lens active indicator" toggle.
+  //
+  // Storage key is the canonical STORAGE_KEYS.SHOW_INDICATOR. We
+  // hardcode the literal as a fallback (the constants module isn't
+  // always available at popup load time per the v0.1.2 F-2 comment).
+  // -----------------------------------------------------------------
+  function getShowIndicatorStorageKey() {
+    return (typeof globalThis !== 'undefined' && globalThis.__lensConstants &&
+            globalThis.__lensConstants.STORAGE_KEYS &&
+            globalThis.__lensConstants.STORAGE_KEYS.SHOW_INDICATOR) ||
+            'aegisgate_lens_show_indicator';
+  }
+
+  // Read the current setting. Resolves to { showIndicator: bool }.
+  // Default true (show indicator) on any error or missing key.
+  function readShowIndicator() {
+    return new Promise(function (resolve) {
+      try {
+        var cr = getChrome();
+        if (!cr || !cr.storage || !cr.storage.local) {
+          resolve({ showIndicator: true });
+          return;
+        }
+        cr.storage.local.get([getShowIndicatorStorageKey()], function (result) {
+          try {
+            var k = getShowIndicatorStorageKey();
+            if (result && Object.prototype.hasOwnProperty.call(result, k)) {
+              resolve({ showIndicator: result[k] !== false });
+            } else {
+              resolve({ showIndicator: true });
+            }
+          } catch (e) { resolve({ showIndicator: true }); }
+        });
+      } catch (e) { resolve({ showIndicator: true }); }
+    });
+  }
+
+  // Persist the toggle value. Resolves to { ok: bool }.
+  function setShowIndicator(value) {
+    return new Promise(function (resolve) {
+      try {
+        var cr = getChrome();
+        if (!cr || !cr.storage || !cr.storage.local) {
+          resolve({ ok: false, reason: 'no chrome.storage' });
+          return;
+        }
+        var k = getShowIndicatorStorageKey();
+        cr.storage.local.set({ [k]: value === false ? false : true }, function () {
+          if (cr.runtime && cr.runtime.lastError) {
+            resolve({ ok: false, reason: cr.runtime.lastError.message || 'unknown' });
+            return;
+          }
+          resolve({ ok: true });
+        });
+      } catch (e) { resolve({ ok: false, reason: e.message || 'unknown' }); }
+    });
+  }
+
+  // Apply the toggle state to the checkbox in the popup UI.
+  function applyShowIndicatorToUI(value) {
+    var cb = document.getElementById('show-indicator-toggle');
+    if (cb) cb.checked = value !== false;
+  }
+
+  // v0.1.4: read the toggle on popup open, set the checkbox, and
+  // wire the change listener to persist. Defensive against test
+  // mocks that return elements without addEventListener.
+  function bindShowIndicator() {
+    var cb = document.getElementById('show-indicator-toggle');
+    if (!cb) return;
+    readShowIndicator().then(function (s) {
+      applyShowIndicatorToUI(s.showIndicator);
+    });
+    if (typeof cb.addEventListener === 'function') {
+      cb.addEventListener('change', function () {
+        var desired = cb.checked;
+        setShowIndicator(desired).then(function (r) {
+          if (!r.ok) {
+            // Roll back the UI on persistence failure so the displayed
+            // state matches the persisted state.
+            applyShowIndicatorToUI(!desired);
+          }
+        });
+      });
+    }
   }
 
   if (document.readyState === 'loading') {

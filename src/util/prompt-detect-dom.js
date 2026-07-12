@@ -27,6 +27,55 @@
               warn: function(m){ try { console.warn('[AegisGate Lens] ' + m); } catch (e) {} },
               error: function(m,e){ try { console.error('[AegisGate Lens] ' + m, e); } catch (e) {} } };
 
+  // -----------------------------------------------------------------
+  // v0.1.4: "Hide Lens active indicator" toggle state.
+  //
+  // Cached at module init from chrome.storage.local, with a
+  // chrome.storage.onChanged listener that updates the cache in
+  // real-time if the user toggles the popup setting while the
+  // content script is running. The cache is consulted by
+  // injectIndicator() — if disabled, the on-page "🛡️ Lens active"
+  // chip is never rendered.
+  //
+  // Default ON (show indicator). If the storage read fails (e.g.,
+  // chrome.storage unavailable in a test env), we default to ON
+  // for safety — a missing toggle should not silently hide the
+  // indicator.
+  //
+  // The constants module is NOT imported here (this file loads
+  // before constants in the bundle order per bootstrap.js), so we
+  // hardcode the key as a fallback. The canonical key is in
+  // src/util/constants.js STORAGE_KEYS.SHOW_INDICATOR.
+  // -----------------------------------------------------------------
+  var _showIndicator = true;
+  var SHOW_INDICATOR_KEY = 'aegisgate_lens_show_indicator';
+  function _loadShowIndicator() {
+    try {
+      if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) return;
+      chrome.storage.local.get([SHOW_INDICATOR_KEY], function (result) {
+        try {
+          if (result && Object.prototype.hasOwnProperty.call(result, SHOW_INDICATOR_KEY)) {
+            _showIndicator = result[SHOW_INDICATOR_KEY] !== false;
+          }
+        } catch (e) { /* ignore */ }
+      });
+    } catch (e) { /* ignore */ }
+  }
+  _loadShowIndicator();
+  // v0.1.4: react to popup toggle in real-time. The popup writes
+  // directly to chrome.storage.local, which fires onChanged in the
+  // content script's storage area.
+  try {
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
+      chrome.storage.onChanged.addListener(function (changes, area) {
+        if (area !== 'local') return;
+        if (changes && changes[SHOW_INDICATOR_KEY]) {
+          _showIndicator = changes[SHOW_INDICATOR_KEY].newValue !== false;
+        }
+      });
+    }
+  } catch (e) { /* ignore */ }
+
   function findElements(state) {
     if (!state.provider || !selectors) return;
     state.input = selectors.findInput(state.provider);
@@ -43,6 +92,10 @@
   // in v0.2.0).
   function injectIndicator(state) {
     if (typeof document === 'undefined') return;
+    // v0.1.4: respect the "Hide Lens active indicator" popup
+    // toggle. The cached _showIndicator is updated by the
+    // chrome.storage.onChanged listener above.
+    if (_showIndicator === false) return;
     if (document.querySelector('[data-aegisgate-lens="indicator"]')) return;
     if (!state.input) return;
     var container = state.input.parentNode;

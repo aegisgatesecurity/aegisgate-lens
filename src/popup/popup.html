@@ -56,7 +56,21 @@
     <span class="label">Telemetry</span>
     <span class="value" id="telemetry-value" aria-live="polite">Loading...</span>
   </div>
-  
+
+  <!-- v0.1.4: Settings (per-popup user preferences) -->
+  <div id="settings" class="settings" role="group" aria-labelledby="settings-heading">
+    <h2 id="settings-heading" class="sr-only">AegisGate Lens settings</h2>
+    <div class="row setting-row">
+      <label for="show-indicator-toggle" class="label">
+        <input type="checkbox" id="show-indicator-toggle" checked>
+        Show "Lens active" indicator on chat pages
+      </label>
+    </div>
+    <div class="row setting-help small">
+      Hides the small "🛡️ Lens active" chip on AI chat pages. Detection still works — this only hides the on-page indicator.
+    </div>
+  </div>
+
   <!-- Upgrade CTA -->
   <div id="upgrade-banner" class="status upgrade hidden" role="complementary" aria-labelledby="upgrade-heading">
     <h2 id="upgrade-heading" class="sr-only">AegisGate Platform upgrade</h2>
