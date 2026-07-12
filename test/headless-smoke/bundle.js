@@ -184,7 +184,16 @@ try {
     // users. The content script's prompt-detect-dom.js reads this
     // synchronously (cached value with onChanged listener) and
     // early-returns from injectIndicator() when false.
-    SHOW_INDICATOR: 'aegisgate_lens_show_indicator'
+    SHOW_INDICATOR: 'aegisgate_lens_show_indicator',
+    // v0.1.4: global "Pause Lens for 1h / 1d" toggle.
+    // Default 0 (not paused). When set to a future timestamp (ms
+    // since epoch), the content script's prompt-detect-dom.js
+    // early-returns from onInput() until Date.now() >= the value.
+    // Different semantic from per-domain 24h dismiss (dismiss.js):
+    // pause is global across all domains/categories; dismiss is
+    // per-domain per-category. Used by security researchers and
+    // developers testing prompts.
+    PAUSE_UNTIL: 'aegisgate_lens_pause_until'
   });
 
   // === Telemetry / dismissal ===
@@ -3344,6 +3353,61 @@ return match;
               error: function(m,e){ try { console.error('[AegisGate Lens] ' + m, e); } catch (e) {} } };
 
   // -----------------------------------------------------------------
+  // v0.1.4: "Pause Lens for 1h / 1d" toggle state.
+  //
+  // Cached timestamp (ms since epoch) at which the pause expires.
+  // When Date.now() < _pausedUntil, onInput() early-returns BEFORE
+  // running the 4-facet regex scan — detection is suppressed
+  // globally across all domains, categories, and patterns.
+  //
+  // Default 0 (not paused). When the user clicks "Pause for 1h" in
+  // the popup, the popup writes Date.now() + 3600000 to
+  // chrome.storage.local. The onChanged listener updates the
+  // cache in real-time. The pause auto-expires — when Date.now() >=
+  // _pausedUntil, detection resumes automatically. No manual
+  // "unpause" action needed.
+  //
+  // Different semantic from the per-domain 24h dismiss (dismiss.js):
+  // pause is global, dismiss is per-domain per-category. Pause is
+  // for "I'm testing prompts, suppress all detection"; dismiss is
+  // for "this specific detection is wrong, don't show it again
+  // for 24h on this domain".
+  //
+  // The constants module is NOT imported here (this file loads
+  // before constants in the bundle order per bootstrap.js), so we
+  // hardcode the key as a fallback. The canonical key is in
+  // src/util/constants.js STORAGE_KEYS.PAUSE_UNTIL.
+  // -----------------------------------------------------------------
+  var _pausedUntil = 0;
+  var PAUSE_UNTIL_KEY = 'aegisgate_lens_pause_until';
+  function _loadPausedUntil() {
+    try {
+      if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) return;
+      chrome.storage.local.get([PAUSE_UNTIL_KEY], function (result) {
+        try {
+          if (result && Object.prototype.hasOwnProperty.call(result, PAUSE_UNTIL_KEY)) {
+            var v = result[PAUSE_UNTIL_KEY];
+            _pausedUntil = (typeof v === 'number' && v > 0) ? v : 0;
+          }
+        } catch (e) { /* ignore */ }
+      });
+    } catch (e) { /* ignore */ }
+  }
+  _loadPausedUntil();
+  // v0.1.4: react to popup pause changes in real-time.
+  try {
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
+      chrome.storage.onChanged.addListener(function (changes, area) {
+        if (area !== 'local') return;
+        if (changes && changes[PAUSE_UNTIL_KEY]) {
+          var nv = changes[PAUSE_UNTIL_KEY].newValue;
+          _pausedUntil = (typeof nv === 'number' && nv > 0) ? nv : 0;
+        }
+      });
+    }
+  } catch (e) { /* ignore */ }
+
+  // -----------------------------------------------------------------
   // v0.1.4: "Hide Lens active indicator" toggle state.
   //
   // Cached at module init from chrome.storage.local, with a
@@ -3454,6 +3518,12 @@ return match;
   function onInput(state, detectPrompt) {
     try {
       if (!state.input || !selectors) return;
+      // v0.1.4: global pause check. If the user paused Lens from
+      // the popup (Date.now() < _pausedUntil), suppress all
+      // detection globally. The 4-facet regex scan is skipped
+      // entirely; the banner is not shown; the FP report queue is
+      // not touched. Auto-resumes when the pause expires.
+      if (_pausedUntil > 0 && Date.now() < _pausedUntil) return;
       var value = selectors.getInputValue(state.input);
       if (value === state.lastValue) return;
       state.lastValue = value;
