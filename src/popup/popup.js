@@ -236,6 +236,8 @@
     // v0.1.4: bind the indicator toggle. Independent of opt-in state
     // so the UI is usable even when storage is partially broken.
     bindShowIndicator();
+    // v0.1.4: bind the pause buttons. Same defensive pattern.
+    bindPauseButtons();
   }
 
   // -----------------------------------------------------------------
@@ -324,6 +326,118 @@
         });
       });
     }
+  }
+
+  // -----------------------------------------------------------------
+  // v0.1.4: "Pause Lens for 1h / 1d" toggle.
+  //
+  // Storage key is the canonical STORAGE_KEYS.PAUSE_UNTIL. We
+  // hardcode the literal as a fallback (the constants module isn't
+  // always available at popup load time per the v0.1.2 F-2 comment).
+  // -----------------------------------------------------------------
+  function getPauseUntilStorageKey() {
+    return (typeof globalThis !== 'undefined' && globalThis.__lensConstants &&
+            globalThis.__lensConstants.STORAGE_KEYS &&
+            globalThis.__lensConstants.STORAGE_KEYS.PAUSE_UNTIL) ||
+            'aegisgate_lens_pause_until';
+  }
+
+  // Read the current pause timestamp. Resolves to { pausedUntil: number }.
+  // Default 0 (not paused) on any error or missing key.
+  function readPausedUntil() {
+    return new Promise(function (resolve) {
+      try {
+        var cr = getChrome();
+        if (!cr || !cr.storage || !cr.storage.local) {
+          resolve({ pausedUntil: 0 });
+          return;
+        }
+        cr.storage.local.get([getPauseUntilStorageKey()], function (result) {
+          try {
+            var k = getPauseUntilStorageKey();
+            if (result && Object.prototype.hasOwnProperty.call(result, k)) {
+              var v = result[k];
+              resolve({ pausedUntil: (typeof v === 'number' && v > 0) ? v : 0 });
+            } else {
+              resolve({ pausedUntil: 0 });
+            }
+          } catch (e) { resolve({ pausedUntil: 0 }); }
+        });
+      } catch (e) { resolve({ pausedUntil: 0 }); }
+    });
+  }
+
+  // Set the pause timestamp (ms since epoch, or 0 to unpause).
+  // Resolves to { ok: bool, pausedUntil: number }.
+  function setPausedUntil(value) {
+    return new Promise(function (resolve) {
+      try {
+        var cr = getChrome();
+        if (!cr || !cr.storage || !cr.storage.local) {
+          resolve({ ok: false, pausedUntil: 0, reason: 'no chrome.storage' });
+          return;
+        }
+        var k = getPauseUntilStorageKey();
+        // Persist as a number; 0 is the explicit "not paused" sentinel.
+        var v = (typeof value === 'number' && value > 0) ? value : 0;
+        cr.storage.local.set({ [k]: v }, function () {
+          if (cr.runtime && cr.runtime.lastError) {
+            resolve({ ok: false, pausedUntil: 0, reason: cr.runtime.lastError.message || 'unknown' });
+            return;
+          }
+          resolve({ ok: true, pausedUntil: v });
+        });
+      } catch (e) { resolve({ ok: false, pausedUntil: 0, reason: e.message || 'unknown' }); }
+    });
+  }
+
+  // Format a future ms-since-epoch timestamp as a human-readable
+  // string like "until 3:45 PM" or "until tomorrow 9:00 AM".
+  // Pure function (no DOM). Returns 'Not paused' for 0 or past.
+  function formatPauseUntil(ms) {
+    if (!ms || typeof ms !== 'number' || ms <= Date.now()) return 'Not paused';
+    var d = new Date(ms);
+    var now = new Date();
+    var sameDay = d.toDateString() === now.toDateString();
+    var hh = d.getHours();
+    var mm = d.getMinutes();
+    var ampm = hh >= 12 ? 'PM' : 'AM';
+    hh = hh % 12; if (hh === 0) hh = 12;
+    var time = hh + ':' + (mm < 10 ? '0' + mm : mm) + ' ' + ampm;
+    if (sameDay) return 'until ' + time + ' today';
+    return 'until ' + time + ' tomorrow';
+  }
+
+  // Update the popup's status line with the current pause state.
+  function applyPauseToUI(pausedUntil) {
+    var el = document.getElementById('pause-value');
+    if (el) el.textContent = formatPauseUntil(pausedUntil);
+  }
+
+  // v0.1.4: bind the pause buttons. Reads the current state, sets
+  // the status line, and wires the 1h / 1d buttons to write a
+  // future timestamp. Defensive against test mocks that return
+  // elements without addEventListener (same pattern as G1).
+  function bindPauseButtons() {
+    var btn1h = document.getElementById('pause-1h');
+    var btn1d = document.getElementById('pause-1d');
+    readPausedUntil().then(function (s) {
+      applyPauseToUI(s.pausedUntil);
+    });
+    function wireBtn(btn, hours) {
+      if (!btn) return;
+      if (typeof btn.addEventListener !== 'function') return;
+      btn.addEventListener('click', function () {
+        var untilMs = Date.now() + (hours * 60 * 60 * 1000);
+        setPausedUntil(untilMs).then(function (r) {
+          if (r.ok) {
+            applyPauseToUI(r.pausedUntil);
+          }
+        });
+      });
+    }
+    wireBtn(btn1h, 1);
+    wireBtn(btn1d, 24);
   }
 
   if (document.readyState === 'loading') {

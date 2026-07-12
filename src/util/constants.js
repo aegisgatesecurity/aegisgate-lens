@@ -60,7 +60,16 @@
     // users. The content script's prompt-detect-dom.js reads this
     // synchronously (cached value with onChanged listener) and
     // early-returns from injectIndicator() when false.
-    SHOW_INDICATOR: 'aegisgate_lens_show_indicator'
+    SHOW_INDICATOR: 'aegisgate_lens_show_indicator',
+    // v0.1.4: global "Pause Lens for 1h / 1d" toggle.
+    // Default 0 (not paused). When set to a future timestamp (ms
+    // since epoch), the content script's prompt-detect-dom.js
+    // early-returns from onInput() until Date.now() >= the value.
+    // Different semantic from per-domain 24h dismiss (dismiss.js):
+    // pause is global across all domains/categories; dismiss is
+    // per-domain per-category. Used by security researchers and
+    // developers testing prompts.
+    PAUSE_UNTIL: 'aegisgate_lens_pause_until'
   });
 
   // === Telemetry / dismissal ===

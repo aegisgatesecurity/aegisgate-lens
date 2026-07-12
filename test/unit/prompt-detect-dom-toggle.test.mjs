@@ -55,11 +55,13 @@ test('injectIndicator has exactly one toggle check (regression guard)', () => {
   assert.equal(matches.length, 1, `injectIndicator should have exactly one _showIndicator check, found ${matches.length}`);
 });
 
-test('source has exactly one chrome.storage.onChanged.addListener in prompt-detect-dom.js (regression guard)', () => {
-  // The toggle wiring uses onChanged.addListener exactly once.
-  // Multiple registrations would cause duplicate updates.
+test('source has exactly 2 chrome.storage.onChanged.addListener in prompt-detect-dom.js (regression guard)', () => {
+  // The toggle wiring uses onChanged.addListener — one for SHOW_INDICATOR
+  // (added in G1) and one for PAUSE_UNTIL (added in G2). Multiple
+  // registrations per KEY would cause duplicate updates; the count
+  // is 2 (one per key).
   const matches = SRC.match(/chrome\.storage\.onChanged\.addListener/g) || [];
-  assert.equal(matches.length, 1, `prompt-detect-dom.js should register onChanged.addListener exactly once, found ${matches.length}`);
+  assert.equal(matches.length, 2, `prompt-detect-dom.js should have exactly 2 onChanged.addListener calls (SHOW_INDICATOR + PAUSE_UNTIL), found ${matches.length}`);
 });
 
 test('source has exactly one immediate _loadShowIndicator call at module init', () => {

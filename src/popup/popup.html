@@ -71,6 +71,22 @@
     </div>
   </div>
 
+  <!-- v0.1.4: Pause Lens (global pause across all domains) -->
+  <div id="pause" class="settings" role="group" aria-labelledby="pause-heading">
+    <h2 id="pause-heading" class="sr-only">Pause AegisGate Lens</h2>
+    <div class="row pause-row">
+      <span class="label">Pause Lens</span>
+      <span class="value" id="pause-value" aria-live="polite">Loading...</span>
+    </div>
+    <div class="row pause-buttons">
+      <button type="button" id="pause-1h" class="lens-btn lens-btn-secondary" data-pause-hours="1">Pause for 1 hour</button>
+      <button type="button" id="pause-1d" class="lens-btn lens-btn-secondary" data-pause-hours="24">Pause for 1 day</button>
+    </div>
+    <div class="row setting-help small">
+      Suppresses all detection globally for the chosen duration. Auto-resumes when the time expires. Useful for security researchers and developers testing prompts.
+    </div>
+  </div>
+
   <!-- Upgrade CTA -->
   <div id="upgrade-banner" class="status upgrade hidden" role="complementary" aria-labelledby="upgrade-heading">
     <h2 id="upgrade-heading" class="sr-only">AegisGate Platform upgrade</h2>
