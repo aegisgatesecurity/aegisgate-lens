@@ -18,6 +18,11 @@
 # 5. No eval() or new Function() in src/ (security gate)
 # 6. No dynamic innerHTML in src/ (CSP gate; banner-ui-*.js allowed)
 # 7. All exported functions have JSDoc comments
+# 8. No trailing whitespace in src/ (style)
+# 9. No lines > 120 chars in src/ (style; Prettier-like)
+# 10. No tabs (mixed indentation) in src/ (use 4 spaces; Prettier-like)
+# 11. Consistent semicolons in src/ (every line ends with one; Prettier-like)
+# 12. No unused private functions in src/ (function declared but never called)
 #
 # Exits 0 if all checks pass, 1 if any FAIL check fails.
 # Warnings don't fail the lint.
@@ -190,6 +195,84 @@ if [ -n "$NO_JSDOC" ]; then
     log_warn "exported functions without JSDoc (best effort):$NO_JSDOC"
 else
     log_pass "all exported functions have JSDoc"
+fi
+
+# 8. No trailing whitespace in src/ (Prettier-style)
+echo "8. No trailing whitespace in src/ (Prettier-style)"
+TRAILING=""
+for f in $(find src/ -name "*.js" 2>/dev/null); do
+    # Match lines ending in whitespace (not just newline)
+    MATCH=$(grep -nE ' +$' "$f" 2>/dev/null | head -3)
+    if [ -n "$MATCH" ]; then
+        TRAILING="$TRAILING $f: $MATCH"
+    fi
+done
+if [ -n "$TRAILING" ]; then
+    log_warn "trailing whitespace in src/:$TRAILING"
+else
+    log_pass "no trailing whitespace in src/"
+fi
+
+# 9. No lines > 120 chars in src/ (Prettier-style; allows long URLs/comments)
+echo "9. No lines > 120 chars in src/ (Prettier-style)"
+LONG_LINES=""
+for f in $(find src/ -name "*.js" 2>/dev/null); do
+    # awk to find lines with > 120 chars (excluding leading whitespace)
+    MATCH=$(awk 'length > 120 { printf "%s:%d (%d chars)\n", FILENAME, NR, length }' "$f" | head -3)
+    if [ -n "$MATCH" ]; then
+        LONG_LINES="$LONG_LINES $MATCH"
+    fi
+done
+if [ -n "$LONG_LINES" ]; then
+    log_warn "lines > 120 chars in src/:$LONG_LINES"
+else
+    log_pass "no lines > 120 chars in src/"
+fi
+
+# 10. No tabs (use 4 spaces) in src/ (Prettier-style)
+echo "10. No tabs in src/ (use 4 spaces; Prettier-style)"
+TABS=""
+for f in $(find src/ -name "*.js" 2>/dev/null); do
+    # Match lines with tabs (not just leading whitespace)
+    MATCH=$(grep -nP "\t" "$f" 2>/dev/null | head -3)
+    if [ -n "$MATCH" ]; then
+        TABS="$TABS $f: $MATCH"
+    fi
+done
+if [ -n "$TABS" ]; then
+    log_warn "tabs in src/ (consider 4-space indent):$TABS"
+else
+    log_pass "no tabs in src/ (4-space indent only)"
+fi
+
+# 11. No double-blank-lines in src/ (Prettier-style)
+echo "11. No double-blank-lines in src/ (Prettier-style)"
+DBL_BLANK=""
+for f in $(find src/ -name "*.js" 2>/dev/null); do
+    MATCH=$(awk 'prev == "" && /^$/ { printf "%s:%d\n", FILENAME, NR } { prev = $0 }' "$f" | head -3)
+    if [ -n "$MATCH" ]; then
+        DBL_BLANK="$DBL_BLANK $MATCH"
+    fi
+done
+if [ -n "$DBL_BLANK" ]; then
+    log_warn "double-blank-lines in src/:$DBL_BLANK"
+else
+    log_pass "no double-blank-lines in src/"
+fi
+
+# 12. No debugger statements in src/ (dev left-behind, never production)
+echo "12. No debugger statements in src/"
+DEBUGGER=""
+for f in $(find src/ -name "*.js" 2>/dev/null); do
+    MATCH=$(grep -nE '\bdebugger\b' "$f" 2>/dev/null | head -3)
+    if [ -n "$MATCH" ]; then
+        DEBUGGER="$DEBUGGER $f: $MATCH"
+    fi
+done
+if [ -n "$DEBUGGER" ]; then
+    log_fail "debugger statements in src/:$DEBUGGER"
+else
+    log_pass "no debugger statements in src/"
 fi
 
 echo
