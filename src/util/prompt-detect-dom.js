@@ -160,7 +160,17 @@
     indicator.setAttribute('role', 'status');
     indicator.setAttribute('aria-label', 'AegisGate Lens is active on this page');
     indicator.title = 'AegisGate Lens is active — click for details';
-    indicator.innerHTML = '<span class="lens-indicator-shield" aria-hidden="true">🛡️</span> Lens active';
+    // v0.1.4 F-7: replace innerHTML with safe DOM construction.
+    // Per security.yml CSP gate: innerHTML is only allowed in banner-ui.js.
+    // We use createElement for the shield icon (aria-hidden because
+    // it's decorative) and textContent for the visible label. This
+    // eliminates the innerHTML surface entirely.
+    var shieldIcon = document.createElement('span');
+    shieldIcon.className = 'lens-indicator-shield';
+    shieldIcon.setAttribute('aria-hidden', 'true');
+    shieldIcon.textContent = '🛡️';
+    indicator.appendChild(shieldIcon);
+    indicator.appendChild(document.createTextNode(' Lens active'));
     indicator.addEventListener('click', function (e) {
       try {
         e.preventDefault();
