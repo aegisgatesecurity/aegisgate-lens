@@ -15,6 +15,18 @@ permissions:
   security-events: write
 
 jobs:
+  lint:
+    name: "Lightweight linter (no npm)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: Run linter
+        run: |
+          chmod +x tools/lint.sh
+          bash tools/lint.sh
+
   security-tests:
     name: Security Test Suite
     runs-on: ubuntu-latest
