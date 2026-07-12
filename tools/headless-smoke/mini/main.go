@@ -45,6 +45,12 @@ type miniCase struct {
 	Text             string
 	ShouldDetect     bool
 	ExpectedCategory string
+	// IsDismissFlow: if true, this case is the dismiss flow test.
+	// After the initial banner fires, the test clicks the dismiss
+	// button and verifies the banner is hidden. Then it re-runs
+	// the same text and verifies NO banner fires (because the
+	// dismissal was stored). Special-cased in runFlowCases.
+	IsDismissFlow bool
 }
 
 var miniCases = []miniCase{
@@ -83,6 +89,60 @@ var miniCases = []miniCase{
 		Text:             "This system is classified as high-risk under the EU AI Act for biometric identification",
 		ShouldDetect:     true,
 		ExpectedCategory: "eu_ai_act_high_risk",
+	},
+	{
+		Name:             "flow-pii-credit-card-luhn-valid",
+		Text:             "Charge my Visa ending in 4111-1111-1111-1111 please",
+		ShouldDetect:     true,
+		ExpectedCategory: "pii_credit_card",
+	},
+	{
+		Name:             "flow-pii-credit-card-luhn-invalid",
+		Text:             "My card is 1234-5678-9012-3456 please help",
+		ShouldDetect:     false,
+	},
+	{
+		Name:             "flow-pii-multiple",
+		Text:             "My SSN is 123-45-6789 and my email is john.doe@example.com",
+		ShouldDetect:     true,
+		ExpectedCategory: "pii_ssn",
+	},
+	{
+		Name:             "flow-pii-bip39-seed",
+		Text:             "My seed phrase is abandon ability able about above absent absorb abstract absurd abuse access accident",
+		ShouldDetect:     true,
+		ExpectedCategory: "pii_bip39_seed",
+	},
+	{
+		Name:             "flow-pii-international-iban",
+		Text:             "Wire to GB29NWBK60161331926819 please",
+		ShouldDetect:     true,
+		ExpectedCategory: "pii_iban",
+	},
+	{
+		Name:             "flow-pii-passport-uk",
+		Text:             "UK Passport 123456789",
+		ShouldDetect:     true,
+		ExpectedCategory: "pii_passport_uk",
+	},
+	{
+		Name:             "flow-secrets-jwt",
+		Text:             "Token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIn0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+		ShouldDetect:     true,
+		ExpectedCategory: "secret_jwt",
+	},
+	{
+		Name:             "flow-long-content",
+		Text:             "Help me write a story. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Oh and my SSN is 123-45-6789 by the way",
+		ShouldDetect:     true,
+		ExpectedCategory: "pii_ssn",
+	},
+	{
+		Name:             "flow-dismiss-flow",
+		Text:             "My SSN is 123-45-6789",
+		ShouldDetect:     true,
+		ExpectedCategory: "pii_ssn",
+		IsDismissFlow:    true,
 	},
 	{
 		Name:             "flow-benign",
@@ -231,7 +291,12 @@ func main() {
 		}
 		log.Printf("  [host=%s] content script + prompt-detect ready", host)
 		for _, tc := range miniCases {
-			r := runOneMiniCase(cdp, target, tc, host, *timeout)
+			var r miniResult
+			if tc.IsDismissFlow {
+				r = runDismissFlowCase(cdp, target, tc, host, *timeout)
+			} else {
+				r = runOneMiniCase(cdp, target, tc, host, *timeout)
+			}
 			results = append(results, r)
 		}
 	}
@@ -279,6 +344,113 @@ func main() {
 		os.Exit(1)
 	}
 }
+
+// runDismissFlowCase exercises the full dismiss flow:
+//   1. Set a text that fires a banner (the initial detection)
+//   2. Verify the banner is visible
+//   3. Click the dismiss button
+//   4. Verify the banner is hidden
+//   5. Re-set the same text
+//   6. Verify NO banner fires (dismissal is remembered)
+//
+// Adapted from flow/runner.go. The mini version is simpler: it
+// uses __lensBannerUI.isVisible() as the source of truth and
+// doesn't need a chrome.storage mock (the mock is already in
+// place from resetAndReinitPD).
+func runDismissFlowCase(cdp *CDPClient, target cdpTarget, tc miniCase, host string, timeout time.Duration) miniResult {
+	r := miniResult{
+		Name:             tc.Name,
+		Host:             host,
+		Text:             tc.Text,
+		ShouldDetect:     true, // dismiss flow always starts with a detection
+		ExpectedCategory: tc.ExpectedCategory,
+	}
+
+	// Step A: Reset state (same as runOneMiniCase)
+	resetExpr := "(function() {" +
+		"if (window.__lensBannerUI && window.__lensBannerUI.hide) { window.__lensBannerUI.hide(); }" +
+		"if (window.__lensPromptDetect && window.__lensPromptDetect.shutdown) { try { window.__lensPromptDetect.shutdown(); } catch (e) {} }" +
+		"if (typeof window.__lensContentInit === 'function') { try { window.__lensContentInit(); return 'ok'; } catch(e) { return 'err:' + e.message; } }" +
+		"return 'no-init';" +
+		"})()"
+	resetRes, err := cdp.evaluate(resetExpr, false)
+	if err != nil || string(resetRes) != "\"ok\"" {
+		r.Error = "reset failed: " + string(resetRes)
+		r.Passed = false
+		return r
+	}
+	time.Sleep(300 * time.Millisecond)
+
+	// Step B: Set the text (initial prompt)
+	escapedText, _ := json.Marshal(tc.Text)
+	setExpr := fmt.Sprintf("(function() {"+
+		"var pd = window.__lensPromptDetect;"+
+		"if (!pd || !pd.getState) return 'no-pd';"+
+		"var state = pd.getState();"+
+		"var sel = window.__lensSelectors;"+
+		"if (!sel || !sel.findInput || !sel.setInputValue) return 'no-sel';"+
+		"var input = sel.findInput(state.provider);"+
+		"if (!input) return 'no-input';"+
+		"sel.setInputValue(input, %s);"+
+		"return 'ok';"+
+		"})()", string(escapedText))
+	cdp.evaluate(setExpr, false)
+	time.Sleep(1500 * time.Millisecond)
+
+	// Step C: Verify the banner fired
+	visibleExpr := "(function() {" +
+		"var bUI = window.__lensBannerUI;" +
+		"if (!bUI) return 'no-banner-ui';" +
+		"if (typeof bUI.isVisible !== 'function') return 'no-isVisible';" +
+		"return bUI.isVisible() ? 'visible' : 'hidden';" +
+		"})()"
+	visRes, _ := cdp.evaluate(visibleExpr, false)
+	if string(visRes) != "\"visible\"" {
+		r.Error = "dismiss flow step C failed: expected banner visible after initial prompt, got: " + string(visRes)
+		r.Passed = false
+		return r
+	}
+
+	// Step D: Click the dismiss button. The banner has a
+	// .lens-icon-btn[data-action=\"dismiss\"] element.
+	clickExpr := "(function() {" +
+		"var btn = document.querySelector('.lens-icon-btn[data-action=\"dismiss\"]');" +
+		"if (!btn) return 'no-btn';" +
+		"btn.click();" +
+		"return 'clicked';" +
+		"})()"
+	clickRes, _ := cdp.evaluate(clickExpr, false)
+	if string(clickRes) != "\"clicked\"" {
+		r.Error = "dismiss click failed: " + string(clickRes)
+		r.Passed = false
+		return r
+	}
+	time.Sleep(500 * time.Millisecond) // let the dismiss animation complete
+
+	// Step E: Verify the banner is now hidden
+	hiddenRes, _ := cdp.evaluate(visibleExpr, false)
+	if string(hiddenRes) != "\"hidden\"" {
+		r.Error = "dismiss flow step E failed: expected banner hidden after dismiss click, got: " + string(hiddenRes)
+		r.Passed = false
+		return r
+	}
+
+	// Step F: Re-set the same text
+	cdp.evaluate(setExpr, false)
+	time.Sleep(1500 * time.Millisecond)
+
+	// Step G: Verify NO banner fires (dismissal is remembered)
+	finalRes, _ := cdp.evaluate(visibleExpr, false)
+	if string(finalRes) != "\"hidden\"" {
+		r.Error = "dismiss flow step G failed: expected banner still hidden after re-prompt, got: " + string(finalRes)
+		r.Passed = false
+		return r
+	}
+
+	r.Passed = true
+	return r
+}
+
 
 // runOneMiniCase runs a single test case (already on the right host).
 // v0.1.4: re-inits the content script between cases to clear
