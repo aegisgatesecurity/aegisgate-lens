@@ -67,6 +67,24 @@ var miniCases = []miniCase{
 		ExpectedCategory: "owasp_llm01_prompt_injection",
 	},
 	{
+		Name:             "flow-pii-email",
+		Text:             "Please email me at john.doe@example.com with the report.",
+		ShouldDetect:     true,
+		ExpectedCategory: "pii_email",
+	},
+	{
+		Name:             "flow-xss-script",
+		Text:             "<script>alert('xss')</script>",
+		ShouldDetect:     true,
+		ExpectedCategory: "xss_script_tag",
+	},
+	{
+		Name:             "flow-compliance-eu-ai-act",
+		Text:             "This system is classified as high-risk under the EU AI Act for biometric identification",
+		ShouldDetect:     true,
+		ExpectedCategory: "eu_ai_act_high_risk",
+	},
+	{
 		Name:             "flow-benign",
 		Text:             "Help me write a Python function to compute factorial of n.",
 		ShouldDetect:     false,
