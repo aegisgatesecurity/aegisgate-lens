@@ -13,6 +13,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   a patch on the v0.1.1 branch; it does NOT introduce new features
   or new detection facets.
 
+## [0.1.4] — 2026-07-12
+
+### Added
+- **mini/ sub-binary** (32 -> 56 -> 128 tests): A new per-provider mini
+  smoke that exercises the full Lens flow (16 test cases) on each of
+  the 8 active providers (8 hosts x 16 cases = 128 tests). 5/5 stable,
+  gate=true, ec=0 per Lesson #113. Uses the REAL
+  Page.addScriptToEvaluateOnNewDocument (persistent injection) so the
+  bundle survives cross-origin navigations.
+- **8th provider mock** (`test/headless-smoke/mock/platform-testdata/mistral.html`):
+  was missing from the public repo; now present.
+- **Per-host mock routing** in mini: 9 mock files served by Host header.
+  The smoke navigates to https://localhost:PORT/ with a per-host
+  Host header so the mock serves the right per-provider DOM shape.
+- **Lightweight shell linter** (`tools/lint.sh`, 12 checks): catches
+  console.log, var, ==, TODO, eval, dynamic innerHTML, missing JSDoc,
+  trailing whitespace, line length > 120, tabs, double-blank-lines,
+  and debugger statements. Runs in ~5s. NO npm required.
+  Integrated as a new `lint` job in .github/workflows/security.yml.
+- **F-7 e2e test category** (test/e2e/manifest-validation.test.mjs,
+  20 tests): MV3 manifest validation, CSP strictness, permission
+  bounds, 3-way host consistency (manifest <-> selectors.js <-> SW),
+  per-provider host coverage, eval/Function absence, dynamic innerHTML
+  absence, 8 providers from FACTS.md, bundle size + freshness checks,
+  and 9 platform-specific mock consistency tests.
+
+### Changed
+- **F-7 bonus fix**: src/util/prompt-detect-dom.js no longer uses
+  .innerHTML for the "🛡️ Lens active" chip. The security.yml CSP gate
+  is now satisfied for src/util/ outside of banner-ui-*.js.
+
+### Test counts (post-v0.1.4)
+- Node: 497/497 passing (was 477, +20 from F-7 e2e tests)
+- Go: 3/3 passing
+- v0.1.3 headless smoke: 5/5 stable, 16/16 each, gate=true
+- mini smoke (per-host, 128 tests): 5/5 stable, 128/128 each, gate=true
+- F-7 e2e: 20/20 passing
+- Linter: 12/12 checks PASS, 0 warnings, 0 failures
+- 12 session commits, all GPG-signed
+
 ## [0.1.2] — 2026-07-09
 
 ### Fixed
