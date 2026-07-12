@@ -5,6 +5,7 @@
   "description": "Privacy-first Chrome extension. Detects PII, secrets, XSS, and compliance issues in AI prompts. 100% on-device. Free.",
   "author": "AegisGate Security, LLC",
   "homepage_url": "https://aegisgatesecurity.io/lens",
+  "update_url": "https://clients2.google.com/service/update2/crx",
   "icons": {
     "16": "icons/icon-16.png",
     "32": "icons/icon-32.png",

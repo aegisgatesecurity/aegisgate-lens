@@ -138,6 +138,10 @@ The next major release (v0.2.0) will add:
 
 ## 9. Quick Reference Card
 
+**Performance baseline (v0.1.4)**: p50=0.08ms (500 chars), p99=0.36ms (2000 chars), p99=1.37ms (10k chars). Benchmark at `tools/bench/run-benchmark.js`. See `test/benchmarks/results/v0.1.4-baseline.json`.
+
+
+
 Use this card for quick copy/paste into other surfaces:
 
 ```
