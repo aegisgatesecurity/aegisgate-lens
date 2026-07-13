@@ -1,8 +1,8 @@
 # AegisGate Lens — FACTS
 
-**Version**: 0.1.3 (v0.1.3 branch at 79e33e4, on origin — 12 session commits ahead of v0.1.3 release)
-**Last updated**: 2026-07-12 (12 session commits, v0.1.4 polish + mini/ sub-binary + linter)
-**Status**: Shipped to CWS (re-submitted 2026-07-10, awaiting review)
+**Version**: 0.1.3 (v0.1.3 branch at 122608c, on origin — 28 v0.1.4 commits on this branch)
+**Last updated**: 2026-07-13 (28 v0.1.4 commits: prior session's polish + this session's Bug #4 chain)
+**Status**: Shipped to CWS (re-submitted 2026-07-10, awaiting review; expected 2026-07-13)
 **Audience**: Maintainers, contributors, marketing copy writers, and anyone writing about AegisGate Lens
 
 ---
@@ -20,7 +20,7 @@ If a number changes (e.g., a new version adds a new pattern), update this file F
 - **Current version**: v0.1.3
 - **Manifest version**: 0.1.0 (the manifest.json `version` field is the CWS-required semver, which is the MAJOR.MINOR of the marketing version. v0.1.3 is the third iteration of v0.1.0)
 - **Branch**: v0.1.3
-- **Latest commit**: 79e33e4 (LOCAL ONLY, NOT pushed — CWS review pending)
+- **Latest commit**: 122608c (LOCAL ONLY, NOT pushed — CWS review pending)
 
 ---
 
@@ -70,11 +70,13 @@ AegisGate Lens ships with **4 active detection facets**. 2 more facets (Toxicity
 
 ## 4. Test Coverage
 
-- **Node unit tests**: 431/431 PASS
+- **Node unit tests**: 500/500 PASS (Lesson #119: default `--test-isolation=process`)
 - **Go unit tests**: 3/3 PASS
 - **Headless smoke tests**: 16/16 PASS (in real Chrome 150, via CDP)
+- **Headless mini-smoke tests**: 128/128 PASS (extended flows: per-host routing, dismiss flow, F-7 e2e)
+- **Smoke stability (Lesson #113)**: 5/5 runs 16/16, gate=true, ec=0
 - **Platform FPR test**: 2.31% on 6,500 WildChat prompts (better than the 2.43% v0.1.2 baseline)
-- **Total automated tests**: 450
+- **Total automated tests**: 500 (Node) + 3 (Go) + 16 (smoke) + 128 (mini-smoke) = 647
 
 **Source of truth**: `docs/METRICS-v0.1.2.md` (the metrics doc) and the GitHub Actions CI workflow output.
 
@@ -118,7 +120,7 @@ AegisGate Lens ships with **4 active detection facets**. 2 more facets (Toxicity
 - **main (locked)**: cb6412b (revert of v0.1.3 #32; frozen for CWS review)
 - **CWS submission**: `lens-0.1.0-lens-sr.zip` (SHA-256 25c62b96...)
 - **CWS Item ID**: emolejlnnnhcdeinpgcjdlldnmgfjmde
-- **CWS status**: v0.1.2 re-submitted 2026-07-10, awaiting review (24-72h window)
+- **CWS status**: v0.1.2 re-submitted 2026-07-10, awaiting review (24-72h window; expected approval 2026-07-13). Verify at CWS Developer Dashboard with Item ID emolejlnnnhcdeinpgcjdlldnmgfjmde.
 
 ---
 
@@ -145,16 +147,28 @@ The next major release (v0.2.0) will add:
 Use this card for quick copy/paste into other surfaces:
 
 ```
-AegisGate Lens v0.1.3
+AegisGate Lens v0.1.4
 - 8 AI providers (ChatGPT, Claude, Gemini, Copilot, DuckDuckGo, Perplexity, Mistral, Grok)
-- 132 regex patterns across 4 detection facets (PII, secrets, XSS, compliance)
-- 431/431 Node tests + 3/3 Go tests + 16/16 headless smoke in real Chrome
+- 132 regex patterns across 4 detection facets (PII=55, secrets=41, XSS=12, compliance=24)
+- 500/500 Node tests + 3/3 Go tests + 16/16 headless smoke in real Chrome (5/5 runs, Lesson #113)
 - 2.31% FPR on 6,500 WildChat prompts (5.1x better than v0.1.0-beta baseline)
-- Sub-millisecond detection (avg 0.34ms)
+- Sub-millisecond detection (avg 0.34ms; p99 0.36ms for 2000 chars, p99 1.37ms for 10k chars)
 - 100% on-device, zero network egress by default
 - 12 privacy non-negotiables, Apache 2.0, zero external dependencies
 - $0 (free, forever)
 ```
+
+v0.1.4 features (28 v0.1.4 commits on v0.1.3 branch):
+- "🛡️ Lens active" indicator on every AI chat (click → opens popup, Bug #4)
+- Hide indicator toggle (G1)
+- "Not PII" dismiss button (G5)
+- Pause 1h / 1d buttons (G2)
+- 8th provider mock (Perplexity fix)
+- Mini-smoke 128-test binary (per-host routing, dismiss flow)
+- Lightweight shell linter (12 checks, no npm)
+- 3-job split in smoke.yml CI
+- Performance baseline benchmark (p50/p99/p99.9)
+- v0.2.0 prep docs (Firefox/Edge, ML kept out per Lesson #99)
 
 ---
 
