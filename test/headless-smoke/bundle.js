@@ -3502,13 +3502,20 @@ return match;
     shieldIcon.textContent = '🛡️';
     indicator.appendChild(shieldIcon);
     indicator.appendChild(document.createTextNode(' Lens active'));
+    // v0.1.4 Bug #4 fix: clicking the "Lens active" indicator now
+    // opens the extension popup (the same popup the user gets when
+    // they click the toolbar icon). The popup has the 3 v0.1.4
+    // features (hide indicator, pause 1h/1d, "Not PII" button).
+    // We use sendMessage to the SW (rather than calling
+    // chrome.action.openPopup() directly) for compatibility with
+    // Chrome 99-101 where openPopup() was restricted to toolbar
+    // actions only.
     indicator.addEventListener('click', function (e) {
       try {
         e.preventDefault();
-        if (typeof console !== 'undefined' && console.info) {
-          console.info('AegisGate Lens is watching this prompt for PII, secrets, and compliance issues. ' +
-                       'Click the banner for details. ' +
-                       'Opt out: click the dismiss icon on the banner for 24h.');
+        e.stopPropagation();
+        if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+          chrome.runtime.sendMessage({ type: 'OPEN_LENS_POPUP' });
         }
       } catch (e2) { /* ignore */ }
     }, true);
