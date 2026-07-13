@@ -52,6 +52,7 @@
       USER_ACTION: 'USER_ACTION',
       FP_REPORTS: 'FP_REPORTS',
       GET_OPT_IN_STATE: 'GET_OPT_IN_STATE',
+      OPEN_LENS_POPUP: 'OPEN_LENS_POPUP',
       PONG: 'PONG',
       ACK: 'ACK',
       ERROR: 'ERROR',
@@ -434,6 +435,39 @@
     });
   }
 
+  // v0.1.4 Bug #4 fix: open the extension popup when the user
+  // clicks the "🛡️ Lens active" indicator on a content page. The
+  // popup has the 3 v0.1.4 features (hide indicator, pause 1h/1d,
+  // "Not PII" dismiss). This handler is a no-op for the popup
+  // itself — the openPopup() call opens the UI; we don't need to
+  // send a response back. We log to the SW log on success/failure
+  // so the user can see in the SW console if it broke.
+  function handleOpenLensPopup(msg, sender, sendResponse) {
+    try {
+      if (typeof chrome !== 'undefined' && chrome.action && chrome.action.openPopup) {
+        chrome.action.openPopup().catch(function (e) {
+          // openPopup() may fail in some contexts (Chrome 99-101
+          // restricted it to user-gesture toolbar actions; in those
+          // cases we log a warning and the user can still click
+          // the toolbar icon to open the popup). The catch on
+          // openPopup() catches the promise rejection; we ALSO
+          // wrap in try/catch in case openPopup is synchronous-throws.
+          try { log.warn('openPopup failed: ' + (e && e.message)); } catch (e2) {}
+        });
+      } else {
+        log.warn('chrome.action.openPopup unavailable; user can still use toolbar icon');
+      }
+    } catch (e) {
+      try { log.warn('handleOpenLensPopup threw: ' + (e && e.message)); } catch (e2) {}
+    }
+    // We MUST return false (synchronous response) because we are
+    // not keeping the channel open — the popup will appear as a
+    // side-effect, not as a message response.
+    if (typeof sendResponse === 'function') {
+      try { sendResponse({ type: M.TYPE.ACK, version: msg.version, payload: { ok: true } }); } catch (e) {}
+    }
+  }
+
   // The message router. The SW validates sender.id (must be
   // chrome.runtime.id; i.e., our own extension) and dispatches.
   // This is F-01 from the threat model: defend against messages
@@ -463,6 +497,7 @@
         case M.TYPE.USER_ACTION:     handleUserAction(msg, sender, sendResponse); return false;
         case M.TYPE.FP_REPORTS:      handleFPReports(msg, sender, sendResponse); return true;  // async
         case M.TYPE.GET_OPT_IN_STATE: handleGetOptInState(msg, sender, sendResponse); return true;  // async
+        case M.TYPE.OPEN_LENS_POPUP:  handleOpenLensPopup(msg, sender, sendResponse); return false;  // sync (popup is side-effect)
         default:
           log.warn('unknown message type: ' + msg.type);
           sendResponse({ type: M.TYPE.ERROR, payload: { error: 'unknown type' } });
@@ -645,27 +680,4 @@
     };
   }
 })();
-  // v0.1.4 Bug #4 fix: open the extension popup when the user
-  // clicks the "Lens active" indicator on a content page. The popup
-  // has the 3 v0.1.4 features (hide indicator, pause 1h/1d, "Not PII").
-  // This message handler is a no-op for the popup (it just opens).
-  if (chrome.runtime && chrome.runtime.onMessage) {
-    chrome.runtime.onMessage.addListener(function (msg, sender, sendResponse) {
-      if (msg && msg.type === 'OPEN_LENS_POPUP') {
-        try {
-          if (typeof chrome !== 'undefined' && chrome.action && chrome.action.openPopup) {
-            chrome.action.openPopup().catch(function (e) {
-              // openPopup() may fail in some contexts (Chrome 99-101).
-              // Fallback: log the error. The user can still click the
-              // toolbar icon to open the popup.
-              try { console.warn('AegisGate Lens: openPopup failed:', e && e.message); } catch (e2) {}
-            });
-          }
-        } catch (e) {
-          try { console.warn('AegisGate Lens: openPopup threw:', e && e.message); } catch (e2) {}
-        }
-      }
-      return false; // don't keep the message channel open
-    });
-  }
 
