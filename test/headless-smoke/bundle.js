@@ -3210,7 +3210,13 @@ return match;
   // Identify which provider matches the current page.
   // Returns the provider config object, or null if no match.
   function identifyProvider() {
-    var hostname = (window.location && window.location.hostname) || '';
+    // Test-only: window.__lensMockHost is a shim set by the mini smoke
+    // mock HTML (tools/headless-smoke/mini/mock.go) so per-host mock
+    // pages can be identified as their respective providers even
+    // though the URL is always https://localhost:PORT/. This is a
+    // no-op in production (no mock page sets this global).
+    var hostname = (window.__lensMockHost) ||
+                   (window.location && window.location.hostname) || '';
     if (!hostname) return null;
     var host = hostname.toLowerCase();
     for (var i = 0; i < PROVIDERS.length; i++) {
@@ -5712,7 +5718,16 @@ return match;
     init();
   }
 
-  // Test-only hook: expose the init function so the headless smoke
+  // Kill switch: if globalThis.__lensDisabled is true, exit immediately.
+// This is a critical-bug mitigation: push a v0.1.5 with this set to
+// true to disable Lens in production within 24 hours, then roll out
+// the real fix in v0.1.6. See RUNBOOK.md for the full procedure.
+if (typeof globalThis !== 'undefined' && globalThis.__lensDisabled === true) {
+  log.warn('content: __lensDisabled is true; exiting without initializing');
+  return; // exits the IIFE
+}
+
+// Test-only hook: expose the init function so the headless smoke
   // test runner can re-init prompt-detect between test cases (the
   // B1-flake fix). Production code never calls this -- the
   // MutationObserver + content script lifecycle handle re-init

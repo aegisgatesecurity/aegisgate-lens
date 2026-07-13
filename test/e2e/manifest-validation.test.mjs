@@ -28,7 +28,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 const LENS_ROOT = join(import.meta.dirname || __dirname, '..', '..');
@@ -489,6 +489,41 @@ test('e2e/mocks: 3-way consistency between mocks and selectors.js (smoke expansi
     }
     assert.ok(hasMatch,
       `Mock ${mockFile} does not match any selector in inputSelector: ${inputSelector}`);
+  }
+});
+
+// Test 13: Welcome page has matching <style> open/close (Bug #1 fix)
+// Bug found 2026-07-12: the welcome page had 3 <style> opens and 1 </style>
+// close, leaving 2 unclosed style blocks. The browser's CSS parser bailed
+// out and none of the styles were applied (page rendered as white background).
+// Fix: add </style> between the 2nd @font-face block and the inline CSS block.
+test('welcome page has balanced <style> tags (Bug #1 regression guard)', () => {
+  const welcome = read('src/welcome/welcome.html');
+  // Find <style> and </style> tags at the start of a line (indented).
+  // This excludes mentions in HTML comments (e.g., "Keep this <style> inlined").
+  // The regex matches leading whitespace (0+ spaces) then <style> or </style>.
+  const openCount = (welcome.match(/^\s*<style[\s>]/gm) || []).length;
+  const closeCount = (welcome.match(/^\s*<\/style>/gm) || []).length;
+  assert.strictEqual(openCount, closeCount,
+    'Welcome page has ' + openCount + ' <style> opens but ' + closeCount + ' </style> closes (Bug #1 fix).');
+  assert.ok(openCount > 0, 'Welcome page should have at least 1 <style> block');
+  assert.ok(closeCount > 0, 'Welcome page should have at least 1 </style> block');
+});
+
+// Test 14: Manifest WAR list includes all banner icons (Bug #2 fix)
+// Bug found 2026-07-12: the banner used icons/banner-2x.png and
+// icons/banner-3x.png via chrome.runtime.getURL() but neither was
+// in web_accessible_resources. Content scripts couldn't load the icons,
+// so they appeared as broken-link icons in the banner.
+test('manifest WAR list includes all banner-*.png icons (Bug #2 regression guard)', () => {
+  const manifest = readJson('test/headless-smoke/dist/manifest.json');
+  const warList = manifest.web_accessible_resources[0].resources;
+  const bannerIcons = warList.filter(r => r.startsWith('icons/banner-'));
+  assert.ok(bannerIcons.length >= 2,
+    'Manifest WAR list has ' + bannerIcons.length + ' banner-* icons, expected at least 2 (1x, 2x, 3x)');
+  for (const icon of bannerIcons) {
+    assert.ok(existsSync(join(LENS_ROOT, 'test/headless-smoke/dist', icon)),
+      'Banner icon ' + icon + ' is in WAR but not in dist/');
   }
 });
 
