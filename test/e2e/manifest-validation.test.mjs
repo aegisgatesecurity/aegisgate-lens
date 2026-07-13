@@ -527,6 +527,36 @@ test('manifest WAR list includes all banner-*.png icons (Bug #2 regression guard
   }
 });
 
+// Test 15: Welcome page reads version from manifest at runtime (Bug #3 fix)
+// Bug found 2026-07-12: the welcome page hardcoded "v0.1.0-beta" in
+// the visible tag and in the storage write. The tag is the FIRST thing
+// users see on install; showing "v0.1.0-beta" months after v0.1.4 is
+// shipping is a credibility hit.
+// Fix: the welcome page now reads chrome.runtime.getManifest().version
+// at runtime and displays the marketing version (mapped from the
+// CWS-required semver). The same helper is used for the stored
+// lens_version in chrome.storage.
+test('welcome page reads version from manifest at runtime (Bug #3 regression guard)', () => {
+  const welcomeHtml = read('src/welcome/welcome.html');
+  // 1. The visible tag should have an id for runtime update
+  assert.ok(welcomeHtml.includes('id="lens-version-tag"'),
+    'welcome.html should have id="lens-version-tag" on the version badge for runtime update');
+  // 2. The tag should NOT hardcode "v0.1.0-beta" anymore
+  assert.ok(!welcomeHtml.includes('v0.1.0-beta'),
+    'welcome.html should not hardcode v0.1.0-beta (it should be auto-updated from manifest)');
+  // 3. The welcome.js should have the getMarketingVersion helper
+  const welcomeJs = read('src/welcome/welcome.js');
+  assert.ok(welcomeJs.includes('getMarketingVersion'),
+    'welcome.js should have getMarketingVersion helper');
+  // 4. The persistChoice should use the helper, not hardcode
+  assert.ok(!welcomeJs.includes("lens_version: '0.1.0-beta'"),
+    'welcome.js persistChoice should not hardcode lens_version: 0.1.0-beta');
+  // 5. The SEMVER_TO_MARKETING lookup should exist (so future versions
+  //    are correctly mapped from semver to marketing version)
+  assert.ok(welcomeJs.includes('SEMVER_TO_MARKETING'),
+    'welcome.js should have a SEMVER_TO_MARKETING lookup for future version mapping');
+});
+
 // --- Helper: recursive walk for .js files ---
 
 function walkJsFiles(dir) {
