@@ -72,7 +72,10 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "src/util/banner.css"
+        "src/util/banner.css",
+        "src/icons/banner-1x.png",
+        "src/icons/banner-2x.png",
+        "src/icons/banner-3x.png"
       ],
       "matches": [
         "<all_urls>"
