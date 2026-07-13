@@ -518,7 +518,7 @@ test('welcome page has balanced <style> tags (Bug #1 regression guard)', () => {
 test('manifest WAR list includes all banner-*.png icons (Bug #2 regression guard)', () => {
   const manifest = readJson('test/headless-smoke/dist/manifest.json');
   const warList = manifest.web_accessible_resources[0].resources;
-  const bannerIcons = warList.filter(r => r.startsWith('icons/banner-'));
+  const bannerIcons = warList.filter(r => r.includes('banner-') && r.endsWith('.png'));
   assert.ok(bannerIcons.length >= 2,
     'Manifest WAR list has ' + bannerIcons.length + ' banner-* icons, expected at least 2 (1x, 2x, 3x)');
   for (const icon of bannerIcons) {
