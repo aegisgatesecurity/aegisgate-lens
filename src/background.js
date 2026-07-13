@@ -291,13 +291,20 @@
             timestamp: Math.floor(Date.now() / 1000),
             reports: reports
           }),
-          // We don't want to block; a hung fetch should not stall the SW
-          // (chrome SWs can be killed mid-fetch, but we want to keep
-          // the queue intact in that case)
-          // 10 second timeout via AbortController
-          signal: (typeof AbortController !== 'undefined')
-            ? new AbortController().signal  // never aborts; placeholder
-            : undefined
+          // F-25 (v0.1.4 polish): wire up a real 10-second timeout via
+          // AbortController. Previously the signal was a no-op (a
+          // placeholder controller whose .abort() was never called), so
+          // a hung backend could keep the SW alive until Chrome's 30s
+          // SW kill timer fired. The fix: create a controller, schedule
+          // abort() in 10s, pass the controller's signal. On abort,
+          // fetch rejects and the catch handler resolves with reason
+          // 'aborted (10s timeout)'.
+          signal: (function () {
+            if (typeof AbortController === 'undefined') return undefined;
+            var c = new AbortController();
+            setTimeout(function () { try { c.abort(); } catch (e) {} }, 10000);
+            return c.signal;
+          })()
         }).then(function (resp) {
           if (resp.ok) {
             log.info('sent ' + reports.length + ' FP reports to backend');
@@ -306,7 +313,13 @@
             resolve({ success: false, reason: 'HTTP ' + resp.status });
           }
         }).catch(function (err) {
-          resolve({ success: false, reason: (err && err.message) || String(err) });
+          // If the fetch was aborted by our 10s timeout, surface a clear
+          // reason. DOMException with name 'AbortError' is the standard
+          // signal; some Chrome versions use err.code === 20.
+          var reason = (err && (err.name === 'AbortError' || err.code === 20))
+            ? 'aborted (10s timeout)'
+            : (err && err.message) || String(err);
+          resolve({ success: false, reason: reason });
         });
       } catch (e) {
         log.error('sendToBackend threw', e);
