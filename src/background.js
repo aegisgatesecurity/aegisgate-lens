@@ -645,3 +645,27 @@
     };
   }
 })();
+  // v0.1.4 Bug #4 fix: open the extension popup when the user
+  // clicks the "Lens active" indicator on a content page. The popup
+  // has the 3 v0.1.4 features (hide indicator, pause 1h/1d, "Not PII").
+  // This message handler is a no-op for the popup (it just opens).
+  if (chrome.runtime && chrome.runtime.onMessage) {
+    chrome.runtime.onMessage.addListener(function (msg, sender, sendResponse) {
+      if (msg && msg.type === 'OPEN_LENS_POPUP') {
+        try {
+          if (typeof chrome !== 'undefined' && chrome.action && chrome.action.openPopup) {
+            chrome.action.openPopup().catch(function (e) {
+              // openPopup() may fail in some contexts (Chrome 99-101).
+              // Fallback: log the error. The user can still click the
+              // toolbar icon to open the popup.
+              try { console.warn('AegisGate Lens: openPopup failed:', e && e.message); } catch (e2) {}
+            });
+          }
+        } catch (e) {
+          try { console.warn('AegisGate Lens: openPopup threw:', e && e.message); } catch (e2) {}
+        }
+      }
+      return false; // don't keep the message channel open
+    });
+  }
+
