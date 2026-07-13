@@ -1,7 +1,7 @@
 # AegisGate Lens — FACTS
 
-**Version**: 0.1.3 (v0.1.3 branch at 122608c, on origin — 28 v0.1.4 commits on this branch)
-**Last updated**: 2026-07-13 (28 v0.1.4 commits: prior session's polish + this session's Bug #4 chain)
+**Version**: 0.1.3 (v0.1.3 branch at 6fc8e7e, on origin — 29 v0.1.4 commits on this branch)
+**Last updated**: 2026-07-13 (29 v0.1.4 commits: prior session's polish + this session's Bug #4 chain)
 **Status**: Shipped to CWS (re-submitted 2026-07-10, awaiting review; expected 2026-07-13)
 **Audience**: Maintainers, contributors, marketing copy writers, and anyone writing about AegisGate Lens
 
@@ -20,7 +20,7 @@ If a number changes (e.g., a new version adds a new pattern), update this file F
 - **Current version**: v0.1.3
 - **Manifest version**: 0.1.0 (the manifest.json `version` field is the CWS-required semver, which is the MAJOR.MINOR of the marketing version. v0.1.3 is the third iteration of v0.1.0)
 - **Branch**: v0.1.3
-- **Latest commit**: 122608c (LOCAL ONLY, NOT pushed — CWS review pending)
+- **Latest commit**: 6fc8e7e (LOCAL ONLY, NOT pushed — CWS review pending)
 
 ---
 
@@ -118,9 +118,10 @@ AegisGate Lens ships with **4 active detection facets**. 2 more facets (Toxicity
 - **GitHub**: `aegisgatesecurity/aegisgate-lens`
 - **Branch (locked)**: v0.1.3
 - **main (locked)**: cb6412b (revert of v0.1.3 #32; frozen for CWS review)
-- **CWS submission**: `lens-0.1.0-lens-sr.zip` (SHA-256 25c62b96...)
+- **CWS submission (v0.1.0-beta, pending review)**: `lens-0.1.0-lens-sr.zip` (SHA-256 25c62b96...) — Item ID emolejlnnnhcdeinpgcjdlldnmgfjmde, awaiting review
+- **CWS zip (v0.1.4, BUILT, ready to submit post-approval)**: `lens-0.1.4-lens-sr.zip` (SHA-256 a67a8367..., 1,326,193 bytes, 59 files), at `.workingdirectory/lens-0.1.4-lens-sr.zip`. Excludes `__pycache__`, `.pyc`, and `.gitkeep` (clean zip, no dev cruft). Regenerate BEFORE CWS submission if any src/ changes after 2026-07-13 07:23 CDT.
 - **CWS Item ID**: emolejlnnnhcdeinpgcjdlldnmgfjmde
-- **CWS status**: v0.1.2 re-submitted 2026-07-10, awaiting review (24-72h window; expected approval 2026-07-13). Verify at CWS Developer Dashboard with Item ID emolejlnnnhcdeinpgcjdlldnmgfjmde.
+- **CWS status**: v0.1.0-beta (the v0.1.2 re-submit from 2026-07-10) is in review, Item ID emolejlnnnhcdeinpgcjdlldnmgfjmde (24-72h window; expected approval 2026-07-13). v0.1.4 CWS zip is BUILT and ready to upload as a new submission once the v0.1.0-beta review completes (or to replace it via the CWS Developer Dashboard).
 
 ---
 
@@ -156,9 +157,10 @@ AegisGate Lens v0.1.4
 - 100% on-device, zero network egress by default
 - 12 privacy non-negotiables, Apache 2.0, zero external dependencies
 - $0 (free, forever)
+- v0.1.4 CWS zip ready locally: `lens-0.1.4-lens-sr.zip` (1.3 MB, SHA-256 a67a8367..., 59 files)
 ```
 
-v0.1.4 features (28 v0.1.4 commits on v0.1.3 branch):
+v0.1.4 features (29 v0.1.4 commits on v0.1.3 branch):
 - "🛡️ Lens active" indicator on every AI chat (click → opens popup, Bug #4)
 - Hide indicator toggle (G1)
 - "Not PII" dismiss button (G5)
