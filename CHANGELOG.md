@@ -43,15 +43,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - **F-7 bonus fix**: src/util/prompt-detect-dom.js no longer uses
   .innerHTML for the "🛡️ Lens active" chip. The security.yml CSP gate
   is now satisfied for src/util/ outside of banner-ui-*.js.
+- **Bug #4 fix (2026-07-13)**: the "🛡️ Lens active" indicator on every
+  AI chat page is now clickable — clicking opens the extension popup
+  (with the 3 v0.1.4 features: hide indicator, pause 1h/1d, "Not PII"
+  dismiss). Implementation: content script -> chrome.runtime.sendMessage
+  -> SW onMessage -> chrome.action.openPopup(). For Chrome 99-101 where
+  openPopup() is restricted to user-gesture toolbar actions, the SW
+  catches the rejection and logs a warning.
+- **Bug #4 followup (2026-07-13)**: the original Bug #4 commit registered
+  a 2nd onMessage listener outside the IIFE, which the mock chrome (with
+  SET-semantics onMessage.addListener) used to OVERWRITE the main SW
+  handler, breaking GET_OPT_IN_STATE, DETECTION, and USER_ACTION. Fix:
+  moved the OPEN_LENS_POPUP handler inside the IIFE and added a case to
+  the main onMessage switch.
 
 ### Test counts (post-v0.1.4)
-- Node: 497/497 passing (was 477, +20 from F-7 e2e tests)
+- Node: 500/500 passing (was 477, +20 from F-7 e2e tests, +3 from Bug #4
+  e2e bundle-freshness check)
 - Go: 3/3 passing
 - v0.1.3 headless smoke: 5/5 stable, 16/16 each, gate=true
 - mini smoke (per-host, 128 tests): 5/5 stable, 128/128 each, gate=true
 - F-7 e2e: 20/20 passing
 - Linter: 12/12 checks PASS, 0 warnings, 0 failures
-- 12 session commits, all GPG-signed
+- 28 v0.1.4 commits on the v0.1.3 branch, all GPG-signed
 
 ### Performance baseline (post-v0.1.4)
 - p50: 0.08ms (500 char prompt), 0.27ms (2000 char prompt)
