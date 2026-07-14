@@ -106,6 +106,7 @@ test/headless-smoke/headless-smoke-bin
 test/headless-smoke/logs/
 test/headless-smoke/reports/
 test/headless-smoke/piml-runner
+test/headless-smoke/bundle.js
 
 # --- Private Lens development directories (per user directive 2026-07-07) ---
 # /.plans/ — repo for Lens plans, lessons, retrospectives (gitignored parent per user)
