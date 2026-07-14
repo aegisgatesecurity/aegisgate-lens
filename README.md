@@ -147,7 +147,7 @@ The Chrome extension `.zip` is built by the CI workflow in [tools/build-lens-ext
 
 ```bash
 # Run all tests locally
-node --test test/unit/*.test.mjs           # 431 Node tests
+bash tools/test-local.sh                  # 500 Node tests (rebuilds the bundle first)
 cd tools/headless-smoke/flow && go test ./...   # 3 Go tests
 ./test/headless-smoke/headless-smoke-bin \  # 16 smoke tests
   --dist test/headless-smoke/dist \

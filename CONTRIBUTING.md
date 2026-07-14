@@ -69,6 +69,7 @@ When the extension source is published (Step D in the build sequence), code cont
 5. **Verify locally** that:
    - The Platform's CI checks pass: `cd ../aegisgate-platform && go test -race ./pkg/lensbackend/...`
    - The `No npm check` passes: there is no `package.json` etc. anywhere in your changes.
+   - The Node test suite passes (rebuilds the bundle + runs all e2e tests): `bash tools/test-local.sh` -- see `tools/test-local.sh` header for details.
 6. **Open a PR** with a clear description of what changed and why.
 7. **Wait for review.** The founder is the only reviewer and has limited time. Be patient.
 
