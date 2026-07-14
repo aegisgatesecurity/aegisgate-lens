@@ -27,6 +27,110 @@
               warn: function(m){ try { console.warn('[AegisGate Lens] ' + m); } catch (e) {} },
               error: function(m,e){ try { console.error('[AegisGate Lens] ' + m, e); } catch (e) {} } };
 
+  // -----------------------------------------------------------------
+  // v0.1.4: "Pause Lens for 1h / 1d" toggle state.
+  //
+  // Cached timestamp (ms since epoch) at which the pause expires.
+  // When Date.now() < _pausedUntil, onInput() early-returns BEFORE
+  // running the 4-facet regex scan — detection is suppressed
+  // globally across all domains, categories, and patterns.
+  //
+  // Default 0 (not paused). When the user clicks "Pause for 1h" in
+  // the popup, the popup writes Date.now() + 3600000 to
+  // chrome.storage.local. The onChanged listener updates the
+  // cache in real-time. The pause auto-expires — when Date.now() >=
+  // _pausedUntil, detection resumes automatically. No manual
+  // "unpause" action needed.
+  //
+  // Different semantic from the per-domain 24h dismiss (dismiss.js):
+  // pause is global, dismiss is per-domain per-category. Pause is
+  // for "I'm testing prompts, suppress all detection"; dismiss is
+  // for "this specific detection is wrong, don't show it again
+  // for 24h on this domain".
+  //
+  // The constants module is NOT imported here (this file loads
+  // before constants in the bundle order per bootstrap.js), so we
+  // hardcode the key as a fallback. The canonical key is in
+  // src/util/constants.js STORAGE_KEYS.PAUSE_UNTIL.
+  // -----------------------------------------------------------------
+  var _pausedUntil = 0;
+  var PAUSE_UNTIL_KEY = 'aegisgate_lens_pause_until';
+  function _loadPausedUntil() {
+    try {
+      if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) return;
+      chrome.storage.local.get([PAUSE_UNTIL_KEY], function (result) {
+        try {
+          if (result && Object.prototype.hasOwnProperty.call(result, PAUSE_UNTIL_KEY)) {
+            var v = result[PAUSE_UNTIL_KEY];
+            _pausedUntil = (typeof v === 'number' && v > 0) ? v : 0;
+          }
+        } catch (e) { /* ignore */ }
+      });
+    } catch (e) { /* ignore */ }
+  }
+  _loadPausedUntil();
+  // v0.1.4: react to popup pause changes in real-time.
+  try {
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
+      chrome.storage.onChanged.addListener(function (changes, area) {
+        if (area !== 'local') return;
+        if (changes && changes[PAUSE_UNTIL_KEY]) {
+          var nv = changes[PAUSE_UNTIL_KEY].newValue;
+          _pausedUntil = (typeof nv === 'number' && nv > 0) ? nv : 0;
+        }
+      });
+    }
+  } catch (e) { /* ignore */ }
+
+  // -----------------------------------------------------------------
+  // v0.1.4: "Hide Lens active indicator" toggle state.
+  //
+  // Cached at module init from chrome.storage.local, with a
+  // chrome.storage.onChanged listener that updates the cache in
+  // real-time if the user toggles the popup setting while the
+  // content script is running. The cache is consulted by
+  // injectIndicator() — if disabled, the on-page "🛡️ Lens active"
+  // chip is never rendered.
+  //
+  // Default ON (show indicator). If the storage read fails (e.g.,
+  // chrome.storage unavailable in a test env), we default to ON
+  // for safety — a missing toggle should not silently hide the
+  // indicator.
+  //
+  // The constants module is NOT imported here (this file loads
+  // before constants in the bundle order per bootstrap.js), so we
+  // hardcode the key as a fallback. The canonical key is in
+  // src/util/constants.js STORAGE_KEYS.SHOW_INDICATOR.
+  // -----------------------------------------------------------------
+  var _showIndicator = true;
+  var SHOW_INDICATOR_KEY = 'aegisgate_lens_show_indicator';
+  function _loadShowIndicator() {
+    try {
+      if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) return;
+      chrome.storage.local.get([SHOW_INDICATOR_KEY], function (result) {
+        try {
+          if (result && Object.prototype.hasOwnProperty.call(result, SHOW_INDICATOR_KEY)) {
+            _showIndicator = result[SHOW_INDICATOR_KEY] !== false;
+          }
+        } catch (e) { /* ignore */ }
+      });
+    } catch (e) { /* ignore */ }
+  }
+  _loadShowIndicator();
+  // v0.1.4: react to popup toggle in real-time. The popup writes
+  // directly to chrome.storage.local, which fires onChanged in the
+  // content script's storage area.
+  try {
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
+      chrome.storage.onChanged.addListener(function (changes, area) {
+        if (area !== 'local') return;
+        if (changes && changes[SHOW_INDICATOR_KEY]) {
+          _showIndicator = changes[SHOW_INDICATOR_KEY].newValue !== false;
+        }
+      });
+    }
+  } catch (e) { /* ignore */ }
+
   function findElements(state) {
     if (!state.provider || !selectors) return;
     state.input = selectors.findInput(state.provider);
@@ -43,6 +147,10 @@
   // in v0.2.0).
   function injectIndicator(state) {
     if (typeof document === 'undefined') return;
+    // v0.1.4: respect the "Hide Lens active indicator" popup
+    // toggle. The cached _showIndicator is updated by the
+    // chrome.storage.onChanged listener above.
+    if (_showIndicator === false) return;
     if (document.querySelector('[data-aegisgate-lens="indicator"]')) return;
     if (!state.input) return;
     var container = state.input.parentNode;
@@ -52,14 +160,31 @@
     indicator.setAttribute('role', 'status');
     indicator.setAttribute('aria-label', 'AegisGate Lens is active on this page');
     indicator.title = 'AegisGate Lens is active — click for details';
-    indicator.innerHTML = '<span class="lens-indicator-shield" aria-hidden="true">🛡️</span> Lens active';
+    // v0.1.4 F-7: replace innerHTML with safe DOM construction.
+    // Per security.yml CSP gate: innerHTML is only allowed in banner-ui.js.
+    // We use createElement for the shield icon (aria-hidden because
+    // it's decorative) and textContent for the visible label. This
+    // eliminates the innerHTML surface entirely.
+    var shieldIcon = document.createElement('span');
+    shieldIcon.className = 'lens-indicator-shield';
+    shieldIcon.setAttribute('aria-hidden', 'true');
+    shieldIcon.textContent = '🛡️';
+    indicator.appendChild(shieldIcon);
+    indicator.appendChild(document.createTextNode(' Lens active'));
+    // v0.1.4 Bug #4 fix: clicking the "Lens active" indicator now
+    // opens the extension popup (the same popup the user gets when
+    // they click the toolbar icon). The popup has the 3 v0.1.4
+    // features (hide indicator, pause 1h/1d, "Not PII" button).
+    // We use sendMessage to the SW (rather than calling
+    // chrome.action.openPopup() directly) for compatibility with
+    // Chrome 99-101 where openPopup() was restricted to toolbar
+    // actions only.
     indicator.addEventListener('click', function (e) {
       try {
         e.preventDefault();
-        if (typeof console !== 'undefined' && console.info) {
-          console.info('AegisGate Lens is watching this prompt for PII, secrets, and compliance issues. ' +
-                       'Click the banner for details. ' +
-                       'Opt out: click the dismiss icon on the banner for 24h.');
+        e.stopPropagation();
+        if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+          chrome.runtime.sendMessage({ type: 'OPEN_LENS_POPUP' });
         }
       } catch (e2) { /* ignore */ }
     }, true);
@@ -85,6 +210,12 @@
   function onInput(state, detectPrompt) {
     try {
       if (!state.input || !selectors) return;
+      // v0.1.4: global pause check. If the user paused Lens from
+      // the popup (Date.now() < _pausedUntil), suppress all
+      // detection globally. The 4-facet regex scan is skipped
+      // entirely; the banner is not shown; the FP report queue is
+      // not touched. Auto-resumes when the pause expires.
+      if (_pausedUntil > 0 && Date.now() < _pausedUntil) return;
       var value = selectors.getInputValue(state.input);
       if (value === state.lastValue) return;
       state.lastValue = value;

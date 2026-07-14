@@ -1,10 +1,11 @@
 {
   "manifest_version": 3,
   "name": "AegisGate Lens",
-  "version": "0.1.0",
+  "version": "0.1.4",
   "description": "Privacy-first Chrome extension. Detects PII, secrets, XSS, and compliance issues in AI prompts. 100% on-device. Free.",
   "author": "AegisGate Security, LLC",
   "homepage_url": "https://aegisgatesecurity.io/lens",
+  "update_url": "https://clients2.google.com/service/update2/crx",
   "icons": {
     "16": "icons/icon-16.png",
     "32": "icons/icon-32.png",
@@ -31,6 +32,7 @@
         "https://claude.ai/*",
         "https://gemini.google.com/*",
         "https://copilot.microsoft.com/*",
+        "https://copilot.cloud.microsoft/*",
         "https://duck.ai/*",
         "https://perplexity.ai/*",
         "https://www.perplexity.ai/*",
@@ -74,10 +76,8 @@
   ],
   "permissions": [
     "storage",
-    "alarms",
     "unlimitedStorage",
-    "scripting",
-    "activeTab"
+    "scripting"
   ],
   "host_permissions": [
     "https://lens.aegisgatesecurity.io/*"
@@ -87,6 +87,8 @@
       "resources": [
         "util/banner.css",
         "icons/logo.png",
+        "icons/banner-2x.png",
+        "icons/banner-3x.png",
         "icons/icon-48.png",
         "icons/icon-32.png",
         "icons/icon-16.png",

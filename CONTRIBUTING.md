@@ -52,6 +52,7 @@ This check runs on every PR. It cannot be bypassed.
 - **Feature requests** via the [`feature_request.md`](.github/ISSUE_TEMPLATE/feature_request.md) template.
 - **Documentation improvements** to this repo (clarifications, typo fixes, additional examples).
 - **Test cases** for the detector (corpus samples in `test/`) — **as JSON files, not as JS code**. The corpus is the test input; the test harness is a Go program in the Platform monorepo.
+- **Documentation improvements** — see `docs/API.md` for the bundle globals, `docs/ARCHITECTURE-v0.1.3.md` for the Mermaid diagrams, and `docs/PRODUCT-SUMMARY.md` for the public-safe product description.
 - **Privacy policy feedback** — open an issue with the label `privacy`.
 
 When the extension source is published (Step D in the build sequence), code contributions will be welcome. Until then, the source files in `src/` are placeholders; please do not open PRs adding to them.
@@ -63,11 +64,14 @@ When the extension source is published (Step D in the build sequence), code cont
 1. **Open an issue first** for non-trivial changes. Discuss the approach before you write code.
 2. **Fork the repo** and create a feature branch.
 3. **Make your change** consistent with the existing code style.
-4. **Verify locally** that:
+4. **Read the standing rules** at `.plans/AEGISGATE-LENS-STANDING-RULES-2026-06-29.md` (105 lessons learned from v0.1.0-beta through v0.1.3 — most importantly Lessons #1-#8 on architecture, the no-npm rule, and the meta-lesson on full local simulation before pushing CI changes).
+
+5. **Verify locally** that:
    - The Platform's CI checks pass: `cd ../aegisgate-platform && go test -race ./pkg/lensbackend/...`
    - The `No npm check` passes: there is no `package.json` etc. anywhere in your changes.
-5. **Open a PR** with a clear description of what changed and why.
-6. **Wait for review.** The founder is the only reviewer and has limited time. Be patient.
+   - The Node test suite passes (rebuilds the bundle + runs all e2e tests): `bash tools/test-local.sh` -- see `tools/test-local.sh` header for details.
+6. **Open a PR** with a clear description of what changed and why.
+7. **Wait for review.** The founder is the only reviewer and has limited time. Be patient.
 
 ---
 

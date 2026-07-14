@@ -106,6 +106,7 @@ test/headless-smoke/headless-smoke-bin
 test/headless-smoke/logs/
 test/headless-smoke/reports/
 test/headless-smoke/piml-runner
+test/headless-smoke/bundle.js
 
 # --- Private Lens development directories (per user directive 2026-07-07) ---
 # /.plans/ — repo for Lens plans, lessons, retrospectives (gitignored parent per user)
@@ -150,3 +151,8 @@ docs/VERIFICATION-3*
 
 # v0.1.2 F-5: burned-down v0.2.0 research artifacts
 docs/TRAINING-RUN-1*
+smoke-report.json
+
+# v0.1.3 cleanup: moved to .plans/v0.2-burndown/
+docs/PHASE-0B-*
+docs/PHASE-6-*

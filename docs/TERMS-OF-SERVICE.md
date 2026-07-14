@@ -1,7 +1,7 @@
 # AegisGate Lens — Terms of Service
 
 **Last updated:** 2026-07-09
-**Effective for:** AegisGate Lens v0.1.0-beta
+**Effective for:** AegisGate Lens v0.1.4
 **Licensor:** AegisGate Security, LLC ("AegisGate", "we", "us")
 **Licensee:** End user of the AegisGate Lens Chrome extension ("you", "your")
 
@@ -171,7 +171,7 @@ NONINFRINGEMENT.
 
 **THE LENS IS A WARNING TOOL, NOT A CONTENT FILTER.** The
 Lens displays a banner when it detects content matching
-one of its 120 patterns. The Lens does NOT block the
+one of its 132 patterns. The Lens does NOT block the
 user from sending the prompt. The user can always press
 "Send Anyway" and the prompt will be sent to the AI
 provider. The Lens does NOT guarantee detection of all
@@ -291,6 +291,6 @@ If you have questions about these ToS, contact:
 
 **Signed-off-by:** AegisGate Security <legal@aegisgatesecurity.io>
 **Last updated:** 2026-07-09
-**Effective for:** AegisGate Lens v0.1.0-beta
+**Effective for:** AegisGate Lens v0.1.4
 **License of this document:** CC-BY-4.0 (you may copy, modify,
 and redistribute)

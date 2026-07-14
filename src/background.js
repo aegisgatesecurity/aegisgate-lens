@@ -52,6 +52,7 @@
       USER_ACTION: 'USER_ACTION',
       FP_REPORTS: 'FP_REPORTS',
       GET_OPT_IN_STATE: 'GET_OPT_IN_STATE',
+      OPEN_LENS_POPUP: 'OPEN_LENS_POPUP',
       PONG: 'PONG',
       ACK: 'ACK',
       ERROR: 'ERROR',
@@ -290,13 +291,20 @@
             timestamp: Math.floor(Date.now() / 1000),
             reports: reports
           }),
-          // We don't want to block; a hung fetch should not stall the SW
-          // (chrome SWs can be killed mid-fetch, but we want to keep
-          // the queue intact in that case)
-          // 10 second timeout via AbortController
-          signal: (typeof AbortController !== 'undefined')
-            ? new AbortController().signal  // never aborts; placeholder
-            : undefined
+          // F-25 (v0.1.4 polish): wire up a real 10-second timeout via
+          // AbortController. Previously the signal was a no-op (a
+          // placeholder controller whose .abort() was never called), so
+          // a hung backend could keep the SW alive until Chrome's 30s
+          // SW kill timer fired. The fix: create a controller, schedule
+          // abort() in 10s, pass the controller's signal. On abort,
+          // fetch rejects and the catch handler resolves with reason
+          // 'aborted (10s timeout)'.
+          signal: (function () {
+            if (typeof AbortController === 'undefined') return undefined;
+            var c = new AbortController();
+            setTimeout(function () { try { c.abort(); } catch (e) {} }, 10000);
+            return c.signal;
+          })()
         }).then(function (resp) {
           if (resp.ok) {
             log.info('sent ' + reports.length + ' FP reports to backend');
@@ -305,7 +313,13 @@
             resolve({ success: false, reason: 'HTTP ' + resp.status });
           }
         }).catch(function (err) {
-          resolve({ success: false, reason: (err && err.message) || String(err) });
+          // If the fetch was aborted by our 10s timeout, surface a clear
+          // reason. DOMException with name 'AbortError' is the standard
+          // signal; some Chrome versions use err.code === 20.
+          var reason = (err && (err.name === 'AbortError' || err.code === 20))
+            ? 'aborted (10s timeout)'
+            : (err && err.message) || String(err);
+          resolve({ success: false, reason: reason });
         });
       } catch (e) {
         log.error('sendToBackend threw', e);
@@ -434,6 +448,39 @@
     });
   }
 
+  // v0.1.4 Bug #4 fix: open the extension popup when the user
+  // clicks the "🛡️ Lens active" indicator on a content page. The
+  // popup has the 3 v0.1.4 features (hide indicator, pause 1h/1d,
+  // "Not PII" dismiss). This handler is a no-op for the popup
+  // itself — the openPopup() call opens the UI; we don't need to
+  // send a response back. We log to the SW log on success/failure
+  // so the user can see in the SW console if it broke.
+  function handleOpenLensPopup(msg, sender, sendResponse) {
+    try {
+      if (typeof chrome !== 'undefined' && chrome.action && chrome.action.openPopup) {
+        chrome.action.openPopup().catch(function (e) {
+          // openPopup() may fail in some contexts (Chrome 99-101
+          // restricted it to user-gesture toolbar actions; in those
+          // cases we log a warning and the user can still click
+          // the toolbar icon to open the popup). The catch on
+          // openPopup() catches the promise rejection; we ALSO
+          // wrap in try/catch in case openPopup is synchronous-throws.
+          try { log.warn('openPopup failed: ' + (e && e.message)); } catch (e2) {}
+        });
+      } else {
+        log.warn('chrome.action.openPopup unavailable; user can still use toolbar icon');
+      }
+    } catch (e) {
+      try { log.warn('handleOpenLensPopup threw: ' + (e && e.message)); } catch (e2) {}
+    }
+    // We MUST return false (synchronous response) because we are
+    // not keeping the channel open — the popup will appear as a
+    // side-effect, not as a message response.
+    if (typeof sendResponse === 'function') {
+      try { sendResponse({ type: M.TYPE.ACK, version: msg.version, payload: { ok: true } }); } catch (e) {}
+    }
+  }
+
   // The message router. The SW validates sender.id (must be
   // chrome.runtime.id; i.e., our own extension) and dispatches.
   // This is F-01 from the threat model: defend against messages
@@ -463,6 +510,7 @@
         case M.TYPE.USER_ACTION:     handleUserAction(msg, sender, sendResponse); return false;
         case M.TYPE.FP_REPORTS:      handleFPReports(msg, sender, sendResponse); return true;  // async
         case M.TYPE.GET_OPT_IN_STATE: handleGetOptInState(msg, sender, sendResponse); return true;  // async
+        case M.TYPE.OPEN_LENS_POPUP:  handleOpenLensPopup(msg, sender, sendResponse); return false;  // sync (popup is side-effect)
         default:
           log.warn('unknown message type: ' + msg.type);
           sendResponse({ type: M.TYPE.ERROR, payload: { error: 'unknown type' } });
@@ -645,3 +693,4 @@
     };
   }
 })();
+

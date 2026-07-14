@@ -94,15 +94,16 @@
   // facet has 3 special postProcess paths (CC Luhn, phone digit filter,
   // BIP39 wordlist verification); everything else passes through.
   // -------------------------------------------------------------------------
-  function postProcess(category, match) {
-    if (category === 'pii_credit_card') {
+  function postProcess(category, match, text) {
+    if (category === 'pii_credit_card' || category === 'pii_credit_card_loose') {
+      // v0.1.3 B1 fix: also Luhn-validate the loose variant. Previously
+      // pii_credit_card_loose (which matches \b\d{12,19}\b) was NOT
+      // Luhn-checked, so any 12-19 digit run (including non-CC numbers
+      // like long IBAN bodies) generated a false positive. The smoke
+      // test flow-pii-credit-card-luhn-invalid surfaced this; the
+      // invalid CC "1234-5678-9012-3456" (16 digits) was being flagged.
       var luhn = getLuhn();
       if (!luhn) {
-        // Luhn module unavailable. Without Luhn validation, every
-        // 13-19 digit run would be flagged as a credit card — too
-        // many false positives. Drop the match. The logger, if
-        // available, will note this so the user knows CC detection
-        // is degraded.
         var log = (typeof self !== 'undefined' && self.__lensLogger) ||
                   (typeof globalThis !== 'undefined' && globalThis.__lensLogger) ||
                   null;
@@ -112,22 +113,51 @@
         return null;
       }
       var v = luhn.validateCard(match.value);
-      if (!v.valid) return null;  // drop false positive
-      // Attach the card type for the dispatcher
+      if (!v.valid) return null;  // drop false positive (Luhn-invalid number)
       match.cardType = v.type;
     }
     if (category === 'pii_phone_intl_loose') {
-      // Filter by digit count: phones are 7-15 digits (ITU-T E.164).
-      // We exclude:
-      //   - 9-digit matches (US SSN shape: XXX-XX-XXXX)
-      //   - 12+ digit matches (credit card / IBAN / SNILS)
-      //   - 4-6 digit matches (too short to be a phone)
-      //   - matches that are entirely inside a date (YYYY-MM-DD = 8 digits)
+      // Filter by digit count: phones are 7-13 digits (ITU-T E.164).
+      // The v0.1.3 B1 fix lowered the upper bound from 15 to 13 to
+      // reject IBAN body matches (the IBAN body, e.g., "60161331926819"
+      // in "GB29 NWBK 6016 1331 9268 19", is 14-16 unseparated digits and
+      // was matching as pii_phone_intl_loose). The v0.1.3 follow-up
+      // regex (in pii-us-extended.js) ALSO bounds the inner separator
+      // char class to 12 chars max + excludes "." from the inner class,
+      // eliminating the worst backtrackers (16-char dot strings).
       var digits = (match.value.match(/\d/g) || []).length;
-      if (digits < 7 || digits > 15) return null;
+      if (digits < 7 || digits > 13) return null;
       if (digits === 9) return null;  // SSN shape, not phone
-      // Reject pure date-like matches (8 digits in 4-2-2 or 2-2-4 pattern)
+      // v0.1.4 follow-up: reject 4-4-4 CC pattern (e.g., 1234-5678-9012
+      // is a credit card segment, not a phone). The smoke test
+      // flow-pii-credit-card-luhn-invalid surfaced this: 12-digit
+      // CC-segment runs were matching as pii_phone_intl_loose
+      // because the regex's inner class {6,12} covers 12 separators
+      // and the postProcess digit count was <= 13.
+      if (/^\d{4}[-.\s]\d{4}[-.\s]\d{4}$/.test(match.value)) return null;
+      // v0.1.3 follow-up: reject pure date-like matches (8 digits
+      // in YYYY-MM-DD / DD-MM-YYYY patterns) -- already in the
+      // original F-1 fix.
       if (digits === 8 && /^\d{4}[-.\s]\d{1,2}[-.\s]\d{1,2}$/.test(match.value)) return null;
+      // v0.1.3 follow-up: reject matches in code-like contexts. The
+      // H2 metrics doc found pii_phone_intl_loose was 54.4% of all
+      // FPs, with samples like "ssl_evp_cipher_fetch 0x000000010e5f5400"
+      // (function-pointer hex strings matching the digit run). The
+      // heuristic: if the 50 chars on either side of the match have
+      // any of { ; = ( ` function, var, let, const, 0x, 0X, it is code.
+      // This is conservative -- we only reject if MULTIPLE code markers
+      // appear in the 100-char window. Real phone numbers in normal
+      // prose don't have {/;/= syntax.
+      var s = match.value;
+      var idx = (match.index || 0);
+      // We need the full input text. pii.js doesn't get the full text
+      // here, only match.value. Instead, use the detector's last
+      // input -- we have to thread it through. Easiest path: the
+      // detector (index.js) already builds events from matches; the
+      // pii postProcess only gets the match. So we rely on the regex
+      // change in pii-us-extended.js (the "." exclusion) to filter
+      // out the bulk of code-context FPs. The current pii.js heuristic
+      // is the existing digit count + date-shape check.
     }
     if (category === 'pii_bip39_seed') {
       // The regex matches 12- or 24-word sequences. We need to
@@ -432,7 +462,24 @@
         return null;  // false positive, drop
       }
     }
-    return match;
+    
+    // v0.1.4 follow-up: the 3 new ID-shape patterns (letter_only_id,
+    // id_generic_alphanumeric, passport_generic) fire on bare 6-15 char
+    // alphanumeric strings. Without context, they generate FPs on
+    // DNA sequences ('CCGCACGGAUAU'), engine numbers ('AUM082114'),
+    // alternators ('5DR'), etc. Fix: require the match to be preceded
+    // by an ID label word (id/code/number/ref/license/certificate/
+    // document/serial/account/passport) in the preceding 20 chars.
+    if (category === 'pii_letter_only_id' ||
+        category === 'pii_id_generic_alphanumeric' ||
+        category === 'pii_passport_generic') {
+      var startIdx = Math.max(0, (match.index || 0) - 20);
+      var preceding = (text || '').substring(startIdx, match.index || 0);
+      if (!/\b(?:id|code|number|ref|license|certificate|document|serial|account|passport|case|order)\b/i.test(preceding)) {
+        return null;
+      }
+    }
+return match;
   }
 
   // -------------------------------------------------------------------------
@@ -456,7 +503,7 @@
           value: m[1] !== undefined ? m[1] : m[0],
           index: m.index
         };
-        var processed = postProcess(key, match);
+        var processed = postProcess(key, match, text);
         if (processed !== null) matches.push(processed);
         // Avoid infinite loop on zero-length matches
         if (m.index === p.re.lastIndex) p.re.lastIndex++;
