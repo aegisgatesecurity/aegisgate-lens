@@ -1,0 +1,260 @@
+# AegisGate Lens - Headless Smoke Test CI
+#
+# This workflow runs:
+#   - The v0.1.3 headless smoke test (test/headless-smoke/, 16 cases)
+#   - The v0.1.4 per-provider mini smoke (test/headless-smoke/mini/,
+#     16 cases x 8 hosts = 128 tests)
+#   - The full Node unit test suite (test/unit/ + test/e2e/)
+#   - The lightweight shell linter (tools/lint.sh, 12 checks)
+#
+# Triggers:
+#   - Every PR to main or v0.1.*
+#   - Every push to a v0.1.* branch
+#   - Weekly cron (Mondays 09:00 UTC) for regression detection
+#   - Manual via workflow_dispatch
+#
+# Architecture (v0.1.4 polish, the 3-job split):
+#   - smoke job (5 min): unit + e2e + lint + headless smoke 16/16
+#   - mini-smoke job (15 min): 1x mini smoke 128/128 (per-provider)
+#   - The security.yml workflow has its own lint + scan jobs
+#
+# Apache 2.0. Copyright 2026 AegisGate Security, LLC.
+
+name: Headless Smoke
+
+on:
+  pull_request:
+    branches: [main, 'v0.1.*']
+  push:
+    branches: ['v0.1.*']
+  workflow_dispatch:  # allow manual runs
+  schedule:
+    # Weekly: Monday 09:00 UTC
+    - cron: '0 9 * * 1'
+
+# Cancel any in-progress run for the same branch
+concurrency:
+  group: smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    name: "v0.1.3 headless smoke + Node tests + lint"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5  # smoke is ~20s; unit tests ~1s; e2e ~1s; lint ~5s; build ~10s
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js (for unit tests + bundle.js rebuild)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Go (for the smoke binary)
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Install Chromium dependencies
+        run: |
+          which chromium-browser || which chromium || which google-chrome
+          chromium --version 2>/dev/null || google-chrome --version 2>/dev/null
+          ls -la /usr/bin/chromium* 2>/dev/null || ls -la /usr/bin/google-chrome* 2>/dev/null
+
+      - name: Install Python3 (for the bundle.js rebuild script)
+        run: |
+          python3 --version
+          # We don't need Pillow here (the PNG generation is a one-time
+          # dev step, not a CI step).
+
+      - name: Build the test bundle
+        run: |
+          mkdir -p test/headless-smoke/dist
+          find test/headless-smoke/dist -type f -not -name ".gitkeep" -delete
+          cp -r src/. test/headless-smoke/dist/
+          python3 tools/ci/build-bundle.py
+          ls test/headless-smoke/dist/ | head -20
+          test -f test/headless-smoke/dist/icons/banner-1x.png && echo "banner-1x.png present" || (echo "banner-1x.png MISSING"; exit 1)
+          test -f test/headless-smoke/dist/icons/banner-2x.png && echo "banner-2x.png present" || (echo "banner-2x.png MISSING"; exit 1)
+          test -f test/headless-smoke/dist/icons/banner-3x.png && echo "banner-3x.png present" || (echo "banner-3x.png MISSING"; exit 1)
+
+      - name: Run unit tests + e2e tests
+        # v0.1.4 polish: include test/e2e/ (F-7 manifest validation, 20 tests).
+        # 497 + 20 = 517 total tests, ~2s. No network, no browser, no deps.
+        # Must pass before the smoke runs.
+        run: |
+          node --test test/unit/*.test.mjs test/e2e/*.test.mjs 2>&1 | tee unit-test-output.log
+          # Fail the build if any test failed
+          grep -E "ℹ fail [1-9]" unit-test-output.log && exit 1 || true
+          # Alternative: check exit code from the node command
+          node --test test/unit/*.test.mjs test/e2e/*.test.mjs > /dev/null 2>&1 || (echo "Unit+e2e tests failed"; exit 1)
+
+      - name: Run linter
+        # v0.1.4 polish: the 12-check shell linter catches the most
+        # common code quality issues (console.log, var, ==, TODO, eval,
+        # dynamic innerHTML, missing JSDoc, trailing whitespace, line
+        # length > 120, tabs, double-blank-lines, debugger). Runs in
+        # ~5s. NO npm required.
+        run: |
+          chmod +x tools/lint.sh
+          bash tools/lint.sh 2>&1 | tee lint-output.log
+          # The linter exits 1 if any FAIL check fails; 0 otherwise.
+          # Warnings don't fail the lint.
+
+      - name: Build the v0.1.3 smoke binary
+        # The Go binary is built from tools/headless-smoke/flow/.
+        # The output is the test/headless-smoke/headless-smoke-bin
+        # which the runner will execute.
+        run: |
+          cd tools/headless-smoke/flow
+          go build -o ${GITHUB_WORKSPACE}/test/headless-smoke/headless-smoke-bin .
+          test -f ${GITHUB_WORKSPACE}/test/headless-smoke/headless-smoke-bin && echo "Binary built OK" || (echo "Binary NOT built"; exit 1)
+          ls -la ${GITHUB_WORKSPACE}/test/headless-smoke/headless-smoke-bin
+
+      - name: Run the Go unit tests
+        run: |
+          cd tools/headless-smoke/flow
+          go test -v ./...
+
+      - name: Build the test bundle
+        run: |
+          mkdir -p test/headless-smoke/dist
+          find test/headless-smoke/dist -type f -not -name ".gitkeep" -delete
+          cp -r src/. test/headless-smoke/dist/
+          python3 tools/ci/build-bundle.py
+          ls test/headless-smoke/dist/ | head -20
+          test -f test/headless-smoke/dist/icons/banner-1x.png && echo "banner-1x.png present" || (echo "banner-1x.png MISSING"; exit 1)
+          test -f test/headless-smoke/dist/icons/banner-2x.png && echo "banner-2x.png present" || (echo "banner-2x.png MISSING"; exit 1)
+          test -f test/headless-smoke/dist/icons/banner-3x.png && echo "banner-3x.png present" || (echo "banner-3x.png MISSING"; exit 1)
+
+      - name: Run the v0.1.3 headless smoke test
+        # The smoke runs 16 detection cases in real Chrome and writes
+        # a JSON report. 16/16 PASS = ship gate.
+        run: |
+          ./test/headless-smoke/headless-smoke-bin \
+            --dist test/headless-smoke/dist \
+            --output smoke-report.json \
+            2>&1 | tee smoke-output.log
+          EXIT=$?
+          if [ $EXIT -ne 0 ]; then
+            echo "Smoke FAILED with exit code $EXIT"
+            cat smoke-report.json 2>/dev/null || echo "(no report file)"
+            exit $EXIT
+          fi
+          python3 tools/ci/smoke-summary.py
+
+      - name: Upload smoke report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-report
+          path: smoke-report.json
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Upload unit test output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-output
+          path: unit-test-output.log
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Upload lint output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-output
+          path: lint-output.log
+          retention-days: 7
+          if-no-files-found: warn
+
+  mini-smoke:
+    name: "v0.1.4 per-provider mini smoke (128 tests)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15  # mini smoke is ~5 min per run; 1x = ~5 min + setup ~5 min
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Install Chromium dependencies
+        run: |
+          which chromium-browser || which chromium || which google-chrome
+          chromium --version 2>/dev/null || google-chrome --version 2>/dev/null
+
+      - name: Install Python3
+        run: |
+          python3 --version
+
+      - name: Build the mini smoke binary
+        # The mini smoke binary is in tools/headless-smoke/mini/.
+        # Build it to test/headless-smoke/mini-smoke-bin (the path
+        # the runner will use).
+        run: |
+          cd tools/headless-smoke/mini
+          go build -o ${GITHUB_WORKSPACE}/test/headless-smoke/mini-smoke-bin .
+          test -f ${GITHUB_WORKSPACE}/test/headless-smoke/mini-smoke-bin && echo "Mini binary built OK" || (echo "Mini binary NOT built"; exit 1)
+
+      - name: Build the test bundle
+        # Mini smoke loads the same dist/ as the v0.1.3 smoke.
+        # Per-host mock files are in test/headless-smoke/mock/platform-testdata/
+        # and are committed to the repo (no build needed).
+        run: |
+          mkdir -p test/headless-smoke/dist
+          find test/headless-smoke/dist -type f -not -name ".gitkeep" -delete
+          cp -r src/. test/headless-smoke/dist/
+          python3 tools/ci/build-bundle.py
+          # Verify the per-host mocks are present
+          ls test/headless-smoke/mock/platform-testdata/ | head -10
+
+      - name: Run the mini smoke test (1x, 128 tests)
+        # The mini smoke runs 16 cases on 8 hosts = 128 tests per run.
+        # This is a 1x run, not 5x (the 5x verify is a local dev
+        # practice per Lesson #113; CI uses 1x for time budget).
+        # If 128/128 PASS, the per-provider detection works.
+        run: |
+          ./test/headless-smoke/mini-smoke-bin \
+            --dist test/headless-smoke/dist \
+            --output mini-smoke-report.json \
+            --timeout 30s \
+            2>&1 | tee mini-smoke-output.log
+          EXIT=$?
+          if [ $EXIT -ne 0 ]; then
+            echo "Mini smoke FAILED with exit code $EXIT"
+            cat mini-smoke-report.json 2>/dev/null || echo "(no report file)"
+            exit $EXIT
+          fi
+          # Show the totals
+          python3 -c "
+          import json
+          d = json.load(open('mini-smoke-report.json'))
+          print(f'Mini smoke: {d[\"passed\"]}/{d[\"total\"]} passed, gate={d[\"gate\"]}')
+          by_host = {}
+          for r in d['results']:
+              by_host.setdefault(r.get('host', '?'), []).append(r['name'])
+          for h, v in sorted(by_host.items()):
+              print(f'  {h}: {len(v)} cases')
+          "
+
+      - name: Upload mini smoke report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mini-smoke-report
+          path: mini-smoke-report.json
+          retention-days: 7
+          if-no-files-found: warn

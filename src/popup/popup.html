@@ -36,6 +36,8 @@
     .features { margin-top: 8px; padding-top: 8px; border-top: 1px solid #ddd; }
     .features li { margin: 4px 0; color: #4a4; font-size: 12px; }
     .features li.no { color: #d66; }
+  .hidden { display: none !important; }
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
   </style>
 </head>
 <body>
@@ -54,10 +56,40 @@
     <span class="label">Telemetry</span>
     <span class="value" id="telemetry-value" aria-live="polite">Loading...</span>
   </div>
-  
+
+  <!-- v0.1.4: Settings (per-popup user preferences) -->
+  <div id="settings" class="settings" role="group" aria-labelledby="settings-heading">
+    <h2 id="settings-heading" class="sr-only">AegisGate Lens settings</h2>
+    <div class="row setting-row">
+      <label for="show-indicator-toggle" class="label">
+        <input type="checkbox" id="show-indicator-toggle" checked>
+        Show "Lens active" indicator on chat pages
+      </label>
+    </div>
+    <div class="row setting-help small">
+      Hides the small "🛡️ Lens active" chip on AI chat pages. Detection still works — this only hides the on-page indicator.
+    </div>
+  </div>
+
+  <!-- v0.1.4: Pause Lens (global pause across all domains) -->
+  <div id="pause" class="settings" role="group" aria-labelledby="pause-heading">
+    <h2 id="pause-heading" class="sr-only">Pause AegisGate Lens</h2>
+    <div class="row pause-row">
+      <span class="label">Pause Lens</span>
+      <span class="value" id="pause-value" aria-live="polite">Loading...</span>
+    </div>
+    <div class="row pause-buttons">
+      <button type="button" id="pause-1h" class="lens-btn lens-btn-secondary" data-pause-hours="1">Pause for 1 hour</button>
+      <button type="button" id="pause-1d" class="lens-btn lens-btn-secondary" data-pause-hours="24">Pause for 1 day</button>
+    </div>
+    <div class="row setting-help small">
+      Suppresses all detection globally for the chosen duration. Auto-resumes when the time expires. Useful for security researchers and developers testing prompts.
+    </div>
+  </div>
+
   <!-- Upgrade CTA -->
-  <div id="upgrade-banner" class="status upgrade" role="complementary" aria-labelledby="upgrade-heading" style="display: none;">
-    <h2 id="upgrade-heading" class="sr-only" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;">AegisGate Platform upgrade</h2>
+  <div id="upgrade-banner" class="status upgrade hidden" role="complementary" aria-labelledby="upgrade-heading">
+    <h2 id="upgrade-heading" class="sr-only">AegisGate Platform upgrade</h2>
     <div class="row">
       <span class="label">AegisGate Platform</span>
       <span class="value">Server-side enforcement</span>

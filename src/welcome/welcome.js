@@ -43,6 +43,29 @@
                     globalThis.__lensConstants.STORAGE_KEYS.OPT_IN) ||
                     'aegisgate_lens_opt_in';
 
+  // v0.1.4: read the manifest version at runtime so the welcome
+  // page auto-updates on every install. The manifest's "version" field
+  // is the CWS-required semver (e.g., "0.1.0" for v0.1.0/v0.1.1/v0.1.2/v0.1.3).
+  // We display the marketing version (e.g., "v0.1.4") by mapping the
+  // semver -> marketing version via a small lookup. If the lookup fails,
+  // we fall back to the semver as-is.
+  function getMarketingVersion() {
+    try {
+      var cr = getChrome();
+      if (!cr || !cr.runtime || !cr.runtime.getManifest) return 'v0.1.4';
+      var manifest = cr.runtime.getManifest();
+      var semver = manifest && manifest.version ? manifest.version : '0.1.0';
+      // Map the CWS semver to the marketing version. Update this table
+      // when a new marketing version ships.
+      var SEMVER_TO_MARKETING = {
+        '0.1.0': 'v0.1.4'
+      };
+      return SEMVER_TO_MARKETING[semver] || ('v' + semver);
+    } catch (e) {
+      return 'v0.1.4';
+    }
+  }
+
   function persistChoice(enabled) {
     return new Promise(function (resolve, reject) {
       var cr = getChrome();
@@ -56,7 +79,7 @@
         [OPT_IN_KEY]: {
           enabled: enabled,
           last_changed_at: Math.floor(Date.now() / 1000),
-          lens_version: '0.1.0-beta'
+          lens_version: getMarketingVersion()
         }
       };
       cr.storage.local.set(payload, function () {
@@ -109,6 +132,10 @@
   }
 
   document.addEventListener('DOMContentLoaded', function () {
+    // v0.1.4: update the visible version tag from the manifest at runtime
+    var versionEl = document.getElementById('lens-version-tag');
+    if (versionEl) versionEl.textContent = getMarketingVersion();
+
     var optInBtn = document.getElementById('opt-in');
     var dismissBtn = document.getElementById('dismiss');
     if (optInBtn) optInBtn.addEventListener('click', onOptIn);

@@ -6,18 +6,18 @@
   "author": "AegisGate Security, LLC",
   "homepage_url": "https://aegisgatesecurity.io/lens",
   "icons": {
-    "16": "src/icons/icon-16.png",
-    "32": "src/icons/icon-32.png",
-    "48": "src/icons/icon-48.png",
-    "128": "src/icons/icon-128.png"
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
   },
   "action": {
     "default_popup": "src/popup/popup.html",
     "default_title": "AegisGate Lens",
     "default_icon": {
-      "16": "src/icons/icon-16.png",
-      "32": "src/icons/icon-32.png",
-      "48": "src/icons/icon-48.png"
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png"
     }
   },
   "background": {
@@ -72,7 +72,10 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "src/util/banner.css"
+        "src/util/banner.css",
+        "src/icons/banner-1x.png",
+        "src/icons/banner-2x.png",
+        "src/icons/banner-3x.png"
       ],
       "matches": [
         "<all_urls>"

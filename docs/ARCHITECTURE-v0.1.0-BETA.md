@@ -348,7 +348,7 @@ The full threat model is in `docs/THREAT-MODEL-v0.1.0-BETA.md`
   IDs, session IDs, or cookies to any server.
 - Telemetry is opt-in. The default is OFF. The opt-out is sticky.
 - All backend traffic is TLS 1.2+. HTTP is rejected.
-- Data retention: 90 days for events, indefinite for aggregated stats.
+- (v0.2.0 design only, NOT shipped in v0.1.x.) Data retention: 90 days for events, indefinite for aggregated stats. See item #9 above for the actual v0.1.x retention model (100% local, no server-side storage).
 
 ## 14. The CWS posture (the Chrome Web Store submission)
 

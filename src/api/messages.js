@@ -32,6 +32,7 @@
     USER_ACTION: 'USER_ACTION',             // user clicked a banner button
     FP_REPORTS: 'FP_REPORTS',               // user opted in to send FP report(s)
     GET_OPT_IN_STATE: 'GET_OPT_IN_STATE',   // popup asks for opt-in state
+    OPEN_LENS_POPUP: 'OPEN_LENS_POPUP',     // content script → SW: open the extension popup (Bug #4)
 
     // From SW
     PONG: 'PONG',

@@ -302,9 +302,9 @@ Any independent auditor can verify the claims in this document by:
 
 1. **Reading the source code** at https://github.com/aegisgatesecurity/aegisgate-lens
    (7,241 lines of JS/CSS/HTML; no `node_modules` to audit).
-2. **Running the unit test suite** (`npm test` → 326/326 passing).
-3. **Running the headless smoke test** (`./tools/headless-smoke/headless-smoke-bin`
-   → 6/6 PASS, SHIP GATE: PASS).
+2. **Running the unit test suite** (`node --test test/unit/*.test.mjs` → 405/405 unit + `cd tools/headless-smoke/flow && go test -v ./...` → 3/3 Go unit). Note: there is no \`npm test\` — the repo has zero npm dependencies per the no-npm rule.
+3. **Running the headless smoke test** (`./test/headless-smoke/headless-smoke-bin`
+   → 16/16 PASS, SHIP GATE: PASS).
 4. **Auditing the CI pipeline** (`.github/workflows/security.yml`
    — F-01 sender-id check, no-npm-deps check, DCO sign-off,
    Trivy scans, CSP gate).

@@ -13,6 +13,70 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   a patch on the v0.1.1 branch; it does NOT introduce new features
   or new detection facets.
 
+## [0.1.4] — 2026-07-12
+
+### Added
+- **mini/ sub-binary** (32 -> 56 -> 128 tests): A new per-provider mini
+  smoke that exercises the full Lens flow (16 test cases) on each of
+  the 8 active providers (8 hosts x 16 cases = 128 tests). 5/5 stable,
+  gate=true, ec=0 per Lesson #113. Uses the REAL
+  Page.addScriptToEvaluateOnNewDocument (persistent injection) so the
+  bundle survives cross-origin navigations.
+- **8th provider mock** (`test/headless-smoke/mock/platform-testdata/mistral.html`):
+  was missing from the public repo; now present.
+- **Per-host mock routing** in mini: 9 mock files served by Host header.
+  The smoke navigates to https://localhost:PORT/ with a per-host
+  Host header so the mock serves the right per-provider DOM shape.
+- **Lightweight shell linter** (`tools/lint.sh`, 12 checks): catches
+  console.log, var, ==, TODO, eval, dynamic innerHTML, missing JSDoc,
+  trailing whitespace, line length > 120, tabs, double-blank-lines,
+  and debugger statements. Runs in ~5s. NO npm required.
+  Integrated as a new `lint` job in .github/workflows/security.yml.
+- **F-7 e2e test category** (test/e2e/manifest-validation.test.mjs,
+  20 tests): MV3 manifest validation, CSP strictness, permission
+  bounds, 3-way host consistency (manifest <-> selectors.js <-> SW),
+  per-provider host coverage, eval/Function absence, dynamic innerHTML
+  absence, 8 providers from FACTS.md, bundle size + freshness checks,
+  and 9 platform-specific mock consistency tests.
+
+### Changed
+- **F-7 bonus fix**: src/util/prompt-detect-dom.js no longer uses
+  .innerHTML for the "🛡️ Lens active" chip. The security.yml CSP gate
+  is now satisfied for src/util/ outside of banner-ui-*.js.
+- **Bug #4 fix (2026-07-13)**: the "🛡️ Lens active" indicator on every
+  AI chat page is now clickable — clicking opens the extension popup
+  (with the 3 v0.1.4 features: hide indicator, pause 1h/1d, "Not PII"
+  dismiss). Implementation: content script -> chrome.runtime.sendMessage
+  -> SW onMessage -> chrome.action.openPopup(). For Chrome 99-101 where
+  openPopup() is restricted to user-gesture toolbar actions, the SW
+  catches the rejection and logs a warning.
+- **Bug #4 followup (2026-07-13)**: the original Bug #4 commit registered
+  a 2nd onMessage listener outside the IIFE, which the mock chrome (with
+  SET-semantics onMessage.addListener) used to OVERWRITE the main SW
+  handler, breaking GET_OPT_IN_STATE, DETECTION, and USER_ACTION. Fix:
+  moved the OPEN_LENS_POPUP handler inside the IIFE and added a case to
+  the main onMessage switch.
+
+### Test counts (post-v0.1.4)
+- Node: 500/500 passing (was 477, +20 from F-7 e2e tests, +3 from Bug #4
+  e2e bundle-freshness check)
+- Go: 3/3 passing
+- v0.1.3 headless smoke: 5/5 stable, 16/16 each, gate=true
+- mini smoke (per-host, 128 tests): 5/5 stable, 128/128 each, gate=true
+- F-7 e2e: 20/20 passing
+- Linter: 12/12 checks PASS, 0 warnings, 0 failures
+- 28 v0.1.4 commits on the v0.1.3 branch, all GPG-signed
+
+### Performance baseline (post-v0.1.4)
+- p50: 0.08ms (500 char prompt), 0.27ms (2000 char prompt)
+- p99: 0.14ms (500 char), 0.36ms (2000 char), 1.37ms (10k char)
+- Benchmark: tools/bench/run-benchmark.js
+- Results: test/benchmarks/results/v0.1.4-baseline.json
+- 129 regex patterns evaluated per call
+- For typical user prompts (500-2000 chars), detection IS sub-millisecond.
+  For very long pastes (10k chars), it is still under 2ms p99 — well under one
+  frame at 60fps (16ms).
+
 ## [0.1.2] — 2026-07-09
 
 ### Fixed

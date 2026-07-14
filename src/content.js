@@ -351,4 +351,22 @@
   } else {
     init();
   }
+
+  // Kill switch: if globalThis.__lensDisabled is true, exit immediately.
+// This is a critical-bug mitigation: push a v0.1.5 with this set to
+// true to disable Lens in production within 24 hours, then roll out
+// the real fix in v0.1.6. See RUNBOOK.md for the full procedure.
+if (typeof globalThis !== 'undefined' && globalThis.__lensDisabled === true) {
+  log.warn('content: __lensDisabled is true; exiting without initializing');
+  return; // exits the IIFE
+}
+
+// Test-only hook: expose the init function so the headless smoke
+  // test runner can re-init prompt-detect between test cases (the
+  // B1-flake fix). Production code never calls this -- the
+  // MutationObserver + content script lifecycle handle re-init
+  // automatically.
+  if (typeof window !== 'undefined') {
+    window.__lensContentInit = init;
+  }
 })();

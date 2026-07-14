@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<!--
+  Mock Mistral.ai (chat.mistral.ai / le-chat.mistral.ai) for AegisGate Lens tests.
+  Mistral uses a textarea with id="prompt-textarea".
+  Per src/util/selectors.js: chat.mistral.ai, le-chat.mistral.ai
+  Per selectors.js inputSelector: textarea#prompt-textarea, textarea[name="userInput"]
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Mock Mistral.ai (AegisGate Lens test fixture)</title>
+  <style>
+    body { font-family: -apple-system, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; }
+    #prompt-textarea { width: 100%; min-height: 120px; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <h1>Mistral.ai (mock fixture)</h1>
+  <textarea id="prompt-textarea" placeholder="Message Le Chat..."></textarea>
+</body>
+</html>

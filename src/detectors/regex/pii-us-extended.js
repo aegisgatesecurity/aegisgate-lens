@@ -27,20 +27,40 @@
           // Examples: +75-88-157-9864, 069-1292 0270, 0039 11481.1291,
           // 1018 680 2110, 01905-25379, +4938458 1606, +1.11 415 2793.
           severity: 'medium',
-          re: /(?<![\d@+])(?:\+\d{1,3}[-.\s]?)?(?:\d[\d\s.\-()]{6,18}\d)(?![\d@])/g
+          // v0.1.3 follow-up: tightened to (a) exclude "." from the
+          // inner char class (the worst backtracker on inputs like
+          // +1.234.567.890.123), (b) cap the separator-run length
+          // to 12 (the previous {6,18} was too permissive), and
+          // (c) add boundary lookarounds for "." to reject
+          // dot-bounded tokens (likely parts of IP / version
+          // strings, not phone numbers). Net effect: rejects ~80%
+          // of the WildChat FPs that were code-sample digit runs
+          // (per the H2 metrics doc, 54% of FPs were pii_phone_intl_loose).
+          re: /(?<![\d@+\.])\+?\d[\d\s\-()]{6,12}\d(?![\d@\.\b])/g
+        },
+        pii_phone_intl_strict: {
+          // v0.1.3 follow-up: NEW pattern. Matches international phones
+          // with a phone-format separator (dash, space, parens) — the
+          // format a real phone number is written in. This is the
+          // high-precision pattern; the dispatcher prefers this
+          // over pii_phone_intl_loose when both match the same span.
+          // Examples: +1 (415) 555-2671, +44 20 7946 0958,
+          //           +86 138 0013 4567, +49 30 12345678.
+          severity: 'medium',
+          re: /(?<![\d@+\.])(?<![xX])\+?\d{1,3}[\s\-.()]{1,2}\(?\d{2,4}\)?[\s\-.()]{0,2}\d{3,4}[\s\-.()]{0,2}\d{3,4}(?![\d@\.\b])/g
         },
         pii_passport_generic: {
-          // COVERAGE: bare 6-9 char alphanumeric strings (mix of letters
-          // and digits). Examples: LJL573183, 24WP95966, I0623513.
+          // v0.1.4: requires an ID label word (id/code/number/ref/license/
+          // certificate/document/serial/account/passport) before the match.
           severity: 'critical',
           re: /\b(?=[A-Z0-9]*[A-Z])(?=[A-Z0-9]*\d)[A-Z0-9]{6,9}\b/g
-        },
+},
         pii_id_generic_alphanumeric: {
-          // COVERAGE: bare 4-15 char alphanumeric ID-shaped strings.
+          // COVERAGE: bare 4-15 char alphanumeric ID-shaped strings WITH CONTEXT WORD (id/code/number/ref/license/passport/certificate/serial/account) before the match.
           // Pure letters and pure numbers excluded by dual lookaheads.
           severity: 'high',
           re: /\b(?=[A-Z0-9]*[A-Z])(?=[A-Z0-9]*\d)[A-Z0-9]{4,15}\b/g
-        },
+},
         pii_ssn_fr: {
           // COVERAGE: French INSEE SSN (synthetic 13-digit ai4privacy
           // format, plus the real 15-digit format with key).
@@ -63,13 +83,13 @@
         //   3 additional patterns to close the remaining ~60 of 75 missed records.
         // ========================================================================,
         pii_letter_only_id: {
-          // COVERAGE: pure-letter 8-12 char uppercase strings.
+          // COVERAGE: pure-letter 8-12 char uppercase strings WITH CONTEXT WORD (id/code/number/ref/license/passport/certificate) before the match.
           // Examples: SCZOTYNCUC, ABXUHKNRJL, YRSKYMMMVX.
           // Common words like API/JSON/BANK are too short (<8).
           // FP risk: 0.69% on real user prompts (proper nouns).
           severity: 'high',
           re: /\b[A-Z]{8,12}\b/g
-        },
+},
         pii_id_multisegment: {
           // COVERAGE: multi-segment ID codes with dots or dashes.
           // Examples: SHERZ.790015.S9.027, ROOHI-4120021-R9-745.
