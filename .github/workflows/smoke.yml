@@ -69,6 +69,17 @@ jobs:
           # We don't need Pillow here (the PNG generation is a one-time
           # dev step, not a CI step).
 
+      - name: Build the test bundle
+        run: |
+          mkdir -p test/headless-smoke/dist
+          find test/headless-smoke/dist -type f -not -name ".gitkeep" -delete
+          cp -r src/. test/headless-smoke/dist/
+          python3 tools/ci/build-bundle.py
+          ls test/headless-smoke/dist/ | head -20
+          test -f test/headless-smoke/dist/icons/banner-1x.png && echo "banner-1x.png present" || (echo "banner-1x.png MISSING"; exit 1)
+          test -f test/headless-smoke/dist/icons/banner-2x.png && echo "banner-2x.png present" || (echo "banner-2x.png MISSING"; exit 1)
+          test -f test/headless-smoke/dist/icons/banner-3x.png && echo "banner-3x.png present" || (echo "banner-3x.png MISSING"; exit 1)
+
       - name: Run unit tests + e2e tests
         # v0.1.4 polish: include test/e2e/ (F-7 manifest validation, 20 tests).
         # 497 + 20 = 517 total tests, ~2s. No network, no browser, no deps.
