@@ -1,3 +1,5 @@
+<div align="center">
+
 # 🛡️ AegisGate Lens
 
 ### Privacy-first browser extension that warns you **before you hit send** when your AI prompt contains PII, secrets, XSS payloads, or compliance risks.
@@ -17,7 +19,7 @@
 
 [Install](#installation) · [How It Works](#how-it-works) · [Detection](#what-it-detects) · [Privacy](./docs/SECURITY.md) · [Architecture](./docs/ARCHITECTURE-v0.1.0-BETA.md) · [Releases](https://github.com/aegisgatesecurity/aegisgate-lens/releases)
 
-> **Canonical facts**: All numbers in this README come from [docs/FACTS.md](./docs/FACTS.md). If you change a number, update FACTS.md FIRST, then propagate to this README and the marketing site (aegisgatesecurity.io/lens/).
+</div>
 
 ---
 
@@ -244,5 +246,3 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md). The standing rules (108 lessons learne
 ---
 
 **Built with privacy by the [AegisGate Security](https://aegisgatesecurity.io) team.**
-
-> All numbers in this README are sourced from [docs/FACTS.md](./docs/FACTS.md). If a number changes, update FACTS.md FIRST, then propagate here and to the marketing site.
