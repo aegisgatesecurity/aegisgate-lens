@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// AegisGate Lens v0.1.4 - Headless Smoke Test: Per-Provider Mini-Smoke
+// AegisGate Lens v0.2.0 - Headless Smoke Test: Per-Provider Mini-Smoke
 //
 // Approach 3: per-provider mini-smoke. 8 hosts x 4 cases = 32 tests.
 //
@@ -199,7 +199,7 @@ func main() {
 		log.Fatalf("bundle not found at %s (run tools/ci/build-bundle.py first)", bundlePath)
 	}
 
-	log.Printf("AegisGate Lens v0.1.4 - Per-Provider Mini-Smoke")
+	log.Printf("AegisGate Lens v0.2.0 - Per-Provider Mini-Smoke")
 	log.Printf("  dist: %s", *distPath)
 	log.Printf("  bundle: %s", bundlePath)
 	log.Printf("  chromium: %s", *chromium)
@@ -336,7 +336,7 @@ func main() {
 	}
 
 	report := miniReport{
-		TestName: "AegisGate Lens v0.1.4 - Per-Provider Mini-Smoke",
+		TestName: "AegisGate Lens v0.2.0 - Per-Provider Mini-Smoke",
 		Date:     time.Now().Format(time.RFC3339),
 		Total:    len(results),
 		Passed:   passed,

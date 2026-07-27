@@ -1,6 +1,6 @@
-# AegisGate Lens v0.1.0-beta — Threat Model
+# AegisGate Lens v0.2.0 — Threat Model
 
-**Status:** v0.1.0-beta (all findings triaged against the shipped product; 11 resolved, 1 residual, 1 accepted, 1 partial)
+**Status:** v0.2.0 (all findings triaged against the shipped product; 11 resolved, 1 residual, 1 accepted, 1 partial)
 **Date:** 2026-07-09
 **Audience:** Chrome Web Store reviewers, enterprise security buyers, third-party auditors, end users with security questions
 **Methodology:** STRIDE (Spoofing, Tampering, Repudiation, Information Disclosure, Denial of Service, Elevation of Privilege)
@@ -277,7 +277,7 @@ documented in the finding).
    recover the original hostname without brute-forcing the
    hash space (16 hex chars = 64 bits, ~10^19 work).
 
-## Compliance mappings (v0.1.0-beta)
+## Compliance mappings (v0.2.0)
 
 | Standard | Coverage | Notes |
 |---|---|---|
@@ -332,4 +332,4 @@ code linked above.
 **Signed-off-by:** AegisGate Security <security@aegisgatesecurity.io>
 **Source of truth:** https://github.com/aegisgatesecurity/aegisgate-lens/blob/main/docs/THREAT-MODEL.md
 **Last updated:** 2026-07-09
-**Version:** v0.1.0-beta
+**Version:** v0.2.0

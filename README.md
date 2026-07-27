@@ -7,8 +7,8 @@
 100% on-device · Zero data leaves your browser · Free · Forever
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Install on Chrome Web Store](https://img.shields.io/badge/Install-CWS%20v0.1.4-4285F4?logo=google-chrome&logoColor=white)](https://chromewebstore.google.com/detail/aegisgate-lens/lkioinepjpjfdhiggaomoafnhagfcjip)
-[![Version](https://img.shields.io/badge/version-v0.1.4-brightgreen.svg)](https://github.com/aegisgatesecurity/aegisgate-lens/releases/tag/v0.1.4)
+[![Install on Chrome Web Store](https://img.shields.io/badge/Install-CWS%20v0.2.0-4285F4?logo=google-chrome&logoColor=white)](https://chromewebstore.google.com/detail/aegisgate-lens/lkioinepjpjfdhiggaomoafnhagfcjip)
+[![Version](https://img.shields.io/badge/version-v0.2.0-brightgreen.svg)](https://github.com/aegisgatesecurity/aegisgate-lens/releases/tag/v0.2.0)
 [![Tests](https://img.shields.io/badge/tests-734%2F734-brightgreen.svg)](#)
 [![FPR](https://img.shields.io/badge/FPR-2.31%25%20on%206%2C500%20WildChat-success.svg)](#detection-performance)
 [![Perf](https://img.shields.io/badge/p99%3C2ms%20(typical)-blue.svg)](#detection-performance)
@@ -89,7 +89,7 @@ Lens runs **4 detection facets** in parallel on every keystroke (debounced 250ms
 | **Compliance** | OWASP LLM Top 10 (5/10), MITRE ATLAS, EU AI Act, NIST CSF, ISO 27001, CCPA, LGPD, PIPEDA, POPIA | "patient SSN:", "credit card:" | 43 |
 | **Total** | — | — | **151** |
 
-**Roadmap (v0.2.0)**: 2 more facets (Toxicity, Prompt-Injection) + TinyML model for ambiguous cases. See [docs/ARCHITECTURE-v0.1.3.md](./docs/ARCHITECTURE-v0.1.3.md) for the full architecture.
+**Roadmap (v0.3.0)**: 2 more facets (Toxicity, Prompt-Injection) + TinyML model for ambiguous cases. See [docs/ARCHITECTURE-v0.1.3.md](./docs/ARCHITECTURE-v0.1.3.md) for the full architecture.
 
 ## How Lens Compares
 
@@ -107,7 +107,7 @@ Lens runs **4 detection facets** in parallel on every keystroke (debounced 250ms
 
 ## Performance
 
-| Metric | v0.1.3 | v0.1.0-beta baseline |
+| Metric | v0.2.0 | v0.1.0-beta baseline |
 |--------|--------|---------------------|
 | FPR (WildChat, 6,500 prompts) | **2.31%** (150 FPs) | 12.49% (812 FPs) |
 | FPR (per-pattern must-not-trigger, 119 entries) | **0/119** (100% clean) | n/a |
@@ -203,7 +203,7 @@ See [docs/SECURITY.md](./docs/SECURITY.md) for the full privacy policy and secur
 - **MV3 strict CSP** (no inline scripts, no remote code, no eval)
 - **Ed25519 commit signing** on all commits
 - **RFC 9116** vulnerability disclosure (contact `security@aegisgatesecurity.io`)
-- **No model bundles** in v0.1.3 (regex-only, so no bundle signing needed)
+- **No model bundles in v0.2.0 (regex-only, so no bundle signing needed)
 
 See [docs/SECURITY.md](./docs/SECURITY.md) for the full security model.
 
@@ -217,7 +217,7 @@ AegisGate Lens is the consumer-facing layer. The same team builds [AegisGate Pla
 | Teams of 2–10 who need a shared detection policy | **Lens + Platform Starter** ($29/mo) |
 | Enterprises needing SIEM, compliance modules, central policy | **Platform Professional or Enterprise** (custom) |
 
-## Roadmap (v0.2.0)
+## Roadmap (v0.3.0)
 
 - **2 missing detection facets**: Toxicity + Prompt-Injection
 - **TinyML model** (1–2MB transformer) for ambiguous cases

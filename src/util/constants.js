@@ -5,7 +5,7 @@
 // scattered across banner-ui.js, prompt-detect.js, background.js,
 // dismiss.js, and banner.css.
 //
-// Per the v0.1.1 code-quality plan (item 7).
+// Per the v0.2.0 code-quality plan (item 7).
 //
 // Consumers import this module via the globalThis side-effect
 // pattern (e.g. `globalThis.__lensConstants.DEBOUNCE_MS`).
@@ -55,13 +55,13 @@
     OPT_IN: 'aegisgate_lens_opt_in',
     SESSION_DISMISS: 'aegisgate_lens_session_dismiss',
     ONBOARDED: 'aegisgate_lens_onboarded',
-    // v0.1.4: per-popup "Hide Lens active indicator" toggle.
+    // v0.2.0: per-popup "Hide Lens active indicator" toggle.
     // Default ON (show indicator) — no behavior change for existing
     // users. The content script's prompt-detect-dom.js reads this
     // synchronously (cached value with onChanged listener) and
     // early-returns from injectIndicator() when false.
     SHOW_INDICATOR: 'aegisgate_lens_show_indicator',
-    // v0.1.4: global "Pause Lens for 1h / 1d" toggle.
+    // v0.2.0: global "Pause Lens for 1h / 1d" toggle.
     // Default 0 (not paused). When set to a future timestamp (ms
     // since epoch), the content script's prompt-detect-dom.js
     // early-returns from onInput() until Date.now() >= the value.
@@ -79,7 +79,7 @@
 
   // Schema version stamped into the dismissals storage record
   // so future migrations can detect old payloads.
-  var STORAGE_SCHEMA_VERSION = '0.1.1';
+  var STORAGE_SCHEMA_VERSION = '0.2.0';
 
   // === FP report reason codes ===
   // The 3 reason codes the user can pick when dismissing.

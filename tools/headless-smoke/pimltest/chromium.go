@@ -1,6 +1,6 @@
 
 // SPDX-License-Identifier: Apache-2.0
-// AegisGate Lens v0.1.0-beta - Headless Smoke Test: Chromium spawn
+// AegisGate Lens v0.2.0 - Headless Smoke Test: Chromium spawn
 
 // Spawn Chromium 149 with --load-extension, wait for CDP port to be ready.
 package main

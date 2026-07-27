@@ -5,7 +5,23 @@ All notable changes to AegisGate Lens are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.2.0] — 2026-07-27
+
+### Added
+- **OPSEC guardrails**: pre-commit hook (`.githooks/pre-commit`), CI scan job
+  (`opsec-scan` in `security.yml`), and unified scanner (`tools/opsec-scan.sh`)
+  that detect private keys, local paths, internal doc references, CWS IDs,
+  hardcoded secrets, binaries, and .env files.
+- **Key rotation**: CWS screenshot mock TLS key rotated from RSA-2048 to
+  ECDSA P-256 (matching the Go mock servers).
+- **OPSEC sweep**: removed all private keys, internal docs, build artifacts,
+  and local paths from the public repo (see PR #40).
+- **Version bump**: all version strings bumped to v0.2.0 (manifest, source,
+  docs).
+- **Doc updates**: THREAT-MODEL, DPA-ADDENDUM, PRODUCT-SUMMARY, API, SECURITY,
+  ARCHITECTURE, MODEL-CARD, TERMS-OF-SERVICE, README all updated to v0.2.0.
+
+## [0.1.4] — 2026-07-12
 
 ### Added
 - v0.1.2 patch release: 3 bug fixes (F-1, F-2, F-10) and 3 doc fixes

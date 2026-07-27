@@ -1,6 +1,6 @@
 
 // SPDX-License-Identifier: Apache-2.0
-// AegisGate Lens v0.1.0-beta - Headless Smoke Test: Content Script Flow
+// AegisGate Lens v0.2.0 - Headless Smoke Test: Content Script Flow
 //
 // Per user directive (2026-07-05 18:56): "Debug identifyProvider in
 // headless mode. Find WHY state.provider is null. The test infra is
@@ -61,7 +61,7 @@ var (
 )
 
 var flowCases = []FlowTestCase{
-	// === v0.1.0-beta cases (6) ===
+	// === v0.2.0 cases (6) ===
 	{Name: "flow-pii-ssn", Text: "My SSN is 123-45-6789 and I need to verify it.", ShouldDetect: true, ExpectedCategory: "pii_ssn"},
 	{Name: "flow-pii-email", Text: "Please email me at john.doe@example.com with the report.", ShouldDetect: true, ExpectedCategory: "pii_email"},
 	{Name: "flow-secrets-aws", Text: "My AWS key is AKIAIOSFODNN7EXAMPLE and the secret is wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY", ShouldDetect: true, ExpectedCategory: "secret_aws_key"},
@@ -118,7 +118,7 @@ func main() {
 	cdpDist = absDist
 	cdpPort = *mockPort
 
-	log.Printf("AegisGate Lens v0.1.0-beta - Content Script Flow Test")
+	log.Printf("AegisGate Lens v0.2.0 - Content Script Flow Test")
 	log.Printf("  dist: %s", *distPath)
 	log.Printf("  chromium: %s", *chromium)
 	log.Printf("  CDP port: %d", *port)
@@ -489,7 +489,7 @@ func runOneFlowCase(cdp *CDPClient, target cdpTarget, tc FlowTestCase, timeout t
 
 func buildFlowReport(results []FlowTestResult, passed, failed int, gate bool) []byte {
 	report := map[string]interface{}{
-		"test_name": "AegisGate Lens v0.1.0-beta - Content Script Flow",
+		"test_name": "AegisGate Lens v0.2.0 - Content Script Flow",
 		"date":      time.Now().Format(time.RFC3339),
 		"total":     len(results),
 		"passed":    passed,
