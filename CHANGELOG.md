@@ -36,7 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   20 tests): MV3 manifest validation, CSP strictness, permission
   bounds, 3-way host consistency (manifest <-> selectors.js <-> SW),
   per-provider host coverage, eval/Function absence, dynamic innerHTML
-  absence, 8 providers from FACTS.md, bundle size + freshness checks,
+  absence, 8 providers from the spec, bundle size + freshness checks,
   and 9 platform-specific mock consistency tests.
 
 ### Changed
