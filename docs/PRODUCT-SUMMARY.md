@@ -1,6 +1,6 @@
 # AegisGate Lens — Product Summary
 
-**Version**: v0.1.3
+**Version**: v0.2.0
 **Last updated**: 2026-07-10
 **Audience**: External readers who want a definitive description of
 what AegisGate Lens is and isn't.
@@ -87,7 +87,7 @@ manifest, 1 localhost fallback for the smoke test):
 - **No npm dependencies.** Zero third-party runtime code. The
   build tool is a Go program in a separate monorepo.
 
-## What's new in v0.1.3
+## What's new in v0.2.0
 
 - **405 Node unit tests** + **3 Go unit tests** + **16/16
   headless smoke** in real Chromium 150 (previously 326 + 0 + 6)

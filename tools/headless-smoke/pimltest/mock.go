@@ -1,6 +1,6 @@
 
 // SPDX-License-Identifier: Apache-2.0
-// AegisGate Lens v0.1.0-beta - Headless Smoke Test: HTTPS mock server
+// AegisGate Lens v0.2.0 - Headless Smoke Test: HTTPS mock server
 
 // Self-signed HTTPS server on localhost. Serves a page that mimics
 // the chat.openai.com DOM structure (id="prompt-textarea",

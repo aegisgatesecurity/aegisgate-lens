@@ -1,6 +1,6 @@
 # AegisGate Lens — Security Policy
 
-**Version**: v0.1.3
+**Version**: v0.2.0
 **Last updated**: 2026-07-10
 **Contact**: `security@aegisgatesecurity.io` (PGP key below)
 **Disclosure timeline**: We acknowledge within 3 business days,
@@ -10,13 +10,13 @@ triage within 7, and aim to fix critical issues within 30 days.
 
 | Version | Supported |
 |---|---|
-| 0.1.x (current) | ✅ Active |
+| 0.2.x (current) | ✅ Active |
 | 0.1.0-beta (CWS submission) | ❌ Replaced by 0.1.1 |
 | 0.0.x (pre-release) | ❌ Never released publicly |
 | 0.2.x (planned) | N/A — not yet released |
 
 We do not backport security fixes to unsupported versions. Please
-upgrade to the latest 0.1.x release.
+upgrade to the latest 0.2.x release.
 
 ## How to report a vulnerability
 
@@ -48,7 +48,7 @@ Summary:
   messages from foreign extensions), network attackers
   (Lens has no network requests in the default config)
 
-## Security posture (v0.1.3)
+## Security posture (v0.2.0)
 
 - **Manifest V3** with strict CSP (`script-src 'self'`)
 - **Zero npm dependencies** (per `CONTRIBUTING.md` rule)

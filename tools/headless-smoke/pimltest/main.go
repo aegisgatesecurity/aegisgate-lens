@@ -1,6 +1,6 @@
 
 // SPDX-License-Identifier: Apache-2.0
-// AegisGate Lens v0.1.0-beta - PI ML Browser Test
+// AegisGate Lens v0.2.0 - PI ML Browser Test
 //
 // Per user directive 2026-07-05 19:13+19:27: the only path is
 // proper browser ML wiring. This file contains the PI ML smoke test
@@ -70,7 +70,7 @@ func main() {
 	os.Setenv("LENS_ML_DIR", *mlDir)
 	os.Setenv("LENS_DIST", *distPath)
 
-	log.Printf("AegisGate Lens v0.1.0-beta - PI ML Browser Test")
+	log.Printf("AegisGate Lens v0.2.0 - PI ML Browser Test")
 	log.Printf("  dist:   %s", *distPath)
 	log.Printf("  ml-dir: %s", *mlDir)
 	log.Printf("  chromium: %s", *chromium)
@@ -520,7 +520,7 @@ func runOnePIMLCase(cdp *CDPClient, target cdpTarget, tc PIMLTestCase, timeout t
 
 func buildPIMLReport(results []PIMLTestResult, passed, failed int, gate bool) []byte {
 	report := map[string]interface{}{
-		"test_name": "AegisGate Lens v0.1.0-beta - PI ML Browser",
+		"test_name": "AegisGate Lens v0.2.0 - PI ML Browser",
 		"date":      time.Now().Format(time.RFC3339),
 		"total":     len(results),
 		"passed":    passed,

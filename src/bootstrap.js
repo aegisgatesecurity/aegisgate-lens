@@ -18,7 +18,7 @@
 // because of the dependency graph below. Reordering breaks the
 // init contract.
 //
-// Per the v0.1.1 code-quality plan (item 5).
+// Per the v0.2.0 code-quality plan (item 5).
 //
 // Apache 2.0. Copyright 2026 AegisGate Security, LLC.
 
@@ -112,7 +112,7 @@
       MODULE_REGISTRY: MODULE_REGISTRY,
       whenReady: whenReady,
       verify: verify,
-      version: '0.1.1'
+      version: '0.2.0'
     };
   }
 })(typeof self !== 'undefined' ? self : (typeof globalThis !== 'undefined' ? globalThis : this));

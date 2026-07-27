@@ -1,7 +1,7 @@
-# AegisGate Lens v0.1.4 — Model Card
+# AegisGate Lens v0.2.0 — Model Card
 
-**Model name:** AegisGate Lens v0.1.4
-**Model version:** 0.1.0-beta (released 2026-07-04)
+**Model name:** AegisGate Lens v0.2.0
+**Model version:** 0.2.0 (released 2026-07-04)
 **Model type:** Deterministic pattern-matching algorithm (no ML)
 **Card format:** Google Model Cards v1 (extended for non-ML systems)
 **Date:** 2026-07-09
@@ -31,7 +31,7 @@ they hit send) when their prompt contains sensitive content.
 
 ## 2. Training Data
 
-**None.** AegisGate Lens v0.1.4 is a deterministic
+**None.** AegisGate Lens v0.2.0 is a deterministic
 pattern-matching algorithm. There is no training data,
 no model weights, no ONNX bundle, no TensorFlow Lite
 artifact, no ML inference.
@@ -71,7 +71,7 @@ The model was evaluated against:
    supported providers, run in real Chromium 149 via
    the headless-smoke Go binary.
 
-**Results (v0.1.4, locked 2026-07-08):**
+**Results (v0.2.0, locked 2026-07-08):**
 - In-target PII recall: 98.99% (5,870 of 5,930 high-risk
   PII records caught)
 - Mixed records recall: 99.73% (39,285 of 39,391)
@@ -178,7 +178,7 @@ These are not learned; they are hand-tuned heuristics.
    by paraphrasing, base64-encoding, OCR-ing, or splitting
    PII across multiple lines. See `docs/THREAT-MODEL.md`
    F-15 and F-20.
-2. **Secrets / XSS / Compliance coverage:** the v0.1.4
+2. **Secrets / XSS / Compliance coverage:** the v0.2.0
    benchmark does not include a large-scale secrets / XSS /
    compliance corpus. The detectors exist; their recall on
    real-world data has not been measured.
@@ -237,7 +237,7 @@ substance of what the user is asking the AI to do.
 
 ## 9. License
 
-AegisGate Lens v0.1.4 is licensed under Apache 2.0.
+AegisGate Lens v0.2.0 is licensed under Apache 2.0.
 Copyright 2024-2026 AegisGate Security, LLC.
 
 You may copy, modify, and redistribute. You may NOT
@@ -250,7 +250,7 @@ sell the Lens by itself. See `LICENSE` for the full text.
   author = {AegisGate Security, LLC},
   title = {AegisGate Lens: a privacy-first browser
            extension for AI prompt safety},
-  version = {0.1.0-beta},
+  version = {0.2.0},
   year = {2026},
   month = {7},
   url = {https://github.com/aegisgatesecurity/aegisgate-lens}
@@ -259,7 +259,7 @@ sell the Lens by itself. See `LICENSE` for the full text.
 
 ## 11. Changelog
 
-- **v0.1.4** (2026-07-04): initial public release.
+- **v0.1.4 (2026-07-04): initial public release.
   4 regex facets, 132 patterns, 8 AI providers,
   Apache 2.0.
 - (v0.2.0 will add the TinyML tier for adversarial
@@ -269,4 +269,4 @@ sell the Lens by itself. See `LICENSE` for the full text.
 
 **Signed-off-by:** AegisGate Security <security@aegisgatesecurity.io>
 **Last updated:** 2026-07-09
-**Version:** v0.1.4
+**Version:** v0.2.0

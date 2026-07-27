@@ -1,6 +1,6 @@
 
 // SPDX-License-Identifier: Apache-2.0
-// AegisGate Lens v0.1.0-beta - Headless Smoke Test: CDP client (gorilla/websocket)
+// AegisGate Lens v0.2.0 - Headless Smoke Test: CDP client (gorilla/websocket)
 
 // Chrome DevTools Protocol client. Uses gorilla/websocket.
 // Mirrors the pattern in the AegisGate Platform test infrastructure (separate repo)

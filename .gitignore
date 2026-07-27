@@ -1,4 +1,4 @@
-# AegisGate Lens v0.1.4 — .gitignore
+# AegisGate Lens v0.2.0 — .gitignore
 #
 # Policy: this repo has ZERO third-party dependencies. No npm, no PyPI,
 # no Go modules in this repo. The vendored chromedp dep used by the E2E
