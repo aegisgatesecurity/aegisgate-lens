@@ -1,7 +1,7 @@
 // AegisGate Lens — util/dismiss.js
 // 24-hour dismissal storage + opt-in false-positive report.
 //
-// Per the BANNER-DESIGN-SPEC, when the user dismisses a banner
+// Per the banner design spec, when the user dismisses a banner
 // they have two options:
 //   1. "Submit & dismiss" — opt-in to sending ONE anonymous,
 //      sanitized FP report to the AegisGate TI engine. The
@@ -21,7 +21,7 @@
 // is still enforced by gc() (entry.expires_at), so session
 // storage is purely belt-and-suspenders.
 //
-// Per docs/ARCHITECTURE-v0.1.0-BETA.md, the Lens is opt-in by
+// Per docs/ARCHITECTURE-v0.1.3.md, the Lens is opt-in by
 // default. "Submit & dismiss" is the only way the user can opt
 // in to telemetry. Until they opt in, NO data is sent.
 //

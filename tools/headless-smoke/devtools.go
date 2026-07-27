@@ -3,7 +3,7 @@
 // AegisGate Lens v0.1.0-beta - Headless Smoke Test: CDP client (gorilla/websocket)
 
 // Chrome DevTools Protocol client. Uses gorilla/websocket.
-// Mirrors the pattern in /home/chaus/Desktop/AegisGate/consolidated/aegisgate-platform/tools/test-extension/devtools.go
+// Mirrors the pattern in the AegisGate Platform test infrastructure (separate repo)
 // but is simplified for the smoke test only.
 package main
 
