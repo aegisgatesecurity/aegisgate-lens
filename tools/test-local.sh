@@ -29,7 +29,7 @@ echo "[test-local] Step 1/2: Rebuild the test bundle"
 python3 tools/ci/build-bundle.py
 
 # Step 2: Run unit + e2e tests (mirrors CI step "Run unit tests + e2e tests")
-# Per Lesson #118: redirect to a log file in .workingdirectory/, do NOT pipe
+# Per Lesson #118: redirect to a log file, do NOT pipe
 # the result through tail/head/grep in the same shell call (causes 120s
 # stream-drain timeout).
 echo "[test-local] Step 2/2: Run node --test (output to log per Lesson #118)"

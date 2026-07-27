@@ -159,7 +159,7 @@
     // to fire the content script on a localhost HTTPS mock. In
     // production, this only matches on localhost (which Chrome
     // treats as a secure context but the user would have to
-    // intentionally navigate to). See test/headless-smoke/STATUS.md.
+    // intentionally navigate to). See the headless smoke test documentation.
     if (host === 'localhost' || host === '127.0.0.1') {
       log.info('selectors: localhost hostname detected, using chatgpt provider for smoke test');
       return PROVIDERS[0];

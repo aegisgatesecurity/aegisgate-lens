@@ -64,7 +64,7 @@ When the extension source is published (Step D in the build sequence), code cont
 1. **Open an issue first** for non-trivial changes. Discuss the approach before you write code.
 2. **Fork the repo** and create a feature branch.
 3. **Make your change** consistent with the existing code style.
-4. **Read the standing rules** at `.plans/AEGISGATE-LENS-STANDING-RULES-2026-06-29.md` (105 lessons learned from v0.1.0-beta through v0.1.3 — most importantly Lessons #1-#8 on architecture, the no-npm rule, and the meta-lesson on full local simulation before pushing CI changes).
+4. **Read the standing rules (lessons learned from v0.1.0-beta through v0.1.3 — most importantly Lessons #1-#8 on architecture, the no-npm rule, and the meta-lesson on full local simulation before pushing CI changes).
 
 5. **Verify locally** that:
    - The Platform's CI checks pass: `cd ../aegisgate-platform && go test -race ./pkg/lensbackend/...`

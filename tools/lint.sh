@@ -122,7 +122,7 @@ for f in $(find src/ -name "*.js" 2>/dev/null); do
     fi
 done
 if [ -n "$TODO_MARKERS" ]; then
-    log_warn "TODO/FIXME/XXX in src/ (track in .plans/todo-v0.1.4.md):$TODO_MARKERS"
+    log_warn "TODO/FIXME/XXX in src/ (track in the project TODO):$TODO_MARKERS"
 else
     log_pass "no TODO/FIXME/XXX markers in src/"
 fi

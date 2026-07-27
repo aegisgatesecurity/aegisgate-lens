@@ -181,3 +181,6 @@ test/headless-smoke/STATUS.md
 
 # Build artifacts (built by CI, not committed)
 test/headless-smoke/mini-smoke-bin
+
+# Lighthouse CI fake test fixtures (local only)
+.lighthouseci-fake-*/
