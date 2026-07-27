@@ -97,6 +97,18 @@ jobs:
           done
           echo "✅ DCO check complete"
 
+  opsec-scan:
+    name: "OPSEC scan (tools/opsec-scan.sh)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: Run OPSEC scan
+        run: |
+          chmod +x tools/opsec-scan.sh
+          bash tools/opsec-scan.sh
+
   secret-scan:
     name: "Trivy filesystem secret scan"
     runs-on: ubuntu-latest
@@ -120,7 +132,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
-      - name: Run Trivy (src/ + tools/ only; ignore models/, corpora/, .workingdirectory/)
+      - name: Run Trivy (Trivy scans src/ + tools/ only; ignore models/, corpora/, .workingdirectory/)
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: 'fs'
