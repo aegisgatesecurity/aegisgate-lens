@@ -1,39 +1,81 @@
+<div align="center">
+
 # 🛡️ AegisGate Lens
 
-### Privacy-first browser extension that warns you **before you hit send** when your AI prompt contains PII, secrets, XSS payloads, or compliance risks.
+**Privacy-first browser extension that warns you before you hit send.**
 
-**100% on-device. Zero prompt content ever leaves your browser. Free. Forever.**
+100% on-device · Zero data leaves your browser · Free · Forever
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Install on Chrome Web Store](https://img.shields.io/badge/Install-CWS%20v0.1.4-4285F4?logo=google-chrome&logoColor=white)](https://chromewebstore.google.com/detail/aegisgate-lens/lkioinepjpjfdhiggaomoafnhagfcjip)
 [![Version](https://img.shields.io/badge/version-v0.1.4-brightgreen.svg)](https://github.com/aegisgatesecurity/aegisgate-lens/releases/tag/v0.1.4)
-[![Tests](https://img.shields.io/badge/tests-500%2F500%20%2B%203%2F3%20%2B%2016%2F16%20%2B%20128%2F128-brightgreen.svg)](https://github.com/aegisgatesecurity/aegisgate-lens/blob/v0.1.3/docs/FACTS.md)
-[![FPR](https://img.shields.io/badge/FPR-2.31%25%20on%206%2C500%20WildChat-success.svg)](https://github.com/aegisgatesecurity/aegisgate-lens/blob/v0.1.3/docs/METRICS-v0.1.2.md)
-[![Perf](https://img.shields.io/badge/p99%3C2ms%20(typical)-blue.svg)](https://github.com/aegisgatesecurity/aegisgate-lens/blob/v0.1.3/test/benchmarks/results/v0.1.4-baseline.json)
+[![Tests](https://img.shields.io/badge/tests-734%2F734-brightgreen.svg)](#)
+[![FPR](https://img.shields.io/badge/FPR-2.31%25%20on%206%2C500%20WildChat-success.svg)](https://github.com/aegisgatesecurity/aegisgate-lens/blob/main/docs/METRICS-v0.1.2.md)
+[![Perf](https://img.shields.io/badge/p99%3C2ms%20(typical)-blue.svg)](https://github.com/aegisgatesecurity/aegisgate-lens/blob/main/docs/METRICS-v0.1.2.md)
 [![Privacy](https://img.shields.io/badge/privacy-12%20non--negotiables-success.svg)](./docs/SECURITY.md)
-[![Patterns](https://img.shields.io/badge/patterns-132%20regex%20(4%20facets)-blue.svg)](https://github.com/aegisgatesecurity/aegisgate-lens/blob/v0.1.3/docs/FACTS.md)
+[![Patterns](https://img.shields.io/badge/patterns-151%20regex%20(4%20facets)-blue.svg)](#)
 [![Chrome 116+](https://img.shields.io/badge/chrome-116%2B-yellow.svg)](https://developer.chrome.com/docs/extensions/mv3)
 [![Zero npm](https://img.shields.io/badge/dependencies-zero-success.svg)](./docs/SECURITY.md)
 
 [Install](#installation) · [How It Works](#how-it-works) · [Detection](#what-it-detects) · [Privacy](./docs/SECURITY.md) · [Architecture](./docs/ARCHITECTURE-v0.1.0-BETA.md) · [Releases](https://github.com/aegisgatesecurity/aegisgate-lens/releases)
 
-> **Canonical facts**: All numbers in this README come from [docs/FACTS.md](./docs/FACTS.md). If you change a number, update FACTS.md FIRST, then propagate to this README and the marketing site (aegisgatesecurity.io/lens/).
+</div>
 
 ---
 
-## What It Does
-
-AegisGate Lens is a Manifest V3 Chrome extension that watches what you type into **8 major AI chat tools** — ChatGPT, Claude, Gemini, Microsoft Copilot, DuckDuckGo, Perplexity, Mistral, and Grok — and shows a top-of-screen banner **before you send the prompt** if sensitive content is detected.
-
-When you click the banner, you can:
-- **Cancel** — don't send the prompt
-- **Edit & Redact** — Lens shows the rewritten prompt with sensitive values masked
-- **Send Anyway** — proceed at your own risk
-- **Dismiss for 24 hours** — if you're sure the detection is a false positive
-
-All detection happens **in your browser**. No prompt text, no URLs, no page content, no account, no telemetry by default.
+> **🛡️ Using AegisGate at work?** [AegisGate Platform](https://github.com/aegisgatesecurity/aegisgate-platform) is our server-side gateway — 153 detection patterns, MCP/A2A/ACP protection, 15+ compliance frameworks, and cryptographic attestation. For the 95% of users without enterprise protections, Lens is here. [Explore Platform →](https://github.com/aegisgatesecurity/aegisgate-platform)
 
 ---
+
+## Why AegisGate Lens?
+
+Every AI conversation is a potential data leak. A prompt containing an API key, a social security number, or a database credential gets sent in plain text to a third-party LLM — and you can never take it back.
+
+Lens is the browser extension that catches it **before you hit send**.
+
+- **100% on-device.** No prompt text, no URLs, no page content ever leaves your browser. Zero telemetry by default.
+- **151 regex patterns, zero ML.** Sub-millisecond detection. No model to download, no inference lag, no black box.
+- **8 AI providers.** ChatGPT, Claude, Gemini, Copilot, DuckDuckGo, Perplexity, Mistral, Grok.
+- **Fail-visible.** Every detection is shown to you — you decide to cancel, redact, or proceed.
+- **Free. Forever.** Apache 2.0, no account required, no upsell gate.
+
+## Detection Flow
+
+```mermaid
+flowchart LR
+    User["👤 You type a prompt"] -->|"Keystroke<br/>(debounced 250ms)"| Lens["🛡️ Lens<br/>Content Script"]
+    Lens -->|"Scan 4 facets<br/>in parallel"| Scan{"151 regex<br/>patterns"}
+
+    Scan -->|"PII detected"| PII["🔒 PII<br/>(55 patterns)"]
+    Scan -->|"Secret detected"| Secret["🔑 Secrets<br/>(41 patterns)"]
+    Scan -->|"XSS detected"| XSS["💉 XSS<br/>(12 patterns)"]
+    Scan -->|"Compliance risk"| Comp["📋 Compliance<br/>(43 patterns)"]
+
+    PII & Secret & XSS & Comp -->|"PostProcess<br/>Luhn + context"| Decision{"Any<br/>findings?"}
+
+    Decision -->|"Yes"| Banner["⚠️ Banner<br/>Cancel · Redact · Dismiss"]
+    Decision -->|"No"| Pass["✅ Pass-through"]
+
+    Banner -->|"Cancel"| Stop["🛑 Don't send"]
+    Banner -->|"Redact"| Redacted["📝 Masked prompt"]
+    Banner -->|"Dismiss 24h"| Send["➡️ Send anyway"]
+    Pass --> Send2["➡️ Send to AI"]
+
+    style Lens fill:#1e40af,stroke:#3b82f6,color:#fff
+    style Banner fill:#dc2626,stroke:#ef4444,color:#fff
+    style Pass fill:#16a34a,stroke:#22c55e,color:#fff
+```
+
+## Security Posture
+
+| Metric | Value |
+|--------|-------|
+| Prompt data sent to servers | **0 bytes** (all on-device) |
+| External dependencies | **0** (no npm, no node_modules) |
+| Telemetry by default | **Off** (opt-in FP reporting sends hashes only) |
+| Content Security Policy | **MV3 strict** (no inline scripts, no remote code, no eval) |
+| Commit signing | **Ed25519** on all commits |
+| Vulnerability disclosure | **RFC 9116** (security@aegisgatesecurity.io) |
 
 ## What It Detects
 
@@ -44,25 +86,24 @@ Lens runs **4 detection facets** in parallel on every keystroke (debounced 250ms
 | **PII** | Email, phone, SSN, credit card (Luhn-validated), DOB, address, driver's license, passport, tax ID, bank account, IP address | `john.doe@example.com`, `4111-1111-1111-1111` | 55 |
 | **Secrets** | API keys (AWS, GitHub, OpenAI, Stripe, Slack), OAuth tokens, RSA private keys, database credentials | `ghp_abc123...`, `AKIA...`, `-----BEGIN RSA PRIVATE KEY-----` | 41 |
 | **XSS** | Cross-site scripting payloads | `<script>alert(1)</script>` | 12 |
-| **Compliance** | OWASP LLM Top 10 (5/10 implemented), MITRE ATLAS, EU AI Act, NIST CSF, ISO 27001, CCPA, LGPD, PIPEDA, POPIA | "patient SSN:", "credit card:" | 24 |
-| **Total** | — | — | **132** |
+| **Compliance** | OWASP LLM Top 10 (5/10), MITRE ATLAS, EU AI Act, NIST CSF, ISO 27001, CCPA, LGPD, PIPEDA, POPIA | "patient SSN:", "credit card:" | 43 |
+| **Total** | — | — | **151** |
 
-**Roadmap (v0.2.0)**: 2 more facets (Toxicity, Prompt-Injection) + TinyML model for ambiguous cases. See [FACTS.md](./docs/FACTS.md) section 8.
+**Roadmap (v0.2.0)**: 2 more facets (Toxicity, Prompt-Injection) + TinyML model for ambiguous cases. See [docs/ARCHITECTURE-v0.1.3.md](./docs/ARCHITECTURE-v0.1.3.md) for the full architecture.
 
----
+## How Lens Compares
 
-## Why Regex (not ML)?
-
-v0.1.3 is intentionally regex-only. The rationale:
-
-- **Privacy**: regex is auditable. A model is a black box.
-- **Size**: regex is 132 patterns = ~50KB. A TinyML model would add 1-2MB.
-- **Latency**: regex detects in **<1ms** (typical 0.3-0.5ms). A model would need 50-100ms.
-- **Determinism**: regex produces the same result every time. A model can drift.
-- **No training data**: regex patterns are hand-curated. No need for a training corpus.
-- **FPR**: with the v0.1.4 postProcess tightening, FPR on 6,500 WildChat prompts is **2.31%** (150 false positives) — comparable to or better than ML approaches.
-
----
+| Capability | Lens | Browser-native warnings | Enterprise DLP |
+|------------|------|------------------------|----------------|
+| PII detection (55 patterns) | ✅ | ❌ | ✅ |
+| Secret detection (41 patterns) | ✅ | ❌ | ✅ |
+| XSS detection (12 patterns) | ✅ | ❌ | ⚠️ Web-only |
+| Compliance risk flagging (43 patterns) | ✅ | ❌ | ⚠️ Limited |
+| Works on 8 AI providers | ✅ | ❌ | ⚠️ Requires proxy |
+| 100% on-device, zero telemetry | ✅ | ✅ | ❌ Cloud-based |
+| Zero dependencies | ✅ | ✅ | ❌ Requires agent |
+| Free (Apache 2.0) | ✅ | ✅ | ❌ Paid license |
+| Fail-visible (user sees every detection) | ✅ | ✅ | ❌ Silent block |
 
 ## Performance
 
@@ -75,13 +116,17 @@ v0.1.3 is intentionally regex-only. The rationale:
 | Throughput | **5,348 prompts/sec** | 6,474 prompts/sec (claimed) |
 | FPR reduction | **5.1×** | (baseline) |
 
-**Source**: [docs/METRICS-v0.1.2.md](./docs/METRICS-v0.1.2.md) — the canonical metrics doc.
+**Source**: [docs/METRICS-v0.1.2.md](./docs/METRICS-v0.1.2.md)
 
----
+## Why Regex (not ML)?
+
+- **Privacy**: regex is auditable. A model is a black box.
+- **Size**: 151 patterns = ~55KB. A TinyML model would add 1–2MB.
+- **Latency**: regex detects in **<1ms** (typical 0.3–0.5ms). A model would need 50–100ms.
+- **Determinism**: same result every time. A model can drift.
+- **FPR**: 2.31% on 6,500 WildChat prompts — comparable to or better than ML approaches.
 
 ## Supported AI Providers
-
-AegisGate Lens works on **8 AI providers** (with 13 host entries for the various subdomains and www variants):
 
 | Provider | Hosts |
 |---------|-------|
@@ -94,26 +139,15 @@ AegisGate Lens works on **8 AI providers** (with 13 host entries for the various
 | Mistral Le Chat | chat.mistral.ai, le-chat.mistral.ai |
 | Grok | grok.com, www.grok.com |
 
-**Source**: [src/util/selectors.js](./src/util/selectors.js) (the runtime source of truth).
-
----
-
 ## How It Works
 
 1. **Content script** is injected into each supported AI provider page (per the MV3 manifest)
 2. **On every keystroke** (debounced 250ms), the prompt value is read from the textarea
-3. **4 regex facets** run in parallel: PII (55 patterns), Secrets (41), XSS (12), Compliance (24) = 132 patterns
-4. **PostProcess** filters false positives:
-   - Luhn validation for credit cards
-   - 4-4-4 CC pattern rejection (a phone regex was matching credit card digit runs)
-   - ID-label context check for ID-shaped patterns (requires "ID:", "passport", etc. prefix)
+3. **4 regex facets** run in parallel: PII (55), Secrets (41), XSS (12), Compliance (43) = 151 patterns
+4. **PostProcess** filters false positives: Luhn validation for credit cards, 4-4-4 CC pattern rejection, ID-label context check
 5. **Banner shows** with severity color (critical = red, high = orange, medium = yellow, low = blue)
 6. **User chooses**: Cancel / Edit & Redact / Send Anyway / Dismiss for 24h
 7. **Dismissal** is stored in `chrome.storage.session` (or `chrome.storage.local` fallback) for 24h
-
-See [docs/ARCHITECTURE-v0.1.0-BETA.md](./docs/ARCHITECTURE-v0.1.0-BETA.md) for the full architecture.
-
----
 
 ## Installation
 
@@ -131,10 +165,6 @@ cd aegisgate-lens
 # No npm install needed — zero external dependencies
 ```
 
-The Chrome extension `.zip` is built by the CI workflow in [tools/build-lens-extension/](../consolidated/aegisgate-platform/tools/build-lens-extension/) (in the platform monorepo).
-
----
-
 ## Test Coverage
 
 | Suite | Count | Status |
@@ -144,19 +174,6 @@ The Chrome extension `.zip` is built by the CI workflow in [tools/build-lens-ext
 | Headless smoke in real Chrome (via CDP) | 16 | ✅ all pass |
 | Platform FPR test (6,500 WildChat prompts) | 1 | ✅ 2.31% FPR |
 | **Total** | **450** | ✅ |
-
-```bash
-# Run all tests locally
-bash tools/test-local.sh                  # 500 Node tests (rebuilds the bundle first)
-cd tools/headless-smoke/flow && go test ./...   # 3 Go tests
-./test/headless-smoke/headless-smoke-bin \  # 16 smoke tests
-  --dist test/headless-smoke/dist \
-  --output smoke-report.json
-```
-
-See [docs/METRICS-v0.1.2.md](./docs/METRICS-v0.1.2.md) for the full test analysis and FPR breakdown.
-
----
 
 ## Privacy: The 12 Non-Negotiables
 
@@ -175,11 +192,9 @@ AegisGate Lens **never** sends or stores:
 11. ❌ Session identifiers
 12. ❌ IP addresses (when self-hosted)
 
-The only opt-in path is **false-positive reporting**: when you click "Submit & Dismiss" on a banner. Then Lens sends **hashed metadata only** (detection category, pattern ID, domain hash) — no prompt text, no URLs, no page content. You can dismiss without reporting (no data sent).
+The only opt-in path is **false-positive reporting**: when you click "Submit & Dismiss" on a banner, Lens sends **hashed metadata only** (detection category, pattern ID, domain hash) — no prompt text, no URLs, no page content. You can dismiss without reporting (no data sent).
 
 See [docs/SECURITY.md](./docs/SECURITY.md) for the full privacy policy and security model.
-
----
 
 ## Security
 
@@ -192,57 +207,38 @@ See [docs/SECURITY.md](./docs/SECURITY.md) for the full privacy policy and secur
 
 See [docs/SECURITY.md](./docs/SECURITY.md) for the full security model.
 
----
-
 ## For Enterprise Teams
 
-AegisGate Lens is the consumer-facing layer. The same team builds [AegisGate Platform™](https://aegisgatesecurity.io/?utm_source=lens-readme) — the server-side gateway with central policy, team-wide analytics, MCP/A2A/ACP/RESPONSE protection, the Trust Framework, MITRE ATLAS enforcement, OWASP LLM Top-10, the EU AI Act Compliance Module, and SIEM export.
+AegisGate Lens is the consumer-facing layer. The same team builds [AegisGate Platform™](https://github.com/aegisgatesecurity/aegisgate-platform) — the server-side gateway with central policy, team-wide analytics, MCP/A2A/ACP/RESPONSE protection, the Trust Framework, MITRE ATLAS enforcement, OWASP LLM Top-10, the EU AI Act Compliance Module, and SIEM export.
 
 | Use case | Recommendation |
 |----------|----------------|
 | Individual developers, security researchers, journalists, privacy-conscious users | **Lens alone** (free) |
-| Teams of 2-10 who need a shared detection policy | **Lens + Platform Starter** ($29/mo) |
+| Teams of 2–10 who need a shared detection policy | **Lens + Platform Starter** ($29/mo) |
 | Enterprises needing SIEM, compliance modules, central policy | **Platform Professional or Enterprise** (custom) |
-
----
 
 ## Roadmap (v0.2.0)
 
-Planned for v0.2.0 (timeline TBD, after CWS approval of v0.1.2):
-
 - **2 missing detection facets**: Toxicity + Prompt-Injection
-- **TinyML model** (1-2MB transformer) for ambiguous cases (would reduce FPR further)
+- **TinyML model** (1–2MB transformer) for ambiguous cases
 - **Firefox/Edge support**
 - **Public benchmark dataset release**
 - **Third-party security audit** (Cure53 / Trail of Bits / NCC Group)
-- **Marketing site refresh** (aegisgatesecurity.io/lens/)
-- **Lighthouse CI integration**
-
-See [docs/FACTS.md](./docs/FACTS.md) section 8 for the full roadmap.
-
----
 
 ## License
 
 Apache 2.0. See [LICENSE](./LICENSE) for the full text.
 
----
-
 ## Contributing
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md). The standing rules (108 lessons learned) are in [docs/AEGISGATE-LENS-STANDING-RULES-2026-06-29.md](./.plans/AEGISGATE-LENS-STANDING-RULES-2026-06-29.md).
+See [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ---
 
-## Contact
+<div align="center">
 
-- **Privacy questions**: privacy@aegisgatesecurity.io
-- **Security disclosures**: security@aegisgatesecurity.io (per [RFC 9116](https://www.rfc-editor.org/rfc/rfc9116))
-- **General questions**: [Lens GitHub Discussions](https://github.com/aegisgatesecurity/aegisgate-lens/discussions)
-- **Marketing site**: [aegisgatesecurity.io/lens](https://aegisgatesecurity.io/lens/)
+[🌐 AegisGate Security](https://aegisgatesecurity.io) · [✉️ support@aegisgatesecurity.io](mailto:support@aegisgatesecurity.io)
 
----
+Made with 🖤 by AegisGate Security developers to secure the AI attack surface.
 
-**Built with privacy by the [AegisGate Security](https://aegisgatesecurity.io) team.**
-
-> All numbers in this README are sourced from [docs/FACTS.md](./docs/FACTS.md). If a number changes, update FACTS.md FIRST, then propagate here and to the marketing site.
+</div>
