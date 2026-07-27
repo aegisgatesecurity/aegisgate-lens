@@ -251,7 +251,7 @@
           try {
             var message = {
               type: 'FP_REPORTS',
-              version: '0.1.0-beta',
+              version: '0.2.0',
               payload: {
                 timestamp: Math.floor(Date.now() / 1000),
                 reports: payload.reports || []
@@ -353,9 +353,9 @@
   }
 
   // Kill switch: if globalThis.__lensDisabled is true, exit immediately.
-// This is a critical-bug mitigation: push a v0.1.5 with this set to
+// This is a critical-bug mitigation: push a v0.2.0 with this set to
 // true to disable Lens in production within 24 hours, then roll out
-// the real fix in v0.1.6. See the ops runbook for the full procedure.
+// the real fix in v0.2.1. See the ops runbook for the full procedure.
 if (typeof globalThis !== 'undefined' && globalThis.__lensDisabled === true) {
   log.warn('content: __lensDisabled is true; exiting without initializing');
   return; // exits the IIFE

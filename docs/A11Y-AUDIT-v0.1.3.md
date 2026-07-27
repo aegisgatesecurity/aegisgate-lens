@@ -1,7 +1,7 @@
-# A11Y Audit — v0.1.3 (popup.html, welcome.html, banner)
+# A11Y Audit — v0.2.0 (popup.html, welcome.html, banner)
 
 **Audit date:** 2026-07-10
-**Auditor:** AegisGate Lens v0.1.3 B3 (manual audit; Lighthouse CI deferred to v0.2.0)
+**Auditor:** AegisGate Lens v0.2.0 (manual audit; Lighthouse CI deferred to v0.3.0)
 **Scope:** `src/popup/popup.html` (320px extension popup), `src/welcome/welcome.html` (extension welcome page), `src/util/banner-ui-html.js` (the in-page banner shown on supported AI chat sites)
 
 ## Methodology

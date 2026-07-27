@@ -1,7 +1,7 @@
 # AegisGate Lens — Bundle API Reference
 
-**Version**: v0.1.3
-**Status**: Stable (within v0.1.x)
+**Version**: v0.2.0
+**Status**: Stable (within v0.2.x)
 **Audience**: Developers integrating with the Lens content script, or
 contributors who need to understand the module contracts.
 
@@ -231,7 +231,7 @@ the banner DOM.
 ## Deprecated globals
 
 The following globals were planned but **not implemented** in
-v0.1.x. They are reserved in `src/util/typedefs.js` but
+v0.2.x. They are reserved in `src/util/typedefs.js` but
 should not be relied on:
 
 | Name | Status | Replacement |
