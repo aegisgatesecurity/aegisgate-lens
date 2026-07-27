@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "AegisGate Lens",
-  "version": "0.1.4",
-  "description": "Privacy-first Chrome extension. Detects PII, secrets, XSS, and compliance issues in AI prompts. 100% on-device. Free.",
+  "version": "0.2.0",
+  "description": "Privacy-first browser extension that detects prompt injection, PII, secrets, and toxicity before they reach AI tools. No prompt content ever leaves your browser. Apache 2.0.",
   "author": "AegisGate Security, LLC",
   "homepage_url": "https://aegisgatesecurity.io/lens",
   "update_url": "https://clients2.google.com/service/update2/crx",
