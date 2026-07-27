@@ -14,8 +14,7 @@ to v0.2.0** (Bucket E). This audit is **evidence-based** — each
 finding cites the specific file, line pattern, and attribute that
 triggered the check.
 
-The v0.1.0-BETA audit (commit 97e40d8, file
-`docs/A11Y-AUDIT-v0.1.0-BETA.md`) covered popup.html and
+The v0.1.0-BETA audit (commit 97e40d8) covered popup.html and
 welcome.html only. The v0.1.1 commits (d9380b0 Bucket C, 97e40d8
 Bucket D) fixed the 4 critical issues that audit identified. The
 v0.1.2 commits (F-1 through F-14) did not touch a11y. This v0.1.3

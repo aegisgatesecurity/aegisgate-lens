@@ -27,7 +27,7 @@ import (
 	"time"
 )
 
-// miniProviderHosts is the 8 active provider hosts (per FACTS.md).
+// miniProviderHosts is the 8 active provider hosts (per spec).
 var miniProviderHosts = []string{
 	"chatgpt.com",
 	"claude.ai",

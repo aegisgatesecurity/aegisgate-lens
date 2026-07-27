@@ -3,9 +3,7 @@
 **Version**: v0.1.3
 **Last updated**: 2026-07-10
 **Audience**: External readers who want a definitive description of
-what AegisGate Lens is and isn't. For the Chrome Web Store
-submission copy (which has a 16,000-char dashboard field), see
-`.plans/AEGISGATE-LENS-CHROME-STORE-LISTING.md`.
+what AegisGate Lens is and isn't.
 
 ## What is AegisGate Lens?
 

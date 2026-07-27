@@ -1,6 +1,6 @@
 // AegisGate Lens — background.js (the MV3 service worker)
 //
-// Per docs/ARCHITECTURE-v0.1.0-BETA.md Section 8, the SW:
+// Per docs/ARCHITECTURE-v0.1.3.md Section 8, the SW:
 //   1. Receives messages from the content script (validated)
 //   2. Owns chrome.storage.local (content scripts cannot share state)
 //   3. Persists dismissals (24h scope)

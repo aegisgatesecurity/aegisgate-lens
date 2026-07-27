@@ -1,7 +1,7 @@
 // AegisGate Lens — test/unit/banner-ui-dismiss.test.mjs
 // Unit tests for the banner UI and the dismissal module.
 //
-// Per the BANNER-DESIGN-SPEC, the banner shows:
+// Per the banner design spec, the banner shows:
 //   - Header (shield + wordmark + count + help + ×)
 //   - Detection list (severity-colored rows, masked values)
 //   - Privacy footer ("we never sent your prompt")

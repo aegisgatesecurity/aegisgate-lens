@@ -4,9 +4,7 @@
 **Last updated**: 2026-07-10
 **Audience**: Contributors, security auditors, and technical evaluators.
 
-> For the v0.1.0-beta architecture (the original CWS submission),
-> see `docs/ARCHITECTURE-v0.1.0-BETA.md`. The two documents differ
-> in: pattern count (120 → 131), test count (326/326 → 405/405 unit
+> Pattern count: 131, test count: 405/405 unit
 > + 3/3 Go + 16/16 smoke), and provider count (10 → 8 with localhost
 > fallback for tests).
 
@@ -183,6 +181,5 @@ graph TD
 
 - **Bundle format**: see `docs/MODEL-CARD.md`
 - **Permission justifications**: see the CWS listing at
-  `.plans/AEGISGATE-LENS-CHROME-STORE-LISTING.md`
 - **Threat model**: see `docs/THREAT-MODEL.md`
 - **Bundle globals**: see `docs/API.md`

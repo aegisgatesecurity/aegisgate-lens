@@ -57,7 +57,7 @@ Summary:
 - **Domain hashing** (F-12) for opt-in telemetry
 - **Schema-validated** service worker payloads
 - **SLSA L2** build provenance (build is in the Platform
-  monorepo, signed with Ed25519)
+  build pipeline, signed with Ed25519)
 - **No remote code** of any kind
 
 ## A11Y security

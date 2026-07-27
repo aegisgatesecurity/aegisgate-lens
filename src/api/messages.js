@@ -9,7 +9,7 @@
 // a compromised renderer should not be able to inject messages
 // that the SW would then forward to the backend).
 //
-// Per docs/ARCHITECTURE-v0.1.0-BETA.md Section 8 (content-script-
+// Per docs/ARCHITECTURE-v0.1.3.md Section 8 (content-script-
 // to-SW transport), messages use chrome.runtime.sendMessage with
 // a {type, payload} envelope. The SW checks sender.id against
 // chrome.runtime.id (F-01 from the threat model) and validates

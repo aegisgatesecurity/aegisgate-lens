@@ -46,4 +46,4 @@ If this PR breaks something in production, how do we roll it back?
 
 - [ ] Closes issue #
 - [ ] Related PR #
-- [ ] Implements part of [docs/FACTS.md §8 Roadmap](docs/FACTS.md)
+- [ ] Implements part of the project roadmap (see CHANGELOG.md)

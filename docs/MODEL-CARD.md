@@ -49,7 +49,7 @@ Security, LLC** using the following sources:
   regional reference patterns
 - Industry standard regex libraries (e.g., common
   credit-card Luhn validators, common IBAN formats)
-- The 100K-prompt benchmark corpus (aegisgate-internal,
+- The 100K-prompt benchmark corpus (internal,
   not used for training, only for evaluation)
 
 The patterns are **open source** under Apache 2.0 and
@@ -85,7 +85,7 @@ The model was evaluated against:
 **Out-of-scope for this evaluation:**
 - Adversarial robustness against paraphrasing (Tier 3
   ML, which was burned down for ship-gate reasons). See
-  `docs/THREAT-MODEL-v0.1.0-BETA.md` F-15.
+  `docs/THREAT-MODEL.md` F-15.
 - Adversarial robustness against base64 / OCR / split-
   across-lines obfuscation. See F-20.
 - The Secrets, XSS, and Compliance facets were not
@@ -176,7 +176,7 @@ These are not learned; they are hand-tuned heuristics.
 
 1. **Adversarial robustness:** the regex tier is bypassable
    by paraphrasing, base64-encoding, OCR-ing, or splitting
-   PII across multiple lines. See `docs/THREAT-MODEL-v0.1.0-BETA.md`
+   PII across multiple lines. See `docs/THREAT-MODEL.md`
    F-15 and F-20.
 2. **Secrets / XSS / Compliance coverage:** the v0.1.4
    benchmark does not include a large-scale secrets / XSS /
