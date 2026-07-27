@@ -292,13 +292,13 @@ test('e2e/source: no dynamic innerHTML usage outside banner-ui.js (CSP check)', 
 
 // --- Test 4: 8 providers in selectors.js all have manifest coverage ---
 
-test('e2e/providers: all 8 providers from FACTS.md have selectors', () => {
-  // Per FACTS.md: 8 AI providers
+test('e2e/providers: all 8 providers from the spec have selectors', () => {
+  // Per the spec: 8 AI providers
   const expectedProviders = ['chatgpt', 'claude', 'gemini', 'copilot', 'perplexity', 'duck_ai', 'grok', 'mistral'];
   const selectors = read('src/util/selectors.js');
   for (const p of expectedProviders) {
     assert.match(selectors, new RegExp("id:\\s*'" + p + "'"),
-      `provider "${p}" not in selectors.js (should be 1 of 8 per FACTS.md)`);
+      `provider "${p}" not in selectors.js (should be 1 of 8 per the spec)`);
   }
 });
 
@@ -343,13 +343,13 @@ test('e2e/bundle: bundle was built AFTER the most recent src/ change', () => {
 // per-hostname (Phase 2), the e2e category already guards that the mocks
 // exist and match the actual selectors in src/util/selectors.js.
 //
-// The 8 active providers per FACTS.md: chatgpt, claude, gemini, copilot,
+// The 8 active providers per the spec: chatgpt, claude, gemini, copilot,
 // perplexity, duck_ai, grok, mistral.
 
 const PLATFORM_MOCK_DIR = 'test/headless-smoke/mock/platform-testdata/';
 
 test('e2e/mocks: 8 platform mock files exist (one per active provider)', () => {
-  // 8 active providers per FACTS.md + 1 legacy chat-openai + 1 deprecated
+  // 8 active providers per the spec + 1 legacy chat-openai + 1 deprecated
   // x.com (Grok on X, not in v0.1.x scope) = 10 files total.
   // We require the 8 active providers + the 1 legacy to be present.
   // (x.com is optional and may be removed in a future F-11 cleanup.)

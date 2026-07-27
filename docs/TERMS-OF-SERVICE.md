@@ -181,7 +181,7 @@ language. The Lens's detection rate is approximately
 positive rate is approximately 7.40% on real user
 prompts; the adversarial robustness (paraphrasing,
 base64, OCR, etc.) is partial and is documented in
-`docs/THREAT-MODEL-v0.1.0-BETA.md` F-15 and F-20.
+`docs/THREAT-MODEL.md` F-15 and F-20.
 
 **The Lens does NOT provide legal, compliance, or
 security guarantees.** The Lens is a tool that helps
@@ -273,7 +273,7 @@ shall remain in full force and effect.
 ## 14. Entire agreement
 
 These ToS, together with the Apache 2.0 LICENSE, the
-`docs/PRIVACY-POLICY.md`, and the `docs/THREAT-MODEL-v0.1.0-BETA.md`,
+`docs/PRIVACY-POLICY.md`, and the `docs/THREAT-MODEL.md`,
 constitute the entire agreement between you and
 AegisGate Security, LLC with respect to your use of the
 Lens.

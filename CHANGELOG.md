@@ -109,7 +109,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   facets, the tiered ML architecture"). The v0.1.0-beta ship is
   regex-only; the ML tier was burned down in v0.2.0 work that was
   explicitly deferred.
-- **F-4 (architecture doc accuracy)**: `docs/ARCHITECTURE-v0.1.0-BETA.md`
+- **F-4 (architecture doc accuracy)**: The architecture doc's
   non-negotiable #9 was rewritten. The 90-day retention clause
   described a v0.2.0 server-side architecture that does not exist
   in v0.1.0-beta (Lens is local-only by default; opt-in telemetry
@@ -143,8 +143,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   reference) were also fixed. (commit `c826d31`, merged in
   `9f0881f`)
 - **4 missing docs (Yellow Argon pre-CWS)**: Added
-  `docs/THREAT-MODEL-v0.1.0-BETA.md` (the long-form threat model for
-  security auditors), `docs/MODEL-CARD.md` (Google Model Cards v1
+  the long-form threat model for
+  security auditors (now merged into the public `docs/THREAT-MODEL.md`),
+  `docs/MODEL-CARD.md` (Google Model Cards v1
   format, explicitly notes "no ML — deterministic pattern matching"),
   `docs/TERMS-OF-SERVICE.md`, and `docs/DPA-ADDENDUM.md`. (commit
   `03f98e3`)
@@ -250,13 +251,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   prompt content egress, no URLs, no page content, no user ID,
   opt-in by default, Apache 2.0 OSS, privacy policy published,
   no third-party runtime dependencies, etc.) are documented in
-  `docs/ARCHITECTURE-v0.1.0-BETA.md` and enforced in the build.
+  `docs/ARCHITECTURE-v0.1.3.md` and enforced in the build.
 - **Detection metrics (locked 2026-07-08)**: 98.99% recall on 5,930
   high-risk PII records across 5 public corpora. 7.40% FPR on
   30,000 real user prompts (OASST1 + ultrachat). 0.847ms p99
   per-keystroke latency. 6/6 headless smoke tests, 328/328 unit
   tests, 18/18 schema categories.
-- `docs/ARCHITECTURE-v0.1.0-BETA.md` — the binding architectural
+- `docs/ARCHITECTURE-v0.1.3.md` — the binding architectural
   spec.
 - `LICENSE` (Apache 2.0), `README.md`, `CHANGELOG.md`, `.gitignore`.
 

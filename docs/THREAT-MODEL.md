@@ -5,12 +5,7 @@
 **Audience:** Chrome Web Store reviewers, enterprise security buyers, third-party auditors, end users with security questions
 **Methodology:** STRIDE (Spoofing, Tampering, Repudiation, Information Disclosure, Denial of Service, Elevation of Privilege)
 
-This is the **public, Lens-specific** threat model. The full
-private version (which includes design rationale, test
-references, and a richer mitigation history) lives in
-`AegisGate Security, LLC`'s internal monorepo at
-`plans/AEGISGATE-LENS-THREAT-MODEL.md` and is available to
-enterprise customers under NDA.
+This is the **public, Lens-specific** threat model. A more detailed version with additional test references and mitigation history is available to enterprise customers under NDA.
 
 ## Purpose
 
@@ -45,8 +40,8 @@ verify the posture.
 - The detection logic itself — see
   `docs/MITRE-ATLAS-OWASP-MAPPING.md` (or, in the CWS listing,
   the "What it catches" section).
-- The Lens backend (Go) — owned by the AegisGate Platform
-  monorepo. Not shipped as part of the Lens extension.
+- The Lens backend (Go) — part of the AegisGate Platform
+  (separate repo). Not shipped as part of the Lens extension.
 - The browser's extension sandbox — owned by Chrome.
 - Third-party AI providers (ChatGPT, Claude, Gemini, etc.) —
   they have their own threat models. The Lens does not trust

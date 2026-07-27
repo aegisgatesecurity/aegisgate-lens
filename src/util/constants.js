@@ -83,7 +83,7 @@
 
   // === FP report reason codes ===
   // The 3 reason codes the user can pick when dismissing.
-  // These match the BANNER-DESIGN-SPEC.
+  // These match the banner design spec.
   var FP_REASON = Object.freeze({
     TEST_DATA: 'test_data',
     OWN_DATA: 'own_data',

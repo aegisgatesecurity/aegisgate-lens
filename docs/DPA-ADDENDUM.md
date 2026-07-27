@@ -211,8 +211,7 @@ telemetry data:
   breach notification SLA for any data incident.
 
 For the full security posture, see
-`docs/THREAT-MODEL-v0.1.0-BETA.md` and the published
-public summary at `docs/THREAT-MODEL.md`.
+the published public summary at `docs/THREAT-MODEL.md`.
 
 ## 10. Sub-processing, change of controller, etc.
 

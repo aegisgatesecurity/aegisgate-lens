@@ -5,7 +5,7 @@
 // v0.1.0-beta: 4 regex facets only. ML facets will be added in Step
 // 3h with lazy-load from the service worker.
 //
-// Per docs/ARCHITECTURE-v0.1.0-BETA.md Section 4 (the 6 detection
+// Per docs/ARCHITECTURE-v0.1.3.md Section 4 (the 6 detection
 // facets), each facet is an independent detection surface. The
 // dispatcher:
 //   1. Calls all 4 regex facets
@@ -18,7 +18,7 @@
 // IMPORTANT: This module is 100% local. No network calls. The
 // "Send & dismiss" opt-in path (in 3f's banner-ui.js) is the
 // only time any data is sent, and the user must explicitly
-// choose it. See docs/BANNER-DESIGN-SPEC-v0.1.0-BETA.md for the
+// choose it. See the banner design spec for the
 // full opt-in flow.
 //
 // Apache 2.0. Copyright 2026 AegisGate Security, LLC.

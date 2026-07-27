@@ -1,4 +1,4 @@
-# AegisGate Lens v0.1.0-beta — .gitignore
+# AegisGate Lens v0.1.4 — .gitignore
 #
 # Policy: this repo has ZERO third-party dependencies. No npm, no PyPI,
 # no Go modules in this repo. The vendored chromedp dep used by the E2E
@@ -156,3 +156,28 @@ smoke-report.json
 # v0.1.3 cleanup: moved to .plans/v0.2-burndown/
 docs/PHASE-0B-*
 docs/PHASE-6-*
+
+# --- OPSEC v0.1.4: private keys, internal docs, build artifacts ---
+# Private keys and certs MUST NOT be committed (rotated 2026-07-27)
+# The headless-smoke mock server generates self-signed TLS certs at
+# runtime in Go code (tools/headless-smoke/mock.go) — those are never
+# written to disk. The CWS screenshot mock had committed certs; those
+# have been removed and must never return.
+test/headless-smoke/mock/cws-screenshots/key.pem
+test/headless-smoke/mock/cws-screenshots/cert.pem
+keys/*.priv.pem
+keys/*.private.pem
+keys/*-private.key
+
+# Internal/operational docs (not for public repo)
+docs/FACTS.md
+docs/METRICS-v0.1.2.md
+docs/THREAT-MODEL-v0.1.0-BETA.md
+docs/ARCHITECTURE-v0.1.0-BETA.md
+docs/BANNER-DESIGN-SPEC-v0.1.0-BETA.md
+docs/A11Y-AUDIT-v0.1.0-BETA.md
+.github/RUNBOOK.md
+test/headless-smoke/STATUS.md
+
+# Build artifacts (built by CI, not committed)
+test/headless-smoke/mini-smoke-bin

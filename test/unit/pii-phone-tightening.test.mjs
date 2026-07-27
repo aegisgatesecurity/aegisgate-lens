@@ -2,7 +2,7 @@
 // AegisGate Lens - Unit test for pii_phone_intl_loose + _strict regex
 // changes (v0.1.3 follow-up to the H2 metrics re-verification).
 //
-// Per docs/METRICS-v0.1.2.md: pii_phone_intl_loose was 54.4% of all
+// Per the detection metrics: pii_phone_intl_loose was 54.4% of all
 // WildChat FPs. The fix: tighten the loose regex to exclude "." from
 // the inner char class (the worst backtracker) + add a strict pattern
 // that requires a phone-format separator (dash/space/parens).
