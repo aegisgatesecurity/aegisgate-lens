@@ -287,7 +287,7 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            lens_event_version: '0.1.0-beta',
+            lens_event_version: '0.2.0',
             timestamp: Math.floor(Date.now() / 1000),
             reports: reports
           }),
