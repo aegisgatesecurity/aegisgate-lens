@@ -165,17 +165,27 @@
   var LENS_VERSION = (C && C.STORAGE_SCHEMA_VERSION) || '0.1.1';
   var LAST_SEND_KEY = 'aegisgate_lens_last_fp_send';
 
-  // The backend endpoint. Default: the corporate Platform
-  // endpoint. Configurable via storage for self-hosted users.
-  // (The /lens/telemetry/fp-report endpoint is added to the
-  // Platform in a sibling change; until then, the SW attempts
-  // the send but the network may 404 — that's fine, the queue
-  // will retry next time.)
+  // The backend endpoint. Default: the Cloudflare Worker endpoint.
+  // Configurable via storage for self-hosted users who point their
+  // Lens extension at their own Platform instance.
   var DEFAULT_BACKEND = 'https://lens.aegisgatesecurity.io';
 
   function getBackend() {
     return storageGet('aegisgate_lens_backend_url').then(function (url) {
       return url || DEFAULT_BACKEND;
+    });
+  }
+
+  // Bearer token for Platform self-hosted users. The Cloudflare Worker
+  // (DEFAULT_BACKEND) does not require a bearer token; it uses
+  // Cloudflare-native rate limiting. But when the backend is a
+  // self-hosted Platform instance, the /api/v1/lens/* and /lens/*
+  // endpoints require Authorization: Bearer <token>.
+  var BEARER_TOKEN_KEY = 'aegisgate_lens_bearer_token';
+
+  function getBearerToken() {
+    return storageGet(BEARER_TOKEN_KEY).then(function (token) {
+      return token || '';
     });
   }
 
@@ -242,12 +252,14 @@
     return Promise.all([
       storageGet(FP_QUEUE_KEY),
       getBackend(),
-      getOptIn()
+      getOptIn(),
+      getBearerToken()
     ]).then(function (results) {
       var queue = results[0] || [];
       var backend = results[1];
       // v0.1.2 F-2: getOptIn now returns { enabled, lastChangedAt, lensVersion }.
       var optInState = results[2] || { enabled: false, lastChangedAt: null, lensVersion: null };
+      var bearerToken = results[3] || '';
       var optedIn = optInState.enabled === true;
       if (queue.length === 0) return { sent: 0, failed: 0 };
       if (!optedIn) {
@@ -258,7 +270,7 @@
           return { sent: 0, failed: 0, dropped: queue.length };
         });
       }
-      return sendToBackend(backend, queue).then(function (result) {
+      return sendToBackend(backend, queue, bearerToken).then(function (result) {
         if (result.success) {
           return storageSet(FP_QUEUE_KEY, []).then(function () {
             return storageSet(LAST_SEND_KEY, Date.now()).then(function () {
@@ -274,8 +286,11 @@
     });
   }
 
-  // Send a batch of reports to the backend
-  function sendToBackend(backend, reports) {
+  // Send a batch of reports to the backend. If bearerToken is
+  // non-empty, include it as an Authorization header (Platform
+  // self-hosted). The Cloudflare Worker (default backend) does
+  // not require a bearer token.
+  function sendToBackend(backend, reports, bearerToken) {
     return new Promise(function (resolve) {
       try {
         if (typeof fetch === 'undefined') {
@@ -283,9 +298,13 @@
           return;
         }
         var url = backend.replace(/\/+$/, '') + '/lens/telemetry/fp-report';
+        var headers = { 'Content-Type': 'application/json' };
+        if (bearerToken) {
+          headers['Authorization'] = 'Bearer ' + bearerToken;
+        }
         fetch(url, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: headers,
           body: JSON.stringify({
             lens_event_version: '0.2.0',
             timestamp: Math.floor(Date.now() / 1000),
