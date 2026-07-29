@@ -17,6 +17,10 @@ The Lens is pre-release as of 2026-06-18. Only the latest `0.1.x` minor version 
 
 Email: **security@aegisgatesecurity.io**
 
+You can also reach us on social media:
+- **X/Twitter**: [https://x.com/aegisgate](https://x.com/aegisgate)
+- **Mastodon**: [https://mastodon.social/@aegisgate](https://mastodon.social/@aegisgate)
+
 For sensitive disclosures, encrypt your report with our PGP key:
 
 ```

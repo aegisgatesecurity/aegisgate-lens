@@ -21,6 +21,8 @@ upgrade to the latest 0.2.x release.
 ## How to report a vulnerability
 
 **Email**: `security@aegisgatesecurity.io`
+**X/Twitter**: [https://x.com/aegisgate](https://x.com/aegisgate)
+**Mastodon**: [https://mastodon.social/@aegisgate](https://mastodon.social/@aegisgate)
 **PGP key**: see `aegisgatesecurity.io/.well-known/security.txt`
   (per RFC 9116)
 **Subject line prefix**: `[Lens Security]`

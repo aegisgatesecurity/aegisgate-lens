@@ -225,6 +225,12 @@ AegisGate Lens is the consumer-facing layer. The same team builds [AegisGate Pla
 - **Public benchmark dataset release**
 - **Third-party security audit** (Cure53 / Trail of Bits / NCC Group)
 
+## Community & Support
+
+- **X/Twitter**: [https://x.com/aegisgate](https://x.com/aegisgate)
+- **Mastodon**: [https://mastodon.social/@aegisgate](https://mastodon.social/@aegisgate)
+- **Email**: [support@aegisgatesecurity.io](mailto:support@aegisgatesecurity.io)
+
 ## License
 
 Apache 2.0. See [LICENSE](./LICENSE) for the full text.
@@ -237,7 +243,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 <div align="center">
 
-[🌐 AegisGate Security](https://aegisgatesecurity.io) · [✉️ support@aegisgatesecurity.io](mailto:support@aegisgatesecurity.io)
+[🌐 AegisGate Security](https://aegisgatesecurity.io) · [✉️ support@aegisgatesecurity.io](mailto:support@aegisgatesecurity.io) · [𝕏 @aegisgate](https://x.com/aegisgate) · [🐘 @aegisgate@mastodon.social](https://mastodon.social/@aegisgate)
 
 Made with 🖤 by AegisGate Security developers to secure the AI attack surface.
 
