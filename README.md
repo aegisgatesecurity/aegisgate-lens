@@ -16,10 +16,15 @@
 [![Patterns](https://img.shields.io/badge/patterns-151%20regex%20(4%20facets)-blue.svg)](#)
 [![Chrome 116+](https://img.shields.io/badge/chrome-116%2B-yellow.svg)](https://developer.chrome.com/docs/extensions/mv3)
 [![Zero npm](https://img.shields.io/badge/dependencies-zero-success.svg)](./docs/SECURITY.md)
+[![CodeQL](https://github.com/aegisgatesecurity/aegisgate-lens/actions/workflows/security.yml/badge.svg)](https://github.com/aegisgatesecurity/aegisgate-lens/actions/workflows/security.yml)
+[![Security Policy](https://img.shields.io/badge/security-RFC%209116-blue.svg)](./SECURITY.md)
+[![Dependabot](https://img.shields.io/badge/dependabot-enabled-green.svg)](https://github.com/aegisgatesecurity/aegisgate-lens/network/dependencies)
 
 [Install](#installation) · [How It Works](#how-it-works) · [Detection](#what-it-detects) · [Privacy](./docs/SECURITY.md) · [Architecture](./docs/ARCHITECTURE-v0.1.3.md) · [Releases](https://github.com/aegisgatesecurity/aegisgate-lens/releases)
 
 </div>
+
+> **We follow [GitHub's recommended security practices](https://securitylab.github.com/resources/five-easy-steps-to-secure-your-open-source-project/) for open source projects.** CodeQL scanning · Secret scanning with push protection · Dependabot alerts & security updates · Protected branches · RFC 9116 security policy · [Report a vulnerability →](./SECURITY.md)
 
 ---
 
