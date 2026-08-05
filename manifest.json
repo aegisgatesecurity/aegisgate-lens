@@ -108,5 +108,6 @@
   "content_security_policy": {
     "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
   },
-  "minimum_chrome_version": "116"
+  "minimum_chrome_version": "116",
+  "privacy_policy": "https://aegisgatesecurity.io/lens/privacy"
 }
