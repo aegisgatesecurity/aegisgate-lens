@@ -549,7 +549,7 @@
     try {
       log.info('installed: ' + details.reason);
       if (details.reason === 'install') {
-        chrome.tabs.create({ url: chrome.runtime.getURL('welcome/welcome.html') });
+        chrome.tabs.create({ url: chrome.runtime.getURL('src/welcome/welcome.html') });
       }
     } catch (e) {
       log.error('onInstalled handler threw', e);
