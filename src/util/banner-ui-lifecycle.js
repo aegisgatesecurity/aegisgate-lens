@@ -84,8 +84,14 @@
         return 'failed';  // tests: storage not available, skip primer
       }
       var area = null;
-      if (chrome.storage.session) area = chrome.storage.session;
-      else if (chrome.storage.local) area = chrome.storage.local;
+      // chrome.storage.session is only available in service workers, not
+      // content scripts. Accessing it in a content script throws
+      // "Access to storage is not allowed from this context". Try it
+      // first, fall back to chrome.storage.local on error.
+      try {
+        if (chrome.storage.session) area = chrome.storage.session;
+      } catch (e) { /* session storage not available in content scripts */ }
+      if (!area && chrome.storage.local) area = chrome.storage.local;
       if (!area) return 'failed';
       // Chrome storage API is callback-based; we use the sync-shim
       // pattern of checking last-set value via a module-level cache.
@@ -119,8 +125,10 @@
     try {
       if (typeof chrome === 'undefined' || !chrome.storage) return;
       var area = null;
-      if (chrome.storage.session) area = chrome.storage.session;
-      else if (chrome.storage.local) area = chrome.storage.local;
+      try {
+        if (chrome.storage.session) area = chrome.storage.session;
+      } catch (e) { /* session storage not available in content scripts */ }
+      if (!area && chrome.storage.local) area = chrome.storage.local;
       if (!area) return;
       area.set({ [KEY]: true }, function () {
         if (chrome.runtime && chrome.runtime.lastError) {
@@ -380,23 +388,15 @@
     }
     state.el.classList.remove('hidden');
 
-    // Attach the banner above the input
-    var input = opts.input || null;
-    if (input && input.parentNode) {
-      // If the banner is already inserted, remove it first
-      if (state.el.parentNode && state.el.parentNode !== input.parentNode) {
-        state.el.parentNode.removeChild(state.el);
-      }
-      if (state.el.parentNode !== input.parentNode) {
-        input.parentNode.insertBefore(state.el, input);
-      }
-      state.parentInput = input;
-    } else {
-      // No input provided; fall back to document.documentElement
-      if (state.el.parentNode !== document.documentElement) {
-        if (state.el.parentNode) state.el.parentNode.removeChild(state.el);
-        document.documentElement.appendChild(state.el);
-      }
+    // Attach the banner as a fixed overlay at the top of the viewport.
+    // Always insert into document.body to avoid being trapped inside
+    // provider page containers (flex layouts, transform ancestors, etc.)
+    // that break position:fixed positioning.
+    if (state.el.parentNode && state.el.parentNode !== document.body) {
+      state.el.parentNode.removeChild(state.el);
+    }
+    if (!state.el.parentNode) {
+      document.body.appendChild(state.el);
     }
     state.isVisible = true;
     // v0.1.1 item 21: auto-focus the banner so keyboard users can
