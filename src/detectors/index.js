@@ -1,19 +1,22 @@
 // AegisGate Lens — detectors/index.js
-// The 6-facet dispatcher. Aggregates PII + Secrets + XSS + Compliance
-// (regex facets) and (in 3h) Toxicity + Prompt-Injection (ML facets).
+// The 5-facet dispatcher. Aggregates PII + Secrets + XSS + Compliance
+// (regex facets) and ML Threat Detection (ONNX WASM facet).
 //
-// v0.1.0-beta: 4 regex facets only. ML facets will be added in Step
-// 3h with lazy-load from the service worker.
+// v0.3.0: 4 regex facets + 1 ML facet (Char CNN-BiLSTM via ONNX Runtime Web).
+// The ML facet runs asynchronously; regex facets run synchronously.
+// If the ML model fails to load or inference times out, the dispatcher
+// falls back to regex-only detection.
 //
-// Per docs/ARCHITECTURE-v0.1.3.md Section 4 (the 6 detection
+// Per docs/ARCHITECTURE-v0.1.3.md Section 4 (the detection
 // facets), each facet is an independent detection surface. The
 // dispatcher:
-//   1. Calls all 4 regex facets
-//   2. Validates each match with privacy/schema.js
-//   3. Deduplicates by category (multiple matches of the same
+//   1. Calls all 4 regex facets (synchronous)
+//   2. Calls the ML facet (async, lazy-loaded)
+//   3. Validates each match with privacy/schema.js
+//   4. Deduplicates by category (multiple matches of the same
 //      category become 1 event with count=N)
-//   4. Sorts by severity (critical first)
-//   5. Returns a structured DetectionResult object
+//   5. Sorts by severity (critical first)
+//   6. Returns a structured DetectionResult object
 //
 // IMPORTANT: This module is 100% local. No network calls. The
 // "Send & dismiss" opt-in path (in 3f's banner-ui.js) is the
@@ -35,8 +38,8 @@
   // Severity order for sorting (lower = more severe)
   var SEVERITY_ORDER = { critical: 0, high: 1, medium: 2, low: 3 };
 
-  // The 4 regex facets. Each is loaded from globalThis (set by the
-  // content_scripts load order in manifest.json).
+  // The 4 regex facets + 1 ML facet. Each is loaded from globalThis
+  // (set by the content_scripts load order in manifest.json).
   function getFacets() {
     var facets = [];
 
@@ -65,6 +68,17 @@
     }
 
     return facets;
+  }
+
+  // Get the ML threat detector module (loaded from globalThis).
+  function getMLDetector() {
+    if (typeof self !== 'undefined' && self.__lensThreatDetector) {
+      return self.__lensThreatDetector;
+    }
+    if (typeof globalThis !== 'undefined' && globalThis.__lensThreatDetector) {
+      return globalThis.__lensThreatDetector;
+    }
+    return null;
   }
 
   // Get the schema module (for validateEvent).
@@ -145,15 +159,11 @@
     return byCategory;
   }
 
-  // Run detection on a text string. Returns a DetectionResult.
-  //
-  // DetectionResult {
-  //   text: string,             // the input text (NOT modified)
-  //   hasDetections: boolean,
-  //   count: number,            // total detection count
-  //   maxSeverity: 'critical' | 'high' | 'medium' | 'low' | null,
-  //   events: [DetectionEvent]  // sorted by severity, critical first
-  // }
+  // Run detection on a text string. Synchronous — regex facets only.
+  // The ML facet is async and must be called separately via detectAsync().
+  // This is intentional: the content script's MutationObserver path needs
+  // synchronous detection for real-time banner updates. The ML facet
+  // runs on a separate async path and updates the banner when ready.
   function detect(text) {
     if (typeof text !== 'string') text = '';
     var result = {
@@ -167,12 +177,11 @@
     if (text.length === 0) return result;
 
     var facets = getFacets();
+    var schemaModule = getSchema();
     if (facets.length === 0) {
       log.error('dispatcher: no regex facets available; cannot detect');
       return result;
     }
-
-    var schemaModule = getSchema();
     if (!schemaModule) {
       log.error('dispatcher: schema module not available; cannot validate events');
       return result;
@@ -192,9 +201,6 @@
           if (event) result.events.push(event);
         }
       } catch (err) {
-        // Per lesson K: a broken facet should not break the
-        // whole dispatcher. Log the error and continue with
-        // the other facets.
         log.error('facet ' + facet.id + ' threw in detect()', err);
       }
     }
@@ -228,6 +234,85 @@
     return result;
   }
 
+  // Run detection with regex + ML facets. Returns a Promise<DetectionResult>.
+  // If ML inference fails or times out, falls back to regex-only detection.
+  // Use this when you want the full detection including the ML model.
+  // The synchronous detect() only runs regex facets.
+  async function detectAsync(text) {
+    // Start with regex results (synchronous)
+    var result = detect(text);
+
+    // Run ML facet (async, lazy-loaded, graceful fallback)
+    var mlDetector = getMLDetector();
+    if (mlDetector && typeof mlDetector.classify === 'function') {
+      try {
+        var mlResult = await mlDetector.classify(text);
+        if (mlResult && mlResult.isAdversarial) {
+          // ML detected a threat — add as a detection event
+          var mlEvent = buildEvent(
+            'ml_threat',
+            'ml_adversarial_prompt',
+            'high',
+            [{ value: text.substring(0, 50), index: 0, severity: 'high', confidence: mlResult.score }],
+            getSchema()
+          );
+          if (mlEvent) {
+            mlEvent.ml_score = mlResult.score;
+            mlEvent.ml_model_version = 'char-cnn-bilstm-v4.0';
+            mlEvent.confidence = mlResult.score;
+            result.events.push(mlEvent);
+          }
+        } else if (mlResult && mlResult.score > 0.3 && !result.hasDetections) {
+          // ML score is elevated but below threshold — add as low-severity signal
+          var lowEvent = buildEvent(
+            'ml_threat',
+            'ml_suspicious_prompt',
+            'low',
+            [{ value: text.substring(0, 50), index: 0, severity: 'low', confidence: mlResult.score }],
+            getSchema()
+          );
+          if (lowEvent) {
+            lowEvent.ml_score = mlResult.score;
+            lowEvent.ml_model_version = 'char-cnn-bilstm-v4.0';
+            lowEvent.confidence = mlResult.score;
+            result.events.push(lowEvent);
+          }
+        }
+      } catch (mlErr) {
+        // ML failure must never break the dispatcher. Log and continue
+        // with regex-only results.
+        log.warn('ML threat detection failed (falling back to regex-only): ' +
+                  (mlErr && mlErr.message ? mlErr.message : String(mlErr)));
+      }
+    }
+
+    // Re-sort with ML events included
+    result.events.sort(function (a, b) {
+      var rankA = (typeof SEVERITY_ORDER[a.severity] === 'number') ? SEVERITY_ORDER[a.severity] : 99;
+      var rankB = (typeof SEVERITY_ORDER[b.severity] === 'number') ? SEVERITY_ORDER[b.severity] : 99;
+      var sevDiff = rankA - rankB;
+      if (sevDiff !== 0) return sevDiff;
+      return b.count - a.count;
+    });
+
+    // Recompute summary
+    result.hasDetections = result.events.length > 0;
+    result.count = 0;
+    result.maxSeverity = null;
+    var maxSevRank = 99;
+    for (var k = 0; k < result.events.length; k++) {
+      result.count += result.events[k].count;
+      var rank = (typeof SEVERITY_ORDER[result.events[k].severity] === 'number')
+        ? SEVERITY_ORDER[result.events[k].severity] : 99;
+      if (rank < maxSevRank) {
+        maxSevRank = rank;
+        result.maxSeverity = result.events[k].severity;
+      }
+    }
+
+    return result;
+  }
+
   // For testing: list the loaded facets (so we can assert all 4
   // are present in a healthy state)
   function listFacets() {
@@ -239,6 +324,7 @@
 
   var module = {
     detect: detect,
+    detectAsync: detectAsync,
     listFacets: listFacets,
     EXPECTED_FACETS: EXPECTED_FACETS,
     SEVERITY_ORDER: SEVERITY_ORDER,
