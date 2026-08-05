@@ -44,6 +44,7 @@
         "https://meta.ai/*"
       ],
       "js": [
+        "vendor/onnxruntime-web/ort.min.js",
         "src/util/logger.js",
         "src/detectors/luhn.js",
         "src/detectors/regex/pii.js",
@@ -52,6 +53,8 @@
         "src/detectors/regex/compliance.js",
         "src/privacy/schema.js",
         "src/privacy/domain_hash.js",
+        "src/detectors/ml/char-normalizer.js",
+        "src/detectors/ml/threat-detector.js",
         "src/detectors/index.js",
         "src/util/selectors.js",
         "src/util/prompt-detect.js",
@@ -78,7 +81,11 @@
         "src/util/banner.css",
         "src/icons/banner-1x.png",
         "src/icons/banner-2x.png",
-        "src/icons/banner-3x.png"
+        "src/icons/banner-3x.png",
+        "models/threat_cnn_bilstm_int8.onnx",
+        "vendor/onnxruntime-web/ort.min.js",
+        "vendor/onnxruntime-web/ort-wasm-simd.wasm",
+        "vendor/onnxruntime-web/ort-wasm.wasm"
       ],
       "matches": [
         "<all_urls>"

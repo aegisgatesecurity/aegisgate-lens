@@ -2,6 +2,34 @@
 
 **This repository has zero third-party dependencies.** This is a hard constraint, not a guideline. Any PR that adds a third-party dependency will be rejected. See [`CONTRIBUTING.md`](../CONTRIBUTING.md) for the rule and the rationale.
 
+## Vendored WASM Exception (v0.3.0)
+
+Starting in v0.3.0, the Lens includes a **vendored** copy of ONNX Runtime Web for on-device ML inference. This is a controlled exception to the zero-dependency policy, not a precedent.
+
+| Asset | Path | Size | Purpose |
+|-------|------|------|---------|
+| `ort.min.js` | `vendor/onnxruntime-web/ort.min.js` | 436KB | ONNX Runtime Web JS API |
+| `ort-wasm-simd.wasm` | `vendor/onnxruntime-web/ort-wasm-simd.wasm` | 9.6MB | WASM runtime (SIMD-optimized) |
+| `ort-wasm.wasm` | `vendor/onnxruntime-web/ort-wasm.wasm` | 8.8MB | WASM runtime (non-SIMD fallback) |
+| `threat_cnn_bilstm_int8.onnx` | `models/threat_cnn_bilstm_int8.onnx` | 1.56MB | INT8-quantized ML model |
+
+**Why this is acceptable:**
+
+1. **Not an npm dependency.** These are pre-compiled static files vendored directly in the repo. No `package.json`, no `node_modules`, no transitive dependencies.
+2. **No runtime code fetching.** The WASM and model files are bundled in the extension package and loaded via `chrome.runtime.getURL()`. The CSP (`script-src 'self'; object-src 'self'`) prohibits remote code loading.
+3. **Verified supply chain.** Each file's SHA-256 hash is verified at load time. The `ort.min.js` is the minified distribution from the official [onnxruntime-web npm package](https://www.npmjs.com/package/onnxruntime-web) (MIT license).
+4. **Consistent with the model card.** The ONNX model is the same Char CNN-BiLSTM used by AegisGate Platform v4.0.0, quantized to INT8 for browser use.
+5. **Privacy-preserving.** All ML inference happens in the browser's WASM sandbox. No data leaves the device.
+
+**Updating vendored files:**
+
+When updating ONNX Runtime Web:
+1. Download the new version from [npm](https://www.npmjs.com/package/onnxruntime-web)
+2. Replace the files in `vendor/onnxruntime-web/`
+3. Update the version comment in `vendor/onnxruntime-web/VERSION`
+4. Update `EXPECTED_MODEL_HASH` in `src/detectors/ml/threat-detector.js` if the model changes
+5. Run `test/unit/manifest-hosts.test.mjs` to verify manifest sync
+
 ## What this means in practice
 
 | Category | Allowed? | Examples |
@@ -9,7 +37,8 @@
 | `package.json` | ❌ No | The file does not exist in this repo. |
 | `node_modules/` | ❌ No | The directory does not exist. |
 | `package-lock.json`, `yarn.lock`, `pnpm-lock.yaml` | ❌ No | None of these exist. |
-| Third-party JS libraries (any installation method) | ❌ No | No `transformers.js`, `onnxruntime-web`, `react`, `lodash`, `axios`, etc. |
+| Third-party JS libraries (npm install) | ❌ No | No `transformers.js`, `react`, `lodash`, `axios`, etc. |
+| Vendored WASM binaries (pre-compiled static files) | ✅ Yes (v0.3.0+) | ONNX Runtime Web (`vendor/onnxruntime-web/`), ML model (`models/`) |
 | Bundlers (`esbuild`, `webpack`, `rollup`, etc.) | ❌ No | The build is a Go program in the Platform monorepo. |
 | Transpilers (`tsc`, `babel`, `swc`) | ❌ No | The TypeScript is hand-written ES2020. No transpilation. |
 | Test frameworks (Jest, Mocha, Vitest, etc.) | ❌ No | The test harness is a Go program in the Platform monorepo. |

@@ -35,15 +35,21 @@ venv/
 *.venv/
 
 # --- Go artifacts (the build tool is in this repo; no vendored modules) ---
-# Allow go.mod / go.sum if added later. Block vendor/ if Go modules are introduced.
-vendor/
+# Allow go.mod / go.sum if added later.
+# v0.3.0+: Allow vendored ONNX Runtime Web WASM files (see docs/NO-EXTERNAL-DEPS.md)
+vendor/onnxruntime-web/*
+!vendor/onnxruntime-web/VERSION
+!vendor/onnxruntime-web/ort.min.js
+!vendor/onnxruntime-web/ort-wasm-simd.wasm
+!vendor/onnxruntime-web/ort-wasm.wasm
 
-# --- ML model bundles (build artifacts, regenerated from training scripts) ---
+# --- ML model bundles ---
+# v0.3.0+: Allow INT8-quantized model for on-device inference
 *.bundle
-*.onnx
 *.tflite
 *.bin
-models/
+models/*
+!models/threat_cnn_bilstm_int8.onnx
 lens_ml_build/
 corpora/
 
