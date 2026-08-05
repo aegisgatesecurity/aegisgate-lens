@@ -149,15 +149,17 @@
       id: 'meta_ai',
       name: 'Meta AI',
       hosts: ['meta.ai', 'www.meta.ai'],
-      // ⚠️ UNVERIFIED SELECTORS — Meta AI may require authentication.
-      // These selectors are based on common DOM patterns for AI chat
-      // providers and NEED LIVE VALIDATION before shipping.
-      // The fallback findInput() may still work even if these are wrong.
-      inputSelector: 'div[contenteditable="true"][class*="prompt"], div[contenteditable="true"][data-testid*="prompt"], div[contenteditable="true"][aria-label*="message" i], div[contenteditable="true"][role="textbox"]',
-      sendSelector: 'button[aria-label*="Send" i], button[aria-label*="Submit" i], div[role="button"][aria-label*="Send" i]',
-      containerSelector: 'div[class*="prompt"], div[class*="composer"], div[role="form"]',
+      // ✅ VERIFIED — Live-tested on meta.ai (2026-08-05).
+      // Input is <input type="text"> with aria-label, NOT contenteditable.
+      // Send button enables when text entered. Enter key also submits.
+      // No <form> wrapper; parent divs use Tailwind utility classes.
+      // Input is a regular <input type="text">, NOT contenteditable.
+      // No <form> wrapper; container uses Tailwind utility classes.
+      inputSelector: 'input[type="text"][aria-label*="Ask" i], input[aria-label="Ask Meta AI"], input[placeholder*="Ask" i]',
+      sendSelector: 'button[aria-label="Send"]',
+      containerSelector: 'div[class*="backdrop-blur"]',
       submitMethod: 'enter',
-      isContentEditable: true,
+      isContentEditable: false,
       version: '2026-08'
     },
   ];
