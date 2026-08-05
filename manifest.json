@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "AegisGate Lens",
-  "version": "0.2.0",
-  "description": "Privacy-first browser extension that detects prompt injection, PII, secrets, and toxicity before they reach AI tools. No prompt content ever leaves your browser. Apache 2.0.",
+  "version": "0.3.0",
+  "description": "Privacy-first browser extension that detects prompt injection, PII, secrets, and adversarial attacks before they reach AI tools. On-device ML detection with zero network egress. Apache 2.0.",
   "author": "AegisGate Security, LLC",
   "homepage_url": "https://aegisgatesecurity.io/lens",
   "icons": {
@@ -38,7 +38,10 @@
         "https://grok.com/*",
         "https://www.grok.com/*",
         "https://chat.mistral.ai/*",
-        "https://le-chat.mistral.ai/*"
+        "https://le-chat.mistral.ai/*",
+        "https://chat.deepseek.com/*",
+        "https://www.meta.ai/*",
+        "https://meta.ai/*"
       ],
       "js": [
         "src/util/logger.js",

@@ -290,15 +290,15 @@ test('e2e/source: no dynamic innerHTML usage outside banner-ui.js (CSP check)', 
   }
 });
 
-// --- Test 4: 8 providers in selectors.js all have manifest coverage ---
+// --- Test 4: 10 providers in selectors.js all have manifest coverage ---
 
-test('e2e/providers: all 8 providers from the spec have selectors', () => {
-  // Per the spec: 8 AI providers
-  const expectedProviders = ['chatgpt', 'claude', 'gemini', 'copilot', 'perplexity', 'duck_ai', 'grok', 'mistral'];
+test('e2e/providers: all 10 providers from the spec have selectors', () => {
+  // Per the spec: 10 AI providers (v0.3.0 adds DeepSeek + Meta AI)
+  const expectedProviders = ['chatgpt', 'claude', 'gemini', 'copilot', 'perplexity', 'duck_ai', 'grok', 'mistral', 'deepseek', 'meta_ai'];
   const selectors = read('src/util/selectors.js');
   for (const p of expectedProviders) {
     assert.match(selectors, new RegExp("id:\\s*'" + p + "'"),
-      `provider "${p}" not in selectors.js (should be 1 of 8 per the spec)`);
+      `provider "${p}" not in selectors.js (should be 1 of 10 per the spec)`);
   }
 });
 

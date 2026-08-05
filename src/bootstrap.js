@@ -42,7 +42,7 @@
     { name: '__lensSchema',      file: 'privacy/schema.js',         dependsOn: [],                  summary: 'Privacy event schema + validation (for opt-in telemetry payloads)' },
     { name: '__lensDomainHash',  file: 'privacy/domain_hash.js',    dependsOn: ['__lensSchema'],    summary: 'Domain hashing for opt-in telemetry (one-way, salt-rotated)' },
     { name: '__lensDispatcher',  file: 'detectors/index.js',        dependsOn: ['__lensPII', '__lensSecrets', '__lensXSS', '__lensCompliance'], summary: '4-facet dispatcher: runs all 4 detectors and merges events' },
-    { name: '__lensSelectors',   file: 'util/selectors.js',         dependsOn: [],                  summary: 'Provider-specific DOM selectors (8 providers) + identify/findInput/setInputValue/findSendButton' },
+    { name: '__lensSelectors',   file: 'util/selectors.js',         dependsOn: [],                  summary: 'Provider-specific DOM selectors (10 providers) + identify/findInput/setInputValue/findSendButton' },
     { name: '__lensPromptDetect',file: 'util/prompt-detect.js',     dependsOn: ['__lensConstants', '__lensDispatcher', '__lensSelectors', '__lensLogger'], summary: 'Per-keystroke orchestrator: 250ms debounce, redact dispatch, event broadcasting' },
     { name: '__lensBannerIcons', file: 'util/banner-icons.js',      dependsOn: [],                  summary: 'Inline SVG icon strings (shield, close, help, chevronDown)' },
     { name: '__lensDismiss',     file: 'util/dismiss.js',           dependsOn: ['__lensConstants', '__lensSchema'], summary: 'Per-session FP dismissal state (24h TTL, opt-in FP reports)' },
@@ -112,7 +112,7 @@
       MODULE_REGISTRY: MODULE_REGISTRY,
       whenReady: whenReady,
       verify: verify,
-      version: '0.2.0'
+      version: '0.3.0'
     };
   }
 })(typeof self !== 'undefined' ? self : (typeof globalThis !== 'undefined' ? globalThis : this));

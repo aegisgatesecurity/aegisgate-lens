@@ -130,6 +130,34 @@
       isContentEditable: false,
       version: '2026-07'
     },
+    {
+      id: 'deepseek',
+      name: 'DeepSeek',
+      hosts: ['chat.deepseek.com'],
+      // DeepSeek: textarea in the chat composer area.
+      // The input is a textarea with id "chat-input" or a contenteditable
+      // div. The send button is an SVG arrow icon inside a button.
+      inputSelector: 'textarea#chat-input, div[contenteditable="true"][class*="input"], textarea[placeholder*="Ask" i], textarea[placeholder*="message" i]',
+      sendSelector: 'button[aria-label*="Send" i], div[class*="send"] button, button[class*="send"]',
+      containerSelector: 'div[class*="chat-input"], div[class*="input-container"], form',
+      submitMethod: 'enter',
+      isContentEditable: true,
+      version: '2026-08'
+    },
+    {
+      id: 'meta_ai',
+      name: 'Meta AI',
+      hosts: ['meta.ai', 'www.meta.ai'],
+      // Meta AI: contenteditable div in the composer area.
+      // The input is a contenteditable div inside a prompt container.
+      // Submit is via Enter key or a send button with an SVG arrow.
+      inputSelector: 'div[contenteditable="true"][class*="prompt"], div[contenteditable="true"][data-testid*="prompt"], div[contenteditable="true"][aria-label*="message" i], div[contenteditable="true"][role="textbox"]',
+      sendSelector: 'button[aria-label*="Send" i], button[aria-label*="Submit" i], div[role="button"][aria-label*="Send" i]',
+      containerSelector: 'div[class*="prompt"], div[class*="composer"], div[role="form"]',
+      submitMethod: 'enter',
+      isContentEditable: true,
+      version: '2026-08'
+    },
   ];
 
   // Identify which provider matches the current page.

@@ -79,7 +79,7 @@
 
   // Schema version stamped into the dismissals storage record
   // so future migrations can detect old payloads.
-  var STORAGE_SCHEMA_VERSION = '0.2.0';
+  var STORAGE_SCHEMA_VERSION = '0.3.0';
 
   // === FP report reason codes ===
   // The 3 reason codes the user can pick when dismissing.
