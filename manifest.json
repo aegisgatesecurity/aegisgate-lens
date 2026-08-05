@@ -88,9 +88,13 @@
     {
       "resources": [
         "src/util/banner.css",
+        "util/banner.css",
         "src/icons/banner-1x.png",
         "src/icons/banner-2x.png",
         "src/icons/banner-3x.png",
+        "icons/banner-1x.png",
+        "icons/banner-2x.png",
+        "icons/banner-3x.png",
         "models/threat_cnn_bilstm.onnx",
         "vendor/onnxruntime-web/ort.min.js",
         "vendor/onnxruntime-web/ort-wasm-simd.wasm",
