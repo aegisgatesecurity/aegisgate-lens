@@ -134,15 +134,16 @@
       id: 'deepseek',
       name: 'DeepSeek',
       hosts: ['chat.deepseek.com'],
-      // ⚠️ UNVERIFIED SELECTORS — DeepSeek requires authentication to access
-      // the chat interface. These selectors are based on common DOM patterns
-      // for AI chat providers and NEED LIVE VALIDATION before shipping.
-      // The fallback findInput() may still work even if these are wrong.
-      inputSelector: 'textarea#chat-input, div[contenteditable="true"][class*="input"], textarea[placeholder*="Ask" i], textarea[placeholder*="message" i]',
-      sendSelector: 'button[aria-label*="Send" i], div[class*="send"] button, button[class*="send"]',
-      containerSelector: 'div[class*="chat-input"], div[class*="input-container"], form',
+      // ✅ VERIFIED — Live-tested on chat.deepseek.com (2026-08-05).
+      // Input is <textarea> with placeholder, no id, no aria-label.
+      // Send is <div role="button"> with ds-button classes, no aria-label.
+      // CSS classes are hashed (CSS modules) — use role/placeholder selectors.
+      // Enter key submits; send button has ds-button--disabled when empty.
+      inputSelector: 'textarea[placeholder*="Message DeepSeek" i], textarea[placeholder*="Message" i]',
+      sendSelector: 'div[role="button"].ds-button--primary.ds-button--filled',
+      containerSelector: 'div[class*="scroll-area"], textarea[placeholder*="Message" i]',
       submitMethod: 'enter',
-      isContentEditable: true,
+      isContentEditable: false,
       version: '2026-08'
     },
     {
