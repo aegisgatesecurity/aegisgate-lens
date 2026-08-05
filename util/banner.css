@@ -1,0 +1,579 @@
+/* AegisGate Lens — util/banner.css
+ * Brand-matched banner styles. Per the banner design spec,
+ * the colors are lifted directly from the corporate site
+ * (themes/aegisgate/assets/css/main.css).
+ *
+ * All rules are prefixed with [data-aegisgate-lens="banner"] so
+ * the page's CSS does not affect us. Critical rules use
+ * !important to defend against hostile page CSS.
+ *
+ * Apache 2.0. Copyright 2026 AegisGate Security, LLC.
+ */
+
+[data-aegisgate-lens="banner"] {
+  /* Brand tokens - exact match to corporate website colors */
+  --lens-bg-primary: #0a0c10;       /* Deep midnight black-blue */
+  --lens-bg-secondary: #11141d;     /* Subtle lift for cards */
+  --lens-bg-tertiary: #1a1f2e;      /* Elevated surfaces */
+  --lens-primary: #38bdf8;          /* Sophisticated Cyan (Less electric, more steel) */
+  --lens-primary-hover: #00c4ec;    /* Hover state for buttons */
+  --lens-primary-glow: rgba(56, 189, 248, 0.15);
+  --lens-secondary: #10b981;        /* Emerald for success/safety */
+  --lens-accent: #f43f5e;           /* Rose for critical warnings */
+  --lens-text-primary: #f8fafc;     /* Pure, clean white-grey */
+  --lens-text-secondary: #94a3b8;   /* Muted slate for a sophisticated look */
+  --lens-text-muted: #64748b;       /* Deep slate for low-priority info */
+  --lens-border-color: rgba(51, 65, 85, 0.5); /* Transparent borders for glass effect */
+  --lens-glass-bg: rgba(17, 20, 29, 0.7);   /* Semi-transparent backdrop */
+  --lens-radius-sm: 6px;
+  --lens-radius-md: 12px;
+  --lens-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+               Helvetica, Arial, sans-serif;
+
+  /* Layout - Fixed positioning at top of viewport */
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 2147483647 !important;        /* BANNER_Z_INDEX from src/util/constants.js (max 32-bit signed int) */
+  display: block !important;
+  box-sizing: border-box !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  font-family: var(--lens-font) !important;
+  font-size: 13px !important;
+  line-height: 1.45 !important;
+  color: var(--lens-text-primary) !important;
+  background: var(--lens-glass-bg) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  border: 1px solid var(--lens-border-color) !important;
+  border-radius: var(--lens-radius-md) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4) !important;
+  animation: lens-fade-in 200ms ease-out !important;
+  text-align: left !important;
+}
+
+@keyframes lens-fade-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes lens-fade-out {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(-4px); }
+}
+
+[data-aegisgate-lens="banner"].lens-hiding {
+  animation: lens-fade-out 200ms ease-in !important;
+  opacity: 0 !important;
+}
+
+/* ---- Header ---- */
+
+[data-aegisgate-lens="banner"] .lens-header {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 10px 14px !important;
+  border-bottom: 1px solid var(--lens-border-color) !important;
+}
+
+[data-aegisgate-lens="banner"] .lens-logo {
+  height: 24px !important;
+  width: auto !important;
+  flex-shrink: 0 !important;
+}
+
+[data-aegisgate-lens="banner"] .lens-wordmark {
+  font-weight: 700 !important;
+  font-size: 12px !important;
+  letter-spacing: 0.01em !important;
+  color: var(--lens-text-primary) !important;
+  flex-shrink: 0 !important;
+}
+
+[data-aegisgate-lens="banner"] .lens-count {
+  flex: 1 !important;
+  font-size: 12px !important;
+  color: var(--lens-text-secondary) !important;
+  padding-left: 4px !important;
+}
+
+[data-aegisgate-lens="banner"] .lens-header-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  flex-shrink: 0 !important;
+}
+
+[data-aegisgate-lens="banner"] .lens-icon-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 22px !important;
+  height: 22px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: var(--lens-radius-sm) !important;
+  color: var(--lens-text-secondary) !important;
+  cursor: pointer !important;
+  font-size: 14px !important;
+  line-height: 1 !important;
+}
+
+[data-aegisgate-lens="banner"] .lens-icon-btn:hover {
+  background: rgba(56, 189, 248, 0.1) !important;
+  color: var(--lens-text-primary) !important;
+}
+
+[data-aegisgate-lens="banner"] .lens-icon-btn svg {
+  width: 14px !important;
+  height: 14px !important;
+}
+
+/* ---- Detection list ---- */
+
+[data-aegisgate-lens="banner"] .lens-list {
+  padding: 4px 0 !important;
+  max-height: 240px !important;
+  overflow-y: auto !important;
+}
+
+[data-aegisgate-lens="banner"] .lens-item {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 6px 14px !important;
+  border-left: 3px solid transparent !important;
+  font-size: 12px !important;
+  color: var(--lens-text-primary) !important;
+}
+
+[data-aegisgate-lens="banner"] .lens-item-critical { border-left-color: var(--lens-accent) !important; }
+[data-aegisgate-lens="banner"] .lens-item-high     { border-left-color: var(--lens-amber) !important; }
+[data-aegisgate-lens="banner"] .lens-item-medium   { border-left-color: var(--lens-primary) !important; }
+[data-aegisgate-lens="banner"] .lens-item-low      { border-left-color: var(--lens-text-muted) !important; }
+
+[data-aegisgate-lens="banner"] .lens-item-category {
+  flex: 1 !important;
+  font-weight: 500 !important;
+  text-transform: capitalize !important;
+}
+
+[data-aegisgate-lens="banner"] .lens-pill {
+  display: inline-block !important;
+  padding: 1px 6px !important;
+  border-radius: 4px !important;
+  font-size: 9px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.04em !important;
+  text-transform: uppercase !important;
+  line-height: 1.4 !important;
+  flex-shrink: 0 !important;
+}
+
+[data-aegisgate-lens="banner"] .lens-pill-critical {
+  background: rgba(244, 63, 94, 0.15) !important;
+  color: var(--lens-accent) !important;
+}
+[data-aegisgate-lens="banner"] .lens-pill-high {
+  background: rgba(255, 189, 46, 0.15) !important;
+  color: var(--lens-amber) !important;
+}
+[data-aegisgate-lens="banner"] .lens-pill-medium {
+  background: rgba(56, 189, 248, 0.15) !important;
+  color: var(--lens-primary) !important;
+}
+[data-aegisgate-lens="banner"] .lens-pill-low {
+  background: rgba(100, 116, 139, 0.15) !important;
+  color: var(--lens-text-muted) !important;
+}
+
+[data-aegisgate-lens="banner"] .lens-item-match {
+  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace !important;
+  font-size: 11px !important;
+  color: var(--lens-text-muted) !important;
+  flex-shrink: 0 !important;
+  max-width: 140px !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  direction: ltr !important;
+}
+
+/* ---- Privacy footer ---- */
+
+[data-aegisgate-lens="banner"] .lens-privacy {
+  padding: 8px 14px !important;
+  background: rgba(0, 0, 0, 0.2) !important;
+  border-top: 1px solid var(--lens-border-color) !important;
+  font-size: 11px !important;
+  line-height: 1.5 !important;
+  color: var(--lens-text-secondary) !important;
+}
+
+[data-aegisgate-lens="banner"] .lens-privacy strong {
+  color: var(--lens-text-primary) !important;
+  font-weight: 600 !important;
+}
+
+[data-aegisgate-lens="banner"] .lens-privacy a {
+  color: var(--lens-primary) !important;
+  text-decoration: none !important;
+}
+
+/* Platform CTA - drives TOFU traffic from the free Lens to the paid Platform. */
+[data-aegisgate-lens="banner"] .lens-platform-cta {
+  display: block !important;
+  margin: 12px 16px !important;
+  padding: 10px 14px !important;
+  background: var(--lens-primary-glow) !important;
+  border: 1px solid var(--lens-primary) !important;
+  border-radius: var(--lens-radius-sm) !important;
+  color: var(--lens-primary) !important;
+  font-size: 13px !important;
+  text-decoration: none !important;
+  text-align: center !important;
+  font-weight: 500 !important;
+  transition: all 0.15s ease !important;
+}
+[data-aegisgate-lens="banner"] .lens-platform-cta:hover {
+  background: var(--lens-primary) !important;
+  color: var(--lens-bg-primary) !important;
+}
+[data-aegisgate-lens="banner"] .lens-platform-cta strong {
+  font-weight: 700 !important;
+}
+
+[data-aegisgate-lens="banner"] .lens-privacy a:hover {
+  text-decoration: underline !important;
+}
+
+/* ---- Action row ---- */
+
+[data-aegisgate-lens="banner"] .lens-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 10px 14px !important;
+  border-top: 1px solid var(--lens-border-color) !important;
+  background: rgba(0, 0, 0, 0.15) !important;
+}
+
+[data-aegisgate-lens="banner"] .lens-btn {
+  display: inline-block !important;
+  padding: 5px 12px !important;
+  border-radius: var(--lens-radius-sm) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  border: none !important;
+  line-height: 1.4 !important;
+  text-align: center !important;
+}
+
+[data-aegisgate-lens="banner"] .lens-btn-secondary {
+  background: var(--lens-bg-tertiary) !important;
+  color: var(--lens-text-primary) !important;
+  border: 1px solid var(--lens-border-color) !important;
+}
+[data-aegisgate-lens="banner"] .lens-btn-secondary:hover {
+  background: var(--lens-border-color) !important;
+}
+
+[data-aegisgate-lens="banner"] .lens-btn-primary {
+  background: var(--lens-primary) !important;
+  color: var(--lens-bg-primary) !important;
+}
+[data-aegisgate-lens="banner"] .lens-btn-primary:hover {
+  background: var(--lens-primary-hover) !important;
+}
+
+[data-aegisgate-lens="banner"] .lens-btn-ghost {
+  background: transparent !important;
+  color: var(--lens-text-secondary) !important;
+  padding: 5px 10px !important;
+}
+[data-aegisgate-lens="banner"] .lens-btn-ghost:hover {
+  color: var(--lens-text-primary) !important;
+}
+
+[data-aegisgate-lens="banner"] .lens-false-positive-link {
+  margin-left: auto !important;
+  font-size: 11px !important;
+  color: var(--lens-text-muted) !important;
+  background: transparent !important;
+  border: none !important;
+  cursor: pointer !important;
+  padding: 4px 8px !important;
+  border-radius: var(--lens-radius-sm) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+}
+[data-aegisgate-lens="banner"] .lens-false-positive-link:hover {
+  color: var(--lens-text-secondary) !important;
+  background: rgba(56, 189, 248, 0.05) !important;
+}
+[data-aegisgate-lens="banner"] .lens-false-positive-link svg {
+  width: 10px !important;
+  height: 10px !important;
+}
+
+/* ---- Dismiss form (expanded) ---- */
+
+[data-aegisgate-lens="banner"] .lens-dismiss {
+  padding: 10px 14px !important;
+  background: rgba(0, 0, 0, 0.3) !important;
+  border-top: 1px solid var(--lens-border-color) !important;
+  font-size: 12px !important;
+}
+
+[data-aegisgate-lens="banner"] .lens-dismiss-prompt {
+  font-weight: 600 !important;
+  margin-bottom: 8px !important;
+  color: var(--lens-text-primary) !important;
+}
+
+[data-aegisgate-lens="banner"] .lens-dismiss-reasons {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
+  margin-bottom: 10px !important;
+}
+
+[data-aegisgate-lens="banner"] .lens-dismiss-reasons label {
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 6px !important;
+  cursor: pointer !important;
+  font-size: 11px !important;
+  color: var(--lens-text-secondary) !important;
+  line-height: 1.4 !important;
+}
+[data-aegisgate-lens="banner"] .lens-dismiss-reasons input[type="checkbox"] {
+  margin: 0 !important;
+  flex-shrink: 0 !important;
+  margin-top: 2px !important;
+  accent-color: var(--lens-primary) !important;
+}
+
+[data-aegisgate-lens="banner"] .lens-dismiss-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+[data-aegisgate-lens="banner"] .lens-dismiss-transparency {
+  font-size: 10px !important;
+  color: var(--lens-text-muted) !important;
+  margin-top: 8px !important;
+  line-height: 1.4 !important;
+}
+
+/* ---- Upgrade CTA ---- */
+
+[data-aegisgate-lens="banner"] .lens-upgrade {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  padding: 12px 14px !important;
+  background: var(--lens-primary-glow) !important;
+  border: 1px solid var(--lens-primary) !important;
+  border-radius: var(--lens-radius-md) !important;
+  margin: 8px 0 !important;
+}
+
+[data-aegisgate-lens="banner"] .lens-upgrade-icon {
+  flex-shrink: 0 !important;
+  color: var(--lens-primary) !important;
+}
+
+[data-aegisgate-lens="banner"] .lens-upgrade-content {
+  flex: 1 !important;
+}
+
+[data-aegisgate-lens="banner"] .lens-upgrade-title {
+  font-weight: 700 !important;
+  font-size: 13px !important;
+  color: var(--lens-text-primary) !important;
+  margin-bottom: 2px !important;
+}
+
+[data-aegisgate-lens="banner"] .lens-upgrade-desc {
+  font-size: 11px !important;
+  color: var(--lens-text-secondary) !important;
+}
+
+[data-aegisgate-lens="banner"] .lens-upgrade-btn {
+  display: inline-block !important;
+  padding: 6px 12px !important;
+  background: var(--lens-primary) !important;
+  color: var(--lens-bg-primary) !important;
+  text-decoration: none !important;
+  border-radius: var(--lens-radius-sm) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  transition: background 0.15s ease !important;
+  border: none !important;
+}
+
+[data-aegisgate-lens="banner"] .lens-upgrade-btn:hover {
+  background: var(--lens-primary-hover) !important;
+}
+
+[data-aegisgate-lens="banner"] .lens-upgrade-btn:visited {
+  color: var(--lens-bg-primary) !important;
+}
+
+/* Ensure action row styling matches */
+[data-aegisgate-lens="banner"] .lens-upgrade {
+  margin-top: 4px !important;
+}
+
+/* =========================================================================
+   Lens-item-overflow: the "+ N more" message shown when there are more
+   detections than BANNER_MAX_ITEMS. Muted text, italic, no left border
+   accent. Extracted from an inline `style="..."` attribute in
+   banner-ui.js for v0.1.1.
+   ========================================================================= */
+[data-aegisgate-lens="banner"] .lens-item-overflow {
+  color: var(--lens-text-muted) !important;
+  font-style: italic !important;
+  border-left-color: transparent !important;
+}
+
+/* =========================================================================
+   Prefers-reduced-motion support (v0.1.1 item 22).
+   When the user has "reduce motion" enabled in their OS, disable
+   the banner's animations and transitions. The banner still
+   appears/disappears (it has to), but it does so instantly
+   without the fade-in/fade-out or hover transitions.
+   Per WCAG 2.1 SC 2.3.3 (Animation from Interactions).
+   ========================================================================= */
+@media (prefers-reduced-motion: reduce) {
+  [data-aegisgate-lens="banner"] {
+    animation: none !important;
+  }
+  [data-aegisgate-lens="banner"] .lens-btn,
+  [data-aegisgate-lens="banner"] .lens-icon-btn,
+  [data-aegisgate-lens="banner"] .lens-false-positive-link {
+    transition: none !important;
+  }
+}
+
+/* =========================================================================
+   Focus ring (v0.1.1 item 21).
+   Per WCAG 2.1 SC 2.4.7 (Focus Visible). Without an explicit rule,
+   some browsers (especially in cross-origin iframes on some
+   providers like Perplexity) strip the default focus ring. We
+   re-add it for the banner's interactive elements, scoped to
+   the banner so we don't affect the page underneath.
+   ========================================================================= */
+[data-aegisgate-lens="banner"] :focus-visible {
+  outline: 2px solid var(--lens-primary) !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.25) !important;
+}
+
+/* =========================================================================
+   On-page "Lens active" indicator (v0.1.1 item 19).
+   A small, unobtrusive chip that appears near the prompt input
+   when the content script attaches. Tells the user "the Lens
+   is running" without occupying prime screen real estate. The
+   chip is removed when the banner is dismissed for 24h (the
+   user has opted out for that domain+category pair).
+   ========================================================================= */
+[data-aegisgate-lens="indicator"] {
+  position: absolute !important;
+  bottom: 8px !important;
+  right: 8px !important;
+  z-index: 2147483646 !important;  /* just below the banner (2147483647) */
+  padding: 4px 10px !important;
+  background: rgba(56, 189, 248, 0.10) !important;
+  border: 1px solid rgba(56, 189, 248, 0.4) !important;
+  border-radius: 12px !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  color: #38bdf8 !important;
+  cursor: pointer !important;
+  user-select: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  text-decoration: none !important;
+  transition: all 0.15s ease !important;
+}
+[data-aegisgate-lens="indicator"]:hover {
+  background: rgba(56, 189, 248, 0.20) !important;
+  border-color: rgba(56, 189, 248, 0.6) !important;
+}
+[data-aegisgate-lens="indicator"] .lens-indicator-shield {
+  display: inline-block !important;
+  font-size: 12px !important;
+  line-height: 1 !important;
+}
+
+/* =========================================================================
+   First-run onboarding primer (v0.1.1 item C).
+   A small, dismissable note that appears on the FIRST banner
+   render of a session for new users. After dismissal (or after
+   the first render in the session), it doesn't appear again.
+   Fails open: if storage is unavailable, the primer still
+   shows (helpful, not harmful).
+   ========================================================================= */
+[data-aegisgate-lens="banner"] .lens-primer {
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 8px !important;
+  padding: 8px 12px !important;
+  margin: 4px 0 8px 0 !important;
+  background: rgba(56, 189, 248, 0.08) !important;
+  border: 1px solid rgba(56, 189, 248, 0.3) !important;
+  border-radius: 6px !important;
+  font-size: 12px !important;
+  line-height: 1.4 !important;
+  color: var(--lens-text-primary) !important;
+}
+[data-aegisgate-lens="banner"] .lens-primer-text {
+  flex: 1 1 auto !important;
+}
+[data-aegisgate-lens="banner"] .lens-primer-text a {
+  color: var(--lens-primary) !important;
+  text-decoration: underline !important;
+  text-underline-offset: 2px !important;
+}
+[data-aegisgate-lens="banner"] .lens-primer-dismiss {
+  flex: 0 0 auto !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  background: transparent !important;
+  border: 0 !important;
+  color: var(--lens-text-muted) !important;
+  cursor: pointer !important;
+  font-size: 18px !important;
+  line-height: 1 !important;
+  padding: 0 4px !important;
+  margin: 0 !important;
+  border-radius: 3px !important;
+}
+[data-aegisgate-lens="banner"] .lens-primer-dismiss:hover {
+  color: var(--lens-text-primary) !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+[data-aegisgate-lens="banner"] .lens-primer-dismiss:focus-visible {
+  outline: 2px solid var(--lens-primary) !important;
+  outline-offset: 2px !important;
+}
+
+/* v0.1.3 B4: .hidden class for showing/hiding the banner.
+   Used by banner-ui-lifecycle.js (dismiss handler) to hide
+   the banner without using inline el.style.display. */
+[data-aegisgate-lens="banner"].hidden { display: none !important; }
