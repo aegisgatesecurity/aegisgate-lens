@@ -11,14 +11,14 @@ Starting in v0.3.0, the Lens includes a **vendored** copy of ONNX Runtime Web fo
 | `ort.min.js` | `vendor/onnxruntime-web/ort.min.js` | 436KB | ONNX Runtime Web JS API |
 | `ort-wasm-simd.wasm` | `vendor/onnxruntime-web/ort-wasm-simd.wasm` | 9.6MB | WASM runtime (SIMD-optimized) |
 | `ort-wasm.wasm` | `vendor/onnxruntime-web/ort-wasm.wasm` | 8.8MB | WASM runtime (non-SIMD fallback) |
-| `threat_cnn_bilstm_int8.onnx` | `models/threat_cnn_bilstm_int8.onnx` | 1.56MB | INT8-quantized ML model |
+| `threat_cnn_bilstm.onnx` | `models/threat_cnn_bilstm.onnx` | 6.1MB | Float32 ML model (Char CNN-BiLSTM) |
 
 **Why this is acceptable:**
 
 1. **Not an npm dependency.** These are pre-compiled static files vendored directly in the repo. No `package.json`, no `node_modules`, no transitive dependencies.
 2. **No runtime code fetching.** The WASM and model files are bundled in the extension package and loaded via `chrome.runtime.getURL()`. The CSP (`script-src 'self'; object-src 'self'`) prohibits remote code loading.
 3. **Verified supply chain.** Each file's SHA-256 hash is verified at load time. The `ort.min.js` is the minified distribution from the official [onnxruntime-web npm package](https://www.npmjs.com/package/onnxruntime-web) (MIT license).
-4. **Consistent with the model card.** The ONNX model is the same Char CNN-BiLSTM used by AegisGate Platform v4.0.0, quantized to INT8 for browser use.
+4. **Consistent with the model card.** The ONNX model is the same Char CNN-BiLSTM used by AegisGate Platform v4.0.0. The float32 model is used directly — no quantization needed since the CWS limit is 100MB and the total extension is ~20MB uncompressed (~6-8MB compressed).
 5. **Privacy-preserving.** All ML inference happens in the browser's WASM sandbox. No data leaves the device.
 
 **Updating vendored files:**

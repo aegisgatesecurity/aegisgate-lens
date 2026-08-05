@@ -82,7 +82,7 @@
         "src/icons/banner-1x.png",
         "src/icons/banner-2x.png",
         "src/icons/banner-3x.png",
-        "models/threat_cnn_bilstm_int8.onnx",
+        "models/threat_cnn_bilstm.onnx",
         "vendor/onnxruntime-web/ort.min.js",
         "vendor/onnxruntime-web/ort-wasm-simd.wasm",
         "vendor/onnxruntime-web/ort-wasm.wasm"

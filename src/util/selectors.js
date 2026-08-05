@@ -134,9 +134,10 @@
       id: 'deepseek',
       name: 'DeepSeek',
       hosts: ['chat.deepseek.com'],
-      // DeepSeek: textarea in the chat composer area.
-      // The input is a textarea with id "chat-input" or a contenteditable
-      // div. The send button is an SVG arrow icon inside a button.
+      // ⚠️ UNVERIFIED SELECTORS — DeepSeek requires authentication to access
+      // the chat interface. These selectors are based on common DOM patterns
+      // for AI chat providers and NEED LIVE VALIDATION before shipping.
+      // The fallback findInput() may still work even if these are wrong.
       inputSelector: 'textarea#chat-input, div[contenteditable="true"][class*="input"], textarea[placeholder*="Ask" i], textarea[placeholder*="message" i]',
       sendSelector: 'button[aria-label*="Send" i], div[class*="send"] button, button[class*="send"]',
       containerSelector: 'div[class*="chat-input"], div[class*="input-container"], form',
@@ -148,9 +149,10 @@
       id: 'meta_ai',
       name: 'Meta AI',
       hosts: ['meta.ai', 'www.meta.ai'],
-      // Meta AI: contenteditable div in the composer area.
-      // The input is a contenteditable div inside a prompt container.
-      // Submit is via Enter key or a send button with an SVG arrow.
+      // ⚠️ UNVERIFIED SELECTORS — Meta AI may require authentication.
+      // These selectors are based on common DOM patterns for AI chat
+      // providers and NEED LIVE VALIDATION before shipping.
+      // The fallback findInput() may still work even if these are wrong.
       inputSelector: 'div[contenteditable="true"][class*="prompt"], div[contenteditable="true"][data-testid*="prompt"], div[contenteditable="true"][aria-label*="message" i], div[contenteditable="true"][role="textbox"]',
       sendSelector: 'button[aria-label*="Send" i], button[aria-label*="Submit" i], div[role="button"][aria-label*="Send" i]',
       containerSelector: 'div[class*="prompt"], div[class*="composer"], div[role="form"]',
