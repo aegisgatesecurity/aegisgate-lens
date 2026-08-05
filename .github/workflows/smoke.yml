@@ -37,6 +37,10 @@ concurrency:
   group: smoke-${{ github.ref }}
   cancel-in-progress: true
 
+# Least-privilege permissions: only read repository content
+permissions:
+  contents: read
+
 jobs:
   smoke:
     name: "v0.1.3 headless smoke + Node tests + lint"

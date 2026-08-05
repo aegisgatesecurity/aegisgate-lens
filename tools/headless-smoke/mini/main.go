@@ -396,6 +396,8 @@ func runDismissFlowCase(cdp *CDPClient, target cdpTarget, tc miniCase, host stri
 
 	// Step B: Set the text (initial prompt)
 	escapedText, _ := json.Marshal(tc.Text)
+	// #nosec G101 -- test harness only: escapedText is JSON-encoded (quotes/backslashes escaped)
+	// by json.Marshal, making %s embedding in JS safe. No user-controlled paths.
 	setExpr := fmt.Sprintf("(function() {"+
 		"var pd = window.__lensPromptDetect;"+
 		"if (!pd || !pd.getState) return 'no-pd';"+
@@ -503,6 +505,8 @@ func runOneMiniCase(cdp *CDPClient, target cdpTarget, tc miniCase, host string, 
 
 	// Set the input value via the lens selectors
 	escapedText, _ := json.Marshal(tc.Text)
+	// #nosec G101 -- test harness only: escapedText is JSON-encoded by json.Marshal,
+	// making %s embedding in JS safe. No user-controlled paths.
 	setExpr := fmt.Sprintf("(function() {"+
 		"var pd = window.__lensPromptDetect;"+
 		"if (!pd || !pd.getState) return 'no-pd';"+
