@@ -93,7 +93,7 @@
       link.id = STYLE_ID;
       link.rel = 'stylesheet';
       link.type = 'text/css';
-      link.href = getRuntimeUrl('util/banner.css');
+      link.href = getRuntimeUrl('src/util/banner.css');
       link.setAttribute('data-aegisgate-lens', 'banner-css');
       (document.head || document.documentElement).appendChild(link);
     } catch (err) {
