@@ -1,7 +1,7 @@
 # AegisGate Lens — Terms of Service
 
-**Last updated:** 2026-07-09
-**Effective for:** AegisGate Lens v0.2.0
+**Last updated:** 2026-08-05
+**Effective for:** AegisGate Lens v0.3.0
 **Licensor:** AegisGate Security, LLC ("AegisGate", "we", "us")
 **Licensee:** End user of the AegisGate Lens Chrome extension ("you", "your")
 
@@ -42,7 +42,7 @@ revocable license to:
 3. Use the Lens in conjunction with any of the supported
    AI chat tools (chatgpt.com, claude.ai, gemini.google.com,
    copilot.microsoft.com, perplexity.ai, duck.ai,
-   grok.com, chat.mistral.ai).
+   grok.com, chat.mistral.ai, chat.deepseek.com, meta.ai).
 
 The Lens is provided **free of charge**. There is no
 "Pro", "Teams", "Business", or "Enterprise" tier of the
@@ -75,11 +75,13 @@ You may not:
 ## 4. Privacy and data collection
 
 **AegisGate Lens does not collect any user data by
-default.** The Lens is 100% on-device. The detection
-runs in your browser, against the prompts you type, and
-the results are displayed in a banner. The Lens makes no
-network requests, sends no telemetry, and does not log
-any prompt content.
+default.** The Lens is 100% on-device. Both the regex
+detection (151 patterns) and the ML detection (Char
+CNN-BiLSTM model) run entirely in your browser. The ML
+model weights are bundled in the extension package; no
+model is downloaded at runtime. No prompt content, no
+detection results, and no ML inference scores leave your
+device unless you explicitly opt in.
 
 **Opt-in telemetry.** The Lens includes an opt-in path
 for sending anonymous, metadata-only false-positive
@@ -92,14 +94,16 @@ When enabled, the only data sent is:
   with a salt that is NOT in the extension bundle; the
   AegisGate backend cannot recover the original domain
   without brute-forcing the hash.
-- **Category** (e.g., `pii_ssn`, `secret_aws_key`).
+- **Category** (e.g., `pii_ssn`, `secret_aws_key`,
+  `ml_adversarial_prompt`).
   Not the value; only the category.
 - **Severity** (e.g., `critical`, `high`, `medium`).
 - **Action** (e.g., `cancel`, `redact`, `send`,
   `false-positive`).
 
 No prompt content. No URLs. No page content. No user
-identifiers. No cookies. No localStorage abuse.
+identifiers. No cookies. No localStorage abuse. No ML
+model outputs or inference data.
 
 The opt-in is per-dismissal. You must click "Submit &
 dismiss" on a specific banner for a specific false-
@@ -123,7 +127,8 @@ under Section 7:
    the AegisGate name, brand, or trademarks attached.
 3. **Bypassing the privacy** of the Lens (e.g., by
    injecting a content script that exfiltrates the
-   detection results to a third-party server).
+   detection results or ML inference scores to a
+   third-party server).
 4. **Using the Lens to facilitate** any illegal activity,
    including (but not limited to) fraud, identity theft,
    unauthorized access to computer systems, or the
@@ -132,9 +137,16 @@ under Section 7:
 ## 6. Intellectual property
 
 The Lens is open-source software licensed under Apache
-2.0. The Lens name, the AegisGate name, the AegisGate
-logo, the AegisGate Lens shield icon, and the AegisGate
-brand are trademarks of AegisGate Security, LLC.
+2.0. The inference code (`threat-detector-js.js`,
+`char-normalizer.js`) and all regex detection patterns are
+Apache 2.0. The ML model weights
+(`threat_cnn_bilstm_weights.bin.json`) are included in the
+extension package for on-device inference but are NOT
+open source.
+
+The Lens name, the AegisGate name, the AegisGate logo,
+the AegisGate Lens shield icon, and the AegisGate brand
+are trademarks of AegisGate Security, LLC.
 
 You may use the Lens under the Apache 2.0 license (which
 permits commercial use, modification, and redistribution)
@@ -171,17 +183,30 @@ NONINFRINGEMENT.
 
 **THE LENS IS A WARNING TOOL, NOT A CONTENT FILTER.** The
 Lens displays a banner when it detects content matching
-one of its 132 patterns. The Lens does NOT block the
+one of its detection facets. The Lens does NOT block the
 user from sending the prompt. The user can always press
 "Send Anyway" and the prompt will be sent to the AI
 provider. The Lens does NOT guarantee detection of all
-PII, all secrets, all XSS, or all compliance-relevant
-language. The Lens's detection rate is approximately
-98.99% on the in-target held-out set; the false
-positive rate is approximately 7.40% on real user
-prompts; the adversarial robustness (paraphrasing,
+PII, all secrets, all XSS, all compliance-relevant
+language, or all adversarial prompt injections. The regex
+detection rate is approximately 98.99% on the in-target
+held-out set; the ML adversarial detection rate is 100%
+on the v0.3.0 test set (10/10 prompt injections caught);
+the false positive rate for regex is approximately 2.31%
+on 6,500 WildChat prompts; the ML benign pass-through
+rate is 81.8% (9/11, with 2 false positives on creative
+writing prompts). The adversarial robustness (paraphrasing,
 base64, OCR, etc.) is partial and is documented in
 `docs/THREAT-MODEL.md` F-15 and F-20.
+
+**The ML model runs on-device and does not send data to
+any server.** The model is a Char CNN-BiLSTM with Attention
+(1.58M parameters, float16 weights, pure JavaScript
+inference, no WASM, no onnxruntime). It processes at most
+128 characters of the prompt and outputs a single threat
+score between 0 and 1. The model does not learn from user
+input. It does not improve over time. It does not send
+inference data anywhere.
 
 **The Lens does NOT provide legal, compliance, or
 security guarantees.** The Lens is a tool that helps
@@ -290,7 +315,7 @@ If you have questions about these ToS, contact:
 ---
 
 **Signed-off-by:** AegisGate Security <legal@aegisgatesecurity.io>
-**Last updated:** 2026-07-09
-**Effective for:** AegisGate Lens v0.2.0
+**Last updated:** 2026-08-05
+**Effective for:** AegisGate Lens v0.3.0
 **License of this document:** CC-BY-4.0 (you may copy, modify,
 and redistribute)
