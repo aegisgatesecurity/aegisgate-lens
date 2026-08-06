@@ -92,6 +92,28 @@
     return result.events;
   }
 
+  // Async detection: runs regex (sync) + ML (async). The ML model
+  // is lazy-loaded on first call. Returns a Promise<events[]>.
+  // Use this for the full detection pipeline including adversarial
+  // prompt detection.
+  async function detectPromptAsync(text) {
+    var dispatcher = (typeof self !== 'undefined' && self.__lensDispatcher) ||
+                     (typeof globalThis !== 'undefined' && globalThis.__lensDispatcher) ||
+                     null;
+    if (!dispatcher) {
+      log.error('prompt-detect: dispatcher not available; cannot detect async');
+      return [];
+    }
+    try {
+      var result = await dispatcher.detectAsync(text);
+      return result.events;
+    } catch (err) {
+      // Fallback to sync detection on async failure
+      log.warn('detectPromptAsync failed, falling back to sync: ' + err.message);
+      return detectPrompt(text);
+    }
+  }
+
   // -------------------------------------------------------------------------
   // Debounce helper: schedule fn to run after ms of quiet
   // -------------------------------------------------------------------------
@@ -135,14 +157,14 @@
     if (!state.input) {
       log.warn('input not found yet; will retry on mutations');
     } else {
-      lifecycle.attach(state, debounce, detectPrompt, function (muts) { lifecycle.onMutation(muts, state, function (s) { lifecycle.attach(s, debounce, detectPrompt, function () {}); }, lifecycle.detach); });
+      lifecycle.attach(state, debounce, detectPrompt, detectPromptAsync, function (muts) { lifecycle.onMutation(muts, state, function (s) { lifecycle.attach(s, debounce, detectPrompt, detectPromptAsync, function () {}); }, lifecycle.detach); });
     }
 
     // Set up the MutationObserver
     try {
       state.observer = new MutationObserver(function (mutations) {
         lifecycle.onMutation(mutations, state,
-          function (s) { lifecycle.attach(s, debounce, detectPrompt, function () {}); },
+          function (s) { lifecycle.attach(s, debounce, detectPrompt, detectPromptAsync, function () {}); },
           lifecycle.detach);
       });
       state.observer.observe(document.body, {
@@ -191,7 +213,8 @@
     init: init,
     shutdown: shutdown,
     getState: getState,
-    detectPrompt: detectPrompt
+    detectPrompt: detectPrompt,
+    detectPromptAsync: detectPromptAsync
   };
 
   if (typeof self !== 'undefined') self.__lensPromptDetect = module;

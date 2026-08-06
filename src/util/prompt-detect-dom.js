@@ -207,7 +207,8 @@
   // The onInput handler: read the current value, run detection
   // (caller passes in detectPrompt so we can stay decoupled from
   // the aggregator's internal API).
-  function onInput(state, detectPrompt) {
+  // v0.3.0: also accepts detectPromptAsync for ML enrichment.
+  function onInput(state, detectPrompt, detectPromptAsync) {
     try {
       if (!state.input || !selectors) return;
       // v0.1.4: global pause check. If the user paused Lens from
@@ -226,10 +227,25 @@
         }
         return;
       }
+      // Sync regex detection — immediate results
       var dets = detectPrompt(value);
       state.lastDetections = dets;
       if (state.onDetect) {
         try { state.onDetect(dets, value); } catch (e) { log.error('onDetect threw', e); }
+      }
+      // v0.3.0: async ML enrichment — update banner when ML result arrives
+      if (detectPromptAsync && typeof detectPromptAsync === 'function') {
+        detectPromptAsync(value).then(function (mlDets) {
+          // Only update if the input hasn't changed since we started
+          if (value === state.lastValue && mlDets.length > 0) {
+            state.lastDetections = mlDets;
+            if (state.onDetect) {
+              try { state.onDetect(mlDets, value); } catch (e) { log.error('onDetect (ML) threw', e); }
+            }
+          }
+        }).catch(function (err) {
+          log.warn('ML detection failed (graceful fallback to regex): ' + (err && err.message ? err.message : String(err)));
+        });
       }
     } catch (err) {
       log.error('onInput handler threw', err);
@@ -237,7 +253,7 @@
   }
 
   // The onSendClick handler: intercept the send button click
-  function onSendClick(e, state, detectPrompt) {
+  function onSendClick(e, state, detectPrompt, detectPromptAsync) {
     try {
       if (!state.input || !selectors) return;
       var value = selectors.getInputValue(state.input);
@@ -276,7 +292,7 @@
   }
 
   // The onKeyDown handler for Enter on contenteditable
-  function onKeyDown(e, state, detectPrompt) {
+  function onKeyDown(e, state, detectPrompt, detectPromptAsync) {
     try {
       if (!state.provider) return;
       if (state.provider.submitMethod !== 'enter') return;
