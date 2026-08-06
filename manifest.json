@@ -105,5 +105,6 @@
     "extension_pages": "script-src 'self'; object-src 'self'"
   },
   "minimum_chrome_version": "116",
-  "privacy_policy": "https://aegisgatesecurity.io/lens/privacy"
+  "privacy_policy": "https://aegisgatesecurity.io/lens/privacy",
+  "privacy_policy_url": "https://aegisgatesecurity.io/lens/privacy"
 }
