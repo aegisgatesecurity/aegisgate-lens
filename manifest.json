@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "AegisGate Lens",
   "version": "0.3.0",
-  "description": "Privacy-first browser extension that detects prompt injection, PII, secrets, and adversarial attacks before they reach AI tools. On-device ML detection with zero network egress. Apache 2.0.",
+  "description": "Privacy-first prompt safety for AI tools. Detects PII, secrets, XSS, compliance, and adversarial prompts on-device. Apache 2.0.",
   "author": "AegisGate Security, LLC",
   "homepage_url": "https://aegisgatesecurity.io/lens",
   "icons": {
