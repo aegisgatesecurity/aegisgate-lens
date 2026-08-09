@@ -76,7 +76,7 @@ jobs:
       - name: Build the test bundle
         run: |
           mkdir -p test/headless-smoke/dist
-          find test/headless-smoke/dist -type f -not -name ".gitkeep" -delete
+          rm -rf test/headless-smoke/dist/*
           cp -r src test/headless-smoke/dist/
           cp manifest.json test/headless-smoke/dist/manifest.json
           cp -r icons test/headless-smoke/dist/icons
@@ -127,7 +127,7 @@ jobs:
       - name: Build the test bundle
         run: |
           mkdir -p test/headless-smoke/dist
-          find test/headless-smoke/dist -type f -not -name ".gitkeep" -delete
+          rm -rf test/headless-smoke/dist/*
           cp -r src test/headless-smoke/dist/
           cp manifest.json test/headless-smoke/dist/manifest.json
           cp -r icons test/headless-smoke/dist/icons
@@ -223,7 +223,7 @@ jobs:
         # and are committed to the repo (no build needed).
         run: |
           mkdir -p test/headless-smoke/dist
-          find test/headless-smoke/dist -type f -not -name ".gitkeep" -delete
+          rm -rf test/headless-smoke/dist/*
           cp -r src test/headless-smoke/dist/
           cp manifest.json test/headless-smoke/dist/manifest.json
           cp -r icons test/headless-smoke/dist/icons
