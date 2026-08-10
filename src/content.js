@@ -251,7 +251,7 @@
           try {
             var message = {
               type: 'FP_REPORTS',
-              version: '0.2.0',
+              version: '0.3.0',
               payload: {
                 timestamp: Math.floor(Date.now() / 1000),
                 reports: payload.reports || []

@@ -133,7 +133,9 @@ test('manifest-hosts: required canonical hosts present (v0.1.0-beta ship set)', 
     'duck.ai',
     'perplexity.ai',
     'grok.com',
-    'chat.mistral.ai', 'le-chat.mistral.ai'
+    'chat.mistral.ai', 'le-chat.mistral.ai',
+    'chat.deepseek.com',
+    'meta.ai'
   ];
   for (const h of REQUIRED) {
     assert.ok(m.has(h), 'manifest is missing required host: ' + h);
@@ -144,7 +146,7 @@ test('manifest-hosts: www variants present (v0.1.2 adds)', function () {
   const m = manifestHosts();
   // These were added in v0.1.2 because the user can land on the
   // www subdomain of these providers.
-  const WWW_VARIANTS = ['www.perplexity.ai', 'www.grok.com'];
+  const WWW_VARIANTS = ['www.perplexity.ai', 'www.grok.com', 'www.meta.ai'];
   for (const h of WWW_VARIANTS) {
     assert.ok(m.has(h), 'manifest is missing www variant: ' + h);
   }

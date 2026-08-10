@@ -4,20 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>AegisGate Lens — Installed</title>
-  <!--
-    Local Inter font (v0.1.1 item H: bundle Inter locally).
-    Previously loaded from fonts.googleapis.com (third-party request).
-    Now bundled in src/welcome/fonts/ under the SIL Open Font License v1.1
-    (OFL.txt alongside the .woff2 files). The variable font contains
-    the full weight range 300-700 in each file. The browser picks the
-    right glyph based on the CSS `font-weight` property.
-  -->
   <style>
-    /* Inter — bundled locally, see src/welcome/fonts/ */
     @font-face {
       font-family: 'Inter';
       font-style: normal;
-      font-weight: 300 700;  /* variable font: full range */
+      font-weight: 300 700;
       font-display: swap;
       src: url('fonts/inter-latin.woff2') format('woff2');
       unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
@@ -32,29 +23,6 @@
     }
   </style>
   <style>
-    /* -----------------------------------------------------------------
-       Inline CSS (intentional, per v0.1.1 item 6 decision).
-       The welcome page is a standalone extension page (chrome-extension://
-       URL); external CSS would require an additional web_accessible_resources
-       entry and is not the standard pattern for Chrome extension
-       pages of this size. Keep this <style> inlined.
-       ----------------------------------------------------------------- */
-    /* -----------------------------------------------------------------------
-       AegisGate Lens - Welcome Page Styles
-       Visual language matches https://aegisgatesecurity.io exactly:
-         --bg-primary:     #0a0c10 (deep midnight black-blue)
-         --bg-secondary:   #11141d (subtle lift for cards)
-         --bg-tertiary:    #1a1f2e (elevated surfaces)
-         --primary:        #38bdf8 (sophisticated cyan)
-         --secondary:      #10b981 (emerald for success)
-         --accent:         #f43f5e (rose for critical)
-         --text-primary:   #f8fafc (clean white-grey)
-         --text-secondary: #94a3b8 (muted slate)
-         --text-muted:     #64748b (deep slate)
-         --border-color:   rgba(51, 65, 85, 0.5) (transparent for glass effect)
-         --glass-bg:       rgba(17, 20, 29, 0.7)
-         --font-sans:      'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif
-       ----------------------------------------------------------------------- */
     :root {
       --bg-primary:     #0a0c10;
       --bg-secondary:   #11141d;
@@ -84,14 +52,12 @@
       letter-spacing: -0.005em;
     }
 
-    /* Layout ---------------------------------------------- */
     .container {
       max-width: 980px;
       margin: 0 auto;
       padding: 64px 32px 48px;
     }
 
-    /* Header ---------------------------------------------- */
     .header {
       margin-bottom: 48px;
     }
@@ -114,11 +80,16 @@
       -webkit-text-fill-color: transparent;
       background-clip: text;
     }
+    .header .subtitle {
+      font-size: 16px;
+      color: var(--text-secondary);
+      margin-top: 8px;
+      max-width: 600px;
+    }
 
-    /* Cards ---------------------------------------------- */
     .card {
-      background: var(--bg-panel);
-      border: 1px solid var(--hairline);
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
       border-radius: 16px;
       padding: 24px;
       margin-bottom: 24px;
@@ -163,52 +134,11 @@
     }
     .card li::before {
       content: '✓';
-      color: var(--accent);
+      color: var(--secondary);
       font-weight: 700;
       flex-shrink: 0;
     }
-    .card li.cross::before {
-      content: '✗';
-      color: var(--critical);
-    }
-    .card li.no::before {
-      content: '✕';
-      color: var(--critical);
-    }
 
-    /* Upgrade CTA ---------------------------------------------- */
-    .upgrade-cta .features {
-      margin: 16px 0;
-    }
-    .upgrade-cta .features li {
-      display: flex;
-      align-items: flex-start;
-      gap: 10px;
-    }
-    .upgrade-cta .features li.check::before {
-      content: '✓';
-      color: var(--success);
-      font-weight: 700;
-      flex-shrink: 0;
-      margin-right: 8px;
-    }
-    .upgrade-btn {
-      display: inline-block;
-      padding: 12px 24px;
-      background: var(--accent);
-      color: var(--bg-deep);
-      text-decoration: none;
-      border-radius: 10px;
-      font-weight: 600;
-      transition: all 0.2s ease;
-    }
-    .upgrade-btn:hover {
-      background: var(--accent-dim);
-      transform: translateY(-2px);
-      box-shadow: 0 8px 24px rgba(56, 189, 248, 0.2);
-    }
-
-    /* Features list ---------------------------------------------- */
     .features-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -216,15 +146,15 @@
       margin: 24px 0;
     }
     .feature-item {
-      background: var(--bg-panel);
-      border: 1px solid var(--hairline);
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
       border-radius: 12px;
       padding: 16px;
     }
     .feature-item h3 {
       font-size: 14px;
       font-weight: 600;
-      color: var(--accent);
+      color: var(--primary);
       margin-bottom: 8px;
       text-transform: uppercase;
       letter-spacing: 0.08em;
@@ -234,8 +164,13 @@
       font-size: 13px;
       margin-bottom: 0;
     }
+    .feature-item .count {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 4px;
+    }
 
-    /* Buttons ---------------------------------------------- */
     .actions {
       display: flex;
       flex-wrap: wrap;
@@ -249,21 +184,21 @@
       font-weight: 600;
       cursor: pointer;
       transition: all 0.2s ease;
-      border: 1px solid var(--hairline);
+      border: 1px solid var(--border-color);
       color: var(--text-primary);
       background: transparent;
     }
     .actions button:hover {
-      background: var(--hairline);
+      background: var(--bg-tertiary);
       transform: translateY(-2px);
     }
     .actions button.primary {
-      background: var(--accent);
-      color: var(--bg-deep);
+      background: var(--primary);
+      color: var(--bg-primary);
       border: none;
     }
     .actions button.primary:hover {
-      background: var(--accent-dim);
+      background: #5ecbf9;
     }
     .actions button.secondary {
       border: 1px solid var(--text-muted);
@@ -273,11 +208,7 @@
       border-color: var(--text-secondary);
       color: var(--text-secondary);
     }
-    .actions .upgrade-btn {
-      margin-left: auto;
-    }
 
-    /* Small text ---------------------------------------------- */
     .small {
       font-size: 12px;
       color: var(--text-muted);
@@ -290,13 +221,12 @@
     code {
       font-family: 'Inter', ui-monospace, 'SF Mono', Menlo, monospace;
       background: rgba(248, 250, 252, 0.1);
-      color: var(--accent);
+      color: var(--primary);
       padding: 2px 6px;
       border-radius: 4px;
       font-size: 12px;
     }
 
-    /* Section spacing ---------------------------------------------- */
     section {
       margin-bottom: 48px;
     }
@@ -306,7 +236,7 @@
       color: var(--text-primary);
       margin-bottom: 16px;
       padding-bottom: 8px;
-      border-bottom: 1px solid var(--hairline);
+      border-bottom: 1px solid var(--border-color);
     }
     section ul {
       list-style: none;
@@ -321,10 +251,40 @@
       color: var(--text-primary);
     }
 
-    /* Responsive ---------------------------------------------- */
+    .ml-badge {
+      display: inline-block;
+      background: linear-gradient(135deg, #7c3aed, #38bdf8);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 2px 8px;
+      border-radius: 4px;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+
+    .upgrade-btn {
+      display: inline-block;
+      padding: 12px 24px;
+      background: var(--primary);
+      color: var(--bg-primary);
+      text-decoration: none;
+      border-radius: 10px;
+      font-weight: 600;
+      transition: all 0.2s ease;
+    }
+    .upgrade-btn:hover {
+      background: #5ecbf9;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(56, 189, 248, 0.2);
+    }
+
     @media (max-width: 768px) {
       .container { padding: 40px 20px; }
       .header h1 { font-size: 28px; }
+      .features-grid { grid-template-columns: 1fr; }
       .actions { flex-direction: column; }
       .actions button { width: 100%; }
     }
@@ -333,48 +293,79 @@
 <body>
   <div class="container">
     <div class="header">
-      <span class="tag" id="lens-version-tag">v0.1.4</span>
+      <span class="tag" id="lens-version-tag">v0.3.0</span>
       <h1>AegisGate Lens</h1>
+      <p class="subtitle">Privacy-first prompt safety. 151 regex patterns + on-device ML detection. Zero data leaves your browser.</p>
     </div>
 
     <section>
       <h2>What gets checked</h2>
-      <ul>
-        <li><strong>Prompt injection</strong> — the content of the page or document you paste into the AI, not just what you typed</li>
-        <li><strong>PII</strong> — SSNs, emails, phone numbers, credit cards, addresses, etc.</li>
-        <li><strong>Secrets</strong> — API keys, OAuth tokens, private keys, database connection strings</li>
-        <li><strong>Toxicity</strong> — hate, threats, self-harm</li>
-      </ul>
+      <div class="features-grid">
+        <div class="feature-item">
+          <div class="count">55</div>
+          <h3>PII Patterns</h3>
+          <p>SSNs, emails, phone numbers, credit cards, addresses, passport numbers, and more — with Luhn validation.</p>
+        </div>
+        <div class="feature-item">
+          <div class="count">41</div>
+          <h3>Secrets Patterns</h3>
+          <p>AWS keys, GitHub tokens, OAuth tokens, private keys, database credentials — all validated.</p>
+        </div>
+        <div class="feature-item">
+          <div class="count">12</div>
+          <h3>XSS Patterns</h3>
+          <p>Script injection, event handlers, dangerous URLs, mutation XSS — catches what AI tools might echo back.</p>
+        </div>
+        <div class="feature-item">
+          <div class="count">43</div>
+          <h3>Compliance Patterns</h3>
+          <p>OWASP LLM Top 10, MITRE ATLAS, EU AI Act, NIST CSF, ISO 27001, CCPA, LGPD, PIPEDA.</p>
+        </div>
+        <div class="feature-item">
+          <div class="count">1 <span class="ml-badge">ML</span></div>
+          <h3>Adversarial Detection</h3>
+          <p>Char CNN-BiLSTM model catches prompt injection attacks that regex can't — instruction override, roleplay, obfuscated commands.</p>
+        </div>
+      </div>
     </section>
 
     <div class="card warning">
-      <h2>Privacy promise</h2>
-      <p><strong>No prompt content</strong> ever leaves your browser. Not for debugging. Not for support. Not ever.</p>
-      <p>The Lens is a privacy product. The default is <strong>OFF</strong> for telemetry. You must explicitly opt in to share anonymized threat-intel signals.</p>
+      <h2>🛡️ Privacy promise</h2>
+      <p><strong>No prompt content ever leaves your browser.</strong> Not for debugging. Not for support. Not ever.</p>
+      <p>Both regex and ML detection run 100% on-device. The ML model weights are bundled in the extension — no downloads, no remote inference, no telemetry by default. You must explicitly opt in to share anonymized threat-intel signals.</p>
+    </div>
+
+    <div class="card">
+      <h2>What's new in v0.3.0</h2>
+      <ul>
+        <li><strong>ML threat detector</strong> — on-device Char CNN-BiLSTM catches adversarial prompt injections that regex misses</li>
+        <li><strong>DeepSeek + Meta AI</strong> — 10 AI providers now supported</li>
+        <li><strong>6× smaller</strong> — extension reduced from 25MB to 4.2MB (pure JS, no WASM)</li>
+        <li><strong>Stricter CSP</strong> — <code>script-src 'self'</code> only, no <code>wasm-unsafe-eval</code></li>
+        <li><strong>Lazy model loading</strong> — 3.7MB model weights load on first detection, not on page load</li>
+      </ul>
     </div>
 
     <div class="card upgrade">
       <h2>AegisGate Platform (paid)</h2>
       <p><strong>AegisGate Lens is free forever.</strong> When your team needs server-side enforcement, the <strong>AegisGate Platform</strong> adds:</p>
-      <div class="upgrade-cta">
-        <ul class="features">
-          <li class="check">Server-side enforcement (MCP, AI Proxy, mTLS)</li>
-          <li class="check">Automated redaction (auto-strip PII before it leaves)</li>
-          <li class="check">Custom detection patterns & team policies</li>
-          <li class="check">Enterprise SSO, audit logs, compliance modules</li>
-          <li class="check">Compliance: HIPAA, PCI, SOC 2, ISO 27001, EU AI Act</li>
-          <li class="check">Threat-intel feed (anonymized signals from 100K+ Lens users)</li>
-        </ul>
-        <a href="https://aegisgatesecurity.io/platform/pricing" target="_blank" rel="noopener noreferrer" class="upgrade-btn">Explore AegisGate Platform</a>
-      </div>
+      <ul>
+        <li>Server-side enforcement (MCP, AI Proxy, mTLS)</li>
+        <li>Automated redaction (auto-strip PII before it leaves)</li>
+        <li>Custom detection patterns &amp; team policies</li>
+        <li>Enterprise SSO, audit logs, compliance modules</li>
+        <li>Compliance: HIPAA, PCI, SOC 2, ISO 27001, EU AI Act</li>
+        <li>Threat-intel feed (anonymized signals from 100K+ Lens users)</li>
+      </ul>
+      <a href="https://aegisgatesecurity.io/platform/pricing" target="_blank" rel="noopener noreferrer" class="upgrade-btn">Explore AegisGate Platform</a>
     </div>
 
     <section>
       <h2>Opting in to threat intel (optional)</h2>
-      <p>If you opt in, the Lens sends a small, anonymous "I detected X category Y" signal back to AegisGate. This helps the AegisGate Gateway (our enterprise product) become smarter over time. The signal contains:</p>
+      <p>If you opt in, the Lens sends a small, anonymous "I detected X category Y" signal back to AegisGate. This helps the AegisGate Gateway become smarter over time. The signal contains:</p>
       <ul>
         <li>A <strong>hashed</strong> version of the page domain (e.g. <code>a3f1c8d2b9e07456</code>) — not the URL, not the path, not any page content</li>
-        <li>The <strong>category</strong> that was detected (e.g. <code>pii_email</code>) — not the value</li>
+        <li>The <strong>category</strong> that was detected (e.g. <code>pii_email</code> or <code>ml_adversarial_prompt</code>) — not the value</li>
         <li>The <strong>severity</strong> and your <strong>action</strong> (send, redact, cancel)</li>
       </ul>
       <p class="small">See <code>docs/PRIVACY-POLICY.md</code> for the full policy.</p>

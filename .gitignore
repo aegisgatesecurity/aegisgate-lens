@@ -35,15 +35,17 @@ venv/
 *.venv/
 
 # --- Go artifacts (the build tool is in this repo; no vendored modules) ---
-# Allow go.mod / go.sum if added later. Block vendor/ if Go modules are introduced.
-vendor/
+# Allow go.mod / go.sum if added later.
 
-# --- ML model bundles (build artifacts, regenerated from training scripts) ---
+# --- ML model bundles ---
+# v0.3.0+: Allow INT8-quantized model for on-device inference
 *.bundle
-*.onnx
 *.tflite
-*.bin
-models/
+# *.bundle and *.tflite are build artifacts
+*.bundle
+*.tflite
+models/*
+!models/threat_cnn_bilstm_weights.bin.json
 lens_ml_build/
 corpora/
 
@@ -98,7 +100,6 @@ TODO-local.md
 # --- Release artifacts (committed only as git tags, never as files) ---
 release/
 
-
 # Headless smoke test (Phase 6) - build artifacts and runtime only
 # Keep: go.mod, go.sum, *.go files, dist/ (the test bundle)
 # Ignore: built binary, runtime logs and reports
@@ -121,7 +122,6 @@ test/benchmarks/corpus/
 test/benchmarks/results/
 test/benchmarks/reports/
 test/benchmarks/qa-logs/
-
 
 # --- Large untracked directories that must NEVER be scanned or committed ---
 # These existed at runtime but bloat the working tree; they are loaded by

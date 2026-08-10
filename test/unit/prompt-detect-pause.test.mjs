@@ -34,7 +34,7 @@ test('onInput has the pause early-return guard in the right order', () => {
   //     (so we skip the selector call entirely)
   //   - BEFORE the `var dets = detectPrompt(value)` call
   //     (so we skip the regex scan)
-  const startMatch = SRC.match(/function onInput\(state, detectPrompt\) \{/);
+  const startMatch = SRC.match(/function onInput\s*\(\s*state\s*,\s*detectPrompt/);
   if (!startMatch || startMatch.index === undefined) throw new Error('onInput not found');
   const start = startMatch.index + startMatch[0].length;
   const endMatch = SRC.substring(start).match(/state\.lastDetections = dets/);
@@ -55,7 +55,7 @@ test('onInput pause check uses Date.now() < _pausedUntil (auto-expiring)', () =>
   // === Date.now()). The strict < means detection is paused
   // UNTIL the timestamp, and resumes the millisecond the timestamp
   // passes. This is the standard "expiry" pattern.
-  const onInputMatch = SRC.match(/function onInput\(state, detectPrompt\) \{[\s\S]*?function/)?.[0] || '';
+  const onInputMatch = SRC.match(/function onInput\s*\(\s*state\s*,\s*detectPrompt[\s\S]*?function/)?.[0] || '';
   assert.match(onInputMatch, /Date\.now\(\) < _pausedUntil/, 'onInput should use Date.now() < _pausedUntil for auto-expiry');
 });
 
@@ -63,7 +63,7 @@ test('onInput has exactly one pause check (regression guard)', () => {
   // Make sure the edit didn't accidentally duplicate the check.
   // Exclude comments to avoid false positives (the comment text
   // "Date.now() < _pausedUntil" matches the same regex).
-  const startMatch = SRC.match(/function onInput\(state, detectPrompt\) \{/);
+  const startMatch = SRC.match(/function onInput\s*\(\s*state\s*,\s*detectPrompt/);
   if (!startMatch || startMatch.index === undefined) throw new Error('onInput not found');
   const start = startMatch.index + startMatch[0].length;
   const endMatch = SRC.substring(start).match(/state\.lastDetections = dets/);

@@ -306,7 +306,7 @@
           method: 'POST',
           headers: headers,
           body: JSON.stringify({
-            lens_event_version: '0.2.0',
+            lens_event_version: '0.3.0',
             timestamp: Math.floor(Date.now() / 1000),
             reports: reports
           }),
@@ -549,7 +549,7 @@
     try {
       log.info('installed: ' + details.reason);
       if (details.reason === 'install') {
-        chrome.tabs.create({ url: chrome.runtime.getURL('welcome/welcome.html') });
+        chrome.tabs.create({ url: chrome.runtime.getURL('src/welcome/welcome.html') });
       }
     } catch (e) {
       log.error('onInstalled handler threw', e);
@@ -595,7 +595,9 @@
         'duck.ai',
         'perplexity.ai', 'www.perplexity.ai',
         'grok.com', 'www.grok.com',
-        'chat.mistral.ai', 'le-chat.mistral.ai'
+        'chat.mistral.ai', 'le-chat.mistral.ai',
+        'chat.deepseek.com',
+        'meta.ai', 'www.meta.ai'
       ];
       
       var isProviderDomain = false;

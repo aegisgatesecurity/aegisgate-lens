@@ -49,15 +49,15 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Node.js (for unit tests + bundle.js rebuild)
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: Setup Go (for the smoke binary)
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v7
         with:
           go-version: '1.25'
 
@@ -76,8 +76,10 @@ jobs:
       - name: Build the test bundle
         run: |
           mkdir -p test/headless-smoke/dist
-          find test/headless-smoke/dist -type f -not -name ".gitkeep" -delete
-          cp -r src/. test/headless-smoke/dist/
+          rm -rf test/headless-smoke/dist/*
+          cp -r src test/headless-smoke/dist/
+          cp manifest.json test/headless-smoke/dist/manifest.json
+          cp -r icons test/headless-smoke/dist/icons
           python3 tools/ci/build-bundle.py
           ls test/headless-smoke/dist/ | head -20
           test -f test/headless-smoke/dist/icons/banner-1x.png && echo "banner-1x.png present" || (echo "banner-1x.png MISSING"; exit 1)
@@ -125,8 +127,10 @@ jobs:
       - name: Build the test bundle
         run: |
           mkdir -p test/headless-smoke/dist
-          find test/headless-smoke/dist -type f -not -name ".gitkeep" -delete
-          cp -r src/. test/headless-smoke/dist/
+          rm -rf test/headless-smoke/dist/*
+          cp -r src test/headless-smoke/dist/
+          cp manifest.json test/headless-smoke/dist/manifest.json
+          cp -r icons test/headless-smoke/dist/icons
           python3 tools/ci/build-bundle.py
           ls test/headless-smoke/dist/ | head -20
           test -f test/headless-smoke/dist/icons/banner-1x.png && echo "banner-1x.png present" || (echo "banner-1x.png MISSING"; exit 1)
@@ -151,7 +155,7 @@ jobs:
 
       - name: Upload smoke report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: smoke-report
           path: smoke-report.json
@@ -160,7 +164,7 @@ jobs:
 
       - name: Upload unit test output
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: unit-test-output
           path: unit-test-output.log
@@ -169,7 +173,7 @@ jobs:
 
       - name: Upload lint output
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: lint-output
           path: lint-output.log
@@ -183,15 +187,15 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v7
         with:
           go-version: '1.25'
 
@@ -219,8 +223,10 @@ jobs:
         # and are committed to the repo (no build needed).
         run: |
           mkdir -p test/headless-smoke/dist
-          find test/headless-smoke/dist -type f -not -name ".gitkeep" -delete
-          cp -r src/. test/headless-smoke/dist/
+          rm -rf test/headless-smoke/dist/*
+          cp -r src test/headless-smoke/dist/
+          cp manifest.json test/headless-smoke/dist/manifest.json
+          cp -r icons test/headless-smoke/dist/icons
           python3 tools/ci/build-bundle.py
           # Verify the per-host mocks are present
           ls test/headless-smoke/mock/platform-testdata/ | head -10
@@ -256,7 +262,7 @@ jobs:
 
       - name: Upload mini smoke report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: mini-smoke-report
           path: mini-smoke-report.json

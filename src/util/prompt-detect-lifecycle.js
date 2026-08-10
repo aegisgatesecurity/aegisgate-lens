@@ -38,20 +38,21 @@
   //     sendButton, attached, _debouncedInput)
   //   - debounce: the aggregator's debounce helper
   //   - detectPrompt: the aggregator's detectPrompt function
+  //   - detectPromptAsync: the aggregator's detectPromptAsync function (v0.3.0 ML)
   //   - onMutation: the lifecycle's own onMutation handler (for
   //     MutationObserver wiring)
   // Returns nothing; mutates state.
-  function attach(state, debounce, detectPrompt, onMutation) {
+  function attach(state, debounce, detectPrompt, detectPromptAsync, onMutation) {
     if (state.attached) return;
     if (!state.input) return;
     try {
-      var debouncedInput = debounce(function () { dom.onInput(state, detectPrompt); },
+      var debouncedInput = debounce(function () { dom.onInput(state, detectPrompt, detectPromptAsync); },
                                     (constants && constants.DEBOUNCE_MS) || 250);
       state.input.addEventListener('input', debouncedInput, true);
       state.input.addEventListener('keyup', debouncedInput, true);
-      state.input.addEventListener('keydown', function (e) { dom.onKeyDown(e, state, detectPrompt); }, true);
+      state.input.addEventListener('keydown', function (e) { dom.onKeyDown(e, state, detectPrompt, detectPromptAsync); }, true);
       if (state.sendButton) {
-        state.sendButton.addEventListener('click', function (e) { dom.onSendClick(e, state, detectPrompt); }, true);
+        state.sendButton.addEventListener('click', function (e) { dom.onSendClick(e, state, detectPrompt, detectPromptAsync); }, true);
       }
       state._debouncedInput = debouncedInput;
       state.attached = true;

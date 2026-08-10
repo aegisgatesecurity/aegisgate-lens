@@ -130,6 +130,39 @@
       isContentEditable: false,
       version: '2026-07'
     },
+    {
+      id: 'deepseek',
+      name: 'DeepSeek',
+      hosts: ['chat.deepseek.com'],
+      // ✅ VERIFIED — Live-tested on chat.deepseek.com (2026-08-05).
+      // Input is <textarea> with placeholder, no id, no aria-label.
+      // Send is <div role="button"> with ds-button classes, no aria-label.
+      // CSS classes are hashed (CSS modules) — use role/placeholder selectors.
+      // Enter key submits; send button has ds-button--disabled when empty.
+      inputSelector: 'textarea[placeholder*="Message DeepSeek" i], textarea[placeholder*="Message" i]',
+      sendSelector: 'div[role="button"].ds-button--primary.ds-button--filled',
+      containerSelector: 'div[class*="scroll-area"], textarea[placeholder*="Message" i]',
+      submitMethod: 'enter',
+      isContentEditable: false,
+      version: '2026-08'
+    },
+    {
+      id: 'meta_ai',
+      name: 'Meta AI',
+      hosts: ['meta.ai', 'www.meta.ai'],
+      // ✅ VERIFIED — Live-tested on meta.ai (2026-08-05).
+      // Input is <input type="text"> with aria-label, NOT contenteditable.
+      // Send button enables when text entered. Enter key also submits.
+      // No <form> wrapper; parent divs use Tailwind utility classes.
+      // Input is a regular <input type="text">, NOT contenteditable.
+      // No <form> wrapper; container uses Tailwind utility classes.
+      inputSelector: 'input[type="text"][aria-label*="Ask" i], input[aria-label="Ask Meta AI"], input[placeholder*="Ask" i]',
+      sendSelector: 'button[aria-label="Send"]',
+      containerSelector: 'div[class*="backdrop-blur"]',
+      submitMethod: 'enter',
+      isContentEditable: false,
+      version: '2026-08'
+    },
   ];
 
   // Identify which provider matches the current page.

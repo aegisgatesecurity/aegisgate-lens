@@ -58,7 +58,8 @@
       // Map the CWS semver to the marketing version. Update this table
       // when a new marketing version ships.
       var SEMVER_TO_MARKETING = {
-        '0.1.0': 'v0.1.4'
+        '0.1.0': 'v0.1.4',
+        '0.3.0': 'v0.3.0'
       };
       return SEMVER_TO_MARKETING[semver] || ('v' + semver);
     } catch (e) {
