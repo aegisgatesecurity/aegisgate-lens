@@ -111,13 +111,12 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "lens@aegisgate.security",
-      "strict_min_version": "128.0"
+      "strict_min_version": "128.0",
+      "data_collection_permissions": {
+        "required": ["none"],
+        "optional": []
+      }
     }
-  },
-  "data_collection_permissions": {
-    "technical_data_collection": false,
-    "interaction_data_collection": false,
-    "webapi_data_collection": false
   },
   "minimum_chrome_version": "116"
 }
