@@ -8,7 +8,7 @@
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Install on Chrome Web Store](https://img.shields.io/badge/Install-CWS%20v0.3.0-4285F4?logo=google-chrome&logoColor=white)](https://chromewebstore.google.com/detail/aegisgate-lens/lkioinepjpjfdhiggaomoafnhagfcjip)
-[![Firefox Add-on](https://img.shields.io/badge/Install-AMO%20(coming%20soon)-FF7139?logo=firefox&logoColor=white)](#installation)
+[![Firefox Add-on](https://img.shields.io/badge/Install-AMO%20v0.3.0-FF7139?logo=firefox&logoColor=white)](https://addons.mozilla.org/en-US/firefox/addon/aegisgate-lens/)
 [![Version](https://img.shields.io/badge/version-v0.3.0-brightgreen.svg)](https://github.com/aegisgatesecurity/aegisgate-lens/releases/tag/v0.3.0)
 [![Tests](https://img.shields.io/badge/tests-508%2F508-brightgreen.svg)](#test-coverage)
 [![ML](https://img.shields.io/badge/ML-pure%20JS%20(CharCNN--BiLSTM)-9cf.svg)](#ml-threat-detector)
@@ -199,9 +199,9 @@ Lens runs **5 detection facets** — 4 regex (synchronous) + 1 ML (asynchronous)
 
 ### Firefox Add-ons (AMO)
 
-**Coming soon.** Lens v0.3.0+ supports Firefox 128+ via Manifest V3.
+Lens v0.3.0+ supports Firefox 142+ via Manifest V3.
 
-1. Visit the [Firefox Add-ons listing](https://addons.mozilla.org/) (link will be added when published)
+1. Visit the [AegisGate Lens listing on AMO](https://addons.mozilla.org/en-US/firefox/addon/aegisgate-lens/)
 2. Click **Add to Firefox**
 3. Click the AegisGate Lens icon in your toolbar to verify it's active
 
@@ -280,7 +280,7 @@ AegisGate Lens is the consumer-facing layer. The same team builds [AegisGate Pla
 
 ## Roadmap
 
-- **v0.3.1**: Firefox AMO publication, welcome page aesthetic update
+- **v0.3.1**: Welcome page aesthetic update
 - **v0.4.0**: Public benchmark dataset
 - **v0.5.0**: Third-party security audit (Cure53 / Trail of Bits / NCC Group)
 
