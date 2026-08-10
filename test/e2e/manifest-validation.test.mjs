@@ -87,11 +87,12 @@ test('e2e/manifest: Firefox AMO compatibility (browser_specific_settings)', () =
   assert.ok(typeof bss.gecko.id === 'string' && bss.gecko.id.length > 0,
     'gecko.id must be a non-empty string');
   assert.ok(bss.gecko.strict_min_version,
-    'gecko must have strict_min_version (Firefox 128+ for MV3 support)');
-  // Firefox 128 is the first stable release with full MV3 support
+    'gecko must have strict_min_version (Firefox 142+ for MV3 + data_collection_permissions)');
+  // Firefox 140 introduced data_collection_permissions on desktop;
+  // Firefox 142 introduced it on Android. We require 142 to cover both.
   const minVer = parseFloat(bss.gecko.strict_min_version);
-  assert.ok(minVer >= 128,
-    `gecko.strict_min_version must be >= 128.0 (got ${bss.gecko.strict_min_version})`);
+  assert.ok(minVer >= 142,
+    `gecko.strict_min_version must be >= 142.0 (got ${bss.gecko.strict_min_version})`);
 });
 
 test('e2e/manifest: background has scripts for Firefox MV3 fallback', () => {

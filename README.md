@@ -17,7 +17,7 @@
 [![Patterns](https://img.shields.io/badge/patterns-151%20regex%20%2B%20ML-9cf.svg)](#)
 [![Providers](https://img.shields.io/badge/providers-10-blue.svg)](#supported-ai-providers)
 [![Chrome 116+](https://img.shields.io/badge/chrome-116%2B-yellow.svg)](https://developer.chrome.com/docs/extensions/mv3)
-[![Firefox 128+](https://img.shields.io/badge/firefox-128%2B-FF7139?logo=firefox&logoColor=white)](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions)
+[![Firefox 142+](https://img.shields.io/badge/firefox-142%2B-FF7139?logo=firefox&logoColor=white)](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions)
 [![Zero npm](https://img.shields.io/badge/dependencies-zero-success.svg)](./docs/NO-EXTERNAL-DEPS.md)
 [![CSP](https://img.shields.io/badge/CSP-script--src%20'self'-success.svg)](#security)
 [![CodeQL](https://github.com/aegisgatesecurity/aegisgate-lens/actions/workflows/security.yml/badge.svg)](https://github.com/aegisgatesecurity/aegisgate-lens/actions/workflows/security.yml)
