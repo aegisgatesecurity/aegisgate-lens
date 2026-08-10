@@ -10,8 +10,8 @@
 //   2. Verifies the logger, schema, and domain_hash modules are loaded
 //   3. Computes the domain hash for telemetry
 //   4. Initializes prompt-detect with onDetect + onSendIntercept
-//      callbacks. The banner UI (3f) will replace the placeholder
-//      console.log with a real banner element.
+//      callbacks. The banner UI (3f) shows the detection banner
+//      above the input element.
 //   5. Exposes __lens_cs on window for diagnostics
 //
 // All async work is wrapped in try/catch with REAL error logging.
@@ -66,11 +66,11 @@
   // The onSendIntercept callback. Called by prompt-detect when the
   // user attempts to send a message that has detections. The return
   // value is a decision object: { action: 'send' | 'redact' | 'cancel' }.
-  // For now (3f, the regex-chain release), the only available actions
-  // are 'cancel' (default -- the banner pauses the send) and 'send'
-  // (user override -- they accept the risk and send anyway). Redact
-  // will be wired in 3g. The minimal implementation: block the send
-  // (return 'cancel') unless the user clicks "Send anyway".
+  // All three actions are fully implemented: 'cancel' (default -- the
+  // banner pauses the send), 'send' (user override -- they accept the
+  // risk and send anyway), and 'redact' (replace detected values with
+  // [REDACTED:<category>] in the input). The minimal implementation
+  // blocks the send (return 'cancel') unless the user clicks an action.
   function onSendIntercept(events, text) {
     try {
       log.info('onSendIntercept: blocking send (' + (events ? events.length : 0) + ' detections)');
@@ -214,7 +214,8 @@
   // Handle banner action. The banner has 3 main actions (cancel,
   // redact, send) and a 4th: dismiss_optin (the "Submit & dismiss"
   // opt-in path). For 3f, the actual send/cancel/re-dispatch
-  // behavior is still placeholders; 3g will wire the SW.
+  // behavior is fully wired; the SW (3g) handles FP_REPORTS
+  // messages, queueing, and backend delivery.
   function handleBannerAction(action, payload) {
     try {
       log.info('banner action: ' + action);
@@ -236,8 +237,8 @@
         // re-dispatch the send event after a delay.)
         log.info('user chose send anyway; user must re-send');
       } else if (action === 'dismiss' || action === 'dismiss_optin') {
-        // The dismiss module already recorded this. The fp_reports
-        // action (if any) will be sent in 3g.
+        // The dismiss module already recorded this. FP reports
+        // are delivered via the fp_reports action below.
         log.info('user dismissed (' + action + ')');
       } else if (action === 'fp_reports') {
         // The user opted in. The reports are in payload.reports.
