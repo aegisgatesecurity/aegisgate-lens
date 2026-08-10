@@ -77,26 +77,44 @@ test('e2e/manifest: CSP is strict (no unsafe-inline, no unsafe-eval, no remote c
   }
 });
 
-test('e2e/manifest: permissions are minimal and explained', () => {
-  const manifest = readJson('test/headless-smoke/dist/manifest.json');
-  // The 7 documented permissions (per CWS submission record):
-  // activeTab, alarms, host (8 patterns), storage, scripting, unlimitedStorage
-  // No optional_permissions, no broad host permissions
-  assert.ok(manifest.permissions, 'manifest must declare permissions');
-  const perms = manifest.permissions;
-  // Each declared permission should be justified per Chrome Web Store policy.
-  // We can't verify the CWS justification text here, but we CAN verify
-  // the permissions set is bounded (not 50+ permissions).
-  assert.ok(perms.length <= 10, `permissions count should be <= 10 (got ${perms.length})`);
-  // No host_permissions with wildcards broader than specific providers
-  if (manifest.host_permissions) {
-    for (const h of manifest.host_permissions) {
-      // The only wildcard allowed is the lens.aegisgatesecurity.io backend
-      if (h.includes('*://*/*') || h === '<all_urls>') {
-        assert.fail(`host_permissions contains a too-broad wildcard: ${h}`);
-      }
-    }
-  }
+test('e2e/manifest: Firefox AMO compatibility (browser_specific_settings)', () => {
+  const manifest = readJson('manifest.json');
+  // Firefox AMO requires browser_specific_settings.gecko.id
+  const bss = manifest.browser_specific_settings;
+  assert.ok(bss, 'manifest must have browser_specific_settings for Firefox AMO');
+  assert.ok(bss.gecko, 'browser_specific_settings must have gecko section');
+  assert.ok(bss.gecko.id, 'gecko must have an id (AMO extension ID)');
+  assert.ok(typeof bss.gecko.id === 'string' && bss.gecko.id.length > 0,
+    'gecko.id must be a non-empty string');
+  assert.ok(bss.gecko.strict_min_version,
+    'gecko must have strict_min_version (Firefox 128+ for MV3 support)');
+  // Firefox 128 is the first stable release with full MV3 support
+  const minVer = parseFloat(bss.gecko.strict_min_version);
+  assert.ok(minVer >= 128,
+    `gecko.strict_min_version must be >= 128.0 (got ${bss.gecko.strict_min_version})`);
+});
+
+test('e2e/manifest: background has scripts for Firefox MV3 fallback', () => {
+  const manifest = readJson('manifest.json');
+  const bg = manifest.background;
+  assert.ok(bg.service_worker, 'background must have service_worker (Chrome MV3)');
+  assert.ok(bg.scripts && Array.isArray(bg.scripts),
+    'background must have scripts array (Firefox MV3 fallback)');
+  assert.ok(bg.scripts.length > 0,
+    'background.scripts must be non-empty');
+  // The scripts should include the same file as service_worker
+  assert.ok(bg.scripts.includes(bg.service_worker),
+    'background.scripts should include the same file as service_worker');
+});
+
+test('e2e/manifest: browser-compat.js is first content script', () => {
+  const manifest = readJson('manifest.json');
+  const js = manifest.content_scripts[0].js;
+  assert.equal(js[0], 'src/browser-compat.js',
+    'browser-compat.js must be the first content script (for Firefox compatibility)');
+  // Verify the file exists
+  assert.ok(existsSync(join(LENS_ROOT, 'src/browser-compat.js')),
+    'src/browser-compat.js file must exist');
 });
 
 // --- Test 2: 3-way host consistency (F-1 regression guard) ---

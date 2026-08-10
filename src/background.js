@@ -619,25 +619,43 @@
         // Mark as injected
         injectedTabs[tabId] = Date.now();
         storageSet('aegisgate_lens_injected_tabs', injectedTabs).then(function () {
-          // Dynamically inject the content script
+          // Dynamically inject the content script.
+          // The file list MUST match manifest.json content_scripts[0].js
+          // exactly (including the src/ prefix and all sub-modules).
+          // The test/e2e/manifest-validation.test.mjs test guards against
+          // drift between this list and the manifest.
           chrome.scripting.executeScript({
             target: { tabId: tabId },
             files: [
-              'util/logger.js',
-              'detectors/luhn.js',
-              'detectors/regex/pii.js',
-              'detectors/regex/secrets.js',
-              'detectors/regex/source_xss.js',
-              'detectors/regex/compliance.js',
-              'privacy/schema.js',
-              'privacy/domain_hash.js',
-              'detectors/index.js',
-              'util/selectors.js',
-              'util/prompt-detect.js',
-              'util/banner-icons.js',
-              'util/dismiss.js',
-              'util/banner-ui.js',
-              'content.js'
+              'src/browser-compat.js',
+              'src/util/logger.js',
+              'src/util/constants.js',
+              'src/util/typedefs.js',
+              'src/detectors/luhn.js',
+              'src/detectors/regex/pii-us-core.js',
+              'src/detectors/regex/pii-us-extended.js',
+              'src/detectors/regex/pii-international-id.js',
+              'src/detectors/regex/pii-financial.js',
+              'src/detectors/regex/pii.js',
+              'src/detectors/regex/secrets.js',
+              'src/detectors/regex/source_xss.js',
+              'src/detectors/regex/compliance.js',
+              'src/privacy/schema.js',
+              'src/privacy/domain_hash.js',
+              'src/detectors/ml/char-normalizer.js',
+              'src/detectors/ml/threat-detector-js.js',
+              'src/detectors/index.js',
+              'src/util/selectors.js',
+              'src/util/prompt-detect-dom.js',
+              'src/util/prompt-detect-lifecycle.js',
+              'src/util/prompt-detect.js',
+              'src/util/banner-icons.js',
+              'src/util/dismiss.js',
+              'src/util/banner-ui-formatters.js',
+              'src/util/banner-ui-html.js',
+              'src/util/banner-ui-lifecycle.js',
+              'src/util/banner-ui.js',
+              'src/content.js'
             ]
           }).then(function () {
             log.info('dynamically injected content script into tab ' + tabId + ' (' + hostname + ')');

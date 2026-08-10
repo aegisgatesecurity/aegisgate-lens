@@ -21,7 +21,8 @@
     }
   },
   "background": {
-    "service_worker": "src/background.js"
+    "service_worker": "src/background.js",
+    "scripts": ["src/background.js"]
   },
   "content_scripts": [
     {
@@ -44,7 +45,10 @@
         "https://meta.ai/*"
       ],
       "js": [
+        "src/browser-compat.js",
         "src/util/logger.js",
+        "src/util/constants.js",
+        "src/util/typedefs.js",
         "src/detectors/luhn.js",
         "src/detectors/regex/pii-us-core.js",
         "src/detectors/regex/pii-us-extended.js",
@@ -103,6 +107,12 @@
   ],
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "lens@aegisgate.security",
+      "strict_min_version": "128.0"
+    }
   },
   "minimum_chrome_version": "116"
 }

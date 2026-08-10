@@ -151,3 +151,32 @@ test('manifest-hosts: www variants present (v0.1.2 adds)', function () {
     assert.ok(m.has(h), 'manifest is missing www variant: ' + h);
   }
 });
+
+// --- Dynamic injection file list consistency ---
+// background.js dynamically injects content scripts via chrome.scripting
+// .executeScript(). The file list MUST match manifest.json content_scripts
+// [0].js exactly. If they drift, dynamic injection will fail (missing
+// modules) or inject stale/incorrect files. This is a 4th source-of-truth
+// that must stay in sync with the manifest.
+
+test('manifest-hosts: dynamic injection file list matches manifest content_scripts[0].js', function () {
+  const manifest = JSON.parse(readFileSync(join(LENS_ROOT, 'manifest.json'), 'utf8'));
+  const manifestFiles = manifest.content_scripts[0].js;
+
+  // Parse the dynamic injection file list from background.js.
+  // The list is inside: chrome.scripting.executeScript({ ... files: [...] })
+  const bgSrc = readFileSync(join(LENS_ROOT, 'src/background.js'), 'utf8');
+  // Find the files array within the executeScript call.
+  // We match: files: [ '...', '...', ... ] (single-quoted, comma-separated)
+  const re = /chrome\.scripting\.executeScript\s*\(\s*\{[\s\S]*?files:\s*\[([\s\S]*?)\]/;
+  const m = re.exec(bgSrc);
+  assert.ok(m, 'background.js: could not find chrome.scripting.executeScript files array');
+  const list = m[1];
+  const strs = list.match(/'[^']+'/g) || [];
+  const bgFiles = strs.map(function (s) { return s.slice(1, -1); });
+
+  assert.deepEqual(bgFiles, manifestFiles,
+    'background.js dynamic injection file list does not match manifest content_scripts[0].js.\n' +
+    'background.js: ' + JSON.stringify(bgFiles) + '\n' +
+    'manifest.json: ' + JSON.stringify(manifestFiles));
+});

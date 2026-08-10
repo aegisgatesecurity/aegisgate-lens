@@ -8,14 +8,16 @@
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Install on Chrome Web Store](https://img.shields.io/badge/Install-CWS%20v0.3.0-4285F4?logo=google-chrome&logoColor=white)](https://chromewebstore.google.com/detail/aegisgate-lens/lkioinepjpjfdhiggaomoafnhagfcjip)
+[![Firefox Add-on](https://img.shields.io/badge/Install-AMO%20(coming%20soon)-FF7139?logo=firefox&logoColor=white)](#installation)
 [![Version](https://img.shields.io/badge/version-v0.3.0-brightgreen.svg)](https://github.com/aegisgatesecurity/aegisgate-lens/releases/tag/v0.3.0)
-[![Tests](https://img.shields.io/badge/tests-504%2F504-brightgreen.svg)](#test-coverage)
+[![Tests](https://img.shields.io/badge/tests-508%2F508-brightgreen.svg)](#test-coverage)
 [![ML](https://img.shields.io/badge/ML-pure%20JS%20(CharCNN--BiLSTM)-9cf.svg)](#ml-threat-detector)
 [![Perf](https://img.shields.io/badge/ML%20inference-~5--50ms%20(Chrome%20est.)-blue.svg)](#performance)
 [![Privacy](https://img.shields.io/badge/privacy-12%20non--negotiables-success.svg)](./docs/SECURITY.md)
 [![Patterns](https://img.shields.io/badge/patterns-151%20regex%20%2B%20ML-9cf.svg)](#)
 [![Providers](https://img.shields.io/badge/providers-10-blue.svg)](#supported-ai-providers)
 [![Chrome 116+](https://img.shields.io/badge/chrome-116%2B-yellow.svg)](https://developer.chrome.com/docs/extensions/mv3)
+[![Firefox 128+](https://img.shields.io/badge/firefox-128%2B-FF7139?logo=firefox&logoColor=white)](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions)
 [![Zero npm](https://img.shields.io/badge/dependencies-zero-success.svg)](./docs/NO-EXTERNAL-DEPS.md)
 [![CSP](https://img.shields.io/badge/CSP-script--src%20'self'-success.svg)](#security)
 [![CodeQL](https://github.com/aegisgatesecurity/aegisgate-lens/actions/workflows/security.yml/badge.svg)](https://github.com/aegisgatesecurity/aegisgate-lens/actions/workflows/security.yml)
@@ -189,13 +191,21 @@ Lens runs **5 detection facets** — 4 regex (synchronous) + 1 ML (asynchronous)
 
 ## Installation
 
-### From Chrome Web Store (recommended)
+### Chrome Web Store (recommended)
 
 1. Visit the [Chrome Web Store listing](https://chromewebstore.google.com/detail/aegisgate-lens/lkioinepjpjfdhiggaomoafnhagfcjip)
 2. Click **Add to Chrome**
 3. Click the AegisGate Lens icon in your toolbar to verify it's active
 
-### From source (development)
+### Firefox Add-ons (AMO)
+
+**Coming soon.** Lens v0.3.0+ supports Firefox 128+ via Manifest V3.
+
+1. Visit the [Firefox Add-ons listing](https://addons.mozilla.org/) (link will be added when published)
+2. Click **Add to Firefox**
+3. Click the AegisGate Lens icon in your toolbar to verify it's active
+
+### From source (development / testing)
 
 ```bash
 git clone https://github.com/aegisgatesecurity/aegisgate-lens.git
@@ -203,16 +213,28 @@ cd aegisgate-lens
 # No npm install needed — zero external dependencies
 ```
 
+**Load in Chrome:**
+1. Navigate to `chrome://extensions`
+2. Enable **Developer mode** (top right)
+3. Click **Load unpacked**
+4. Select the `aegisgate-lens` directory
+
+**Load in Firefox:**
+1. Navigate to `about:debugging#/runtime/this-firefox`
+2. Click **Load Temporary Add-on**
+3. Select `manifest.json` from the `aegisgate-lens` directory
+
 ## Test Coverage
 
 | Suite | Count | Status |
 |-------|-------|--------|
-| Node unit tests (`node:test`) | 492 | ✅ all pass |
+| Node unit tests (`node:test`) | 493 | ✅ all pass |
+| E2e manifest validation | 25 | ✅ all pass |
 | ML perf/stress tests | 12 | ✅ all pass |
 | Go unit tests (`go test`) | 3 | ✅ all pass |
 | Headless smoke in real Chrome (via CDP) | 16 | ✅ all pass |
 | Platform FPR test (6,500 WildChat prompts) | 1 | ✅ 2.31% FPR |
-| **Total** | **504** | ✅ |
+| **Total** | **508** | ✅ |
 
 ## Privacy: The 12 Non-Negotiables
 
@@ -258,8 +280,8 @@ AegisGate Lens is the consumer-facing layer. The same team builds [AegisGate Pla
 
 ## Roadmap
 
-- **v0.3.1**: Welcome page aesthetic update
-- **v0.4.0**: Firefox/Edge support, public benchmark dataset
+- **v0.3.1**: Firefox AMO publication, welcome page aesthetic update
+- **v0.4.0**: Public benchmark dataset
 - **v0.5.0**: Third-party security audit (Cure53 / Trail of Bits / NCC Group)
 
 ## Community & Support
