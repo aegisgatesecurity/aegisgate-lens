@@ -216,7 +216,25 @@
     }
   }
 
+  function setVersion(text) {
+    var el = document.getElementById('version-value');
+    if (el) el.textContent = text;
+  }
+
   function onLoad() {
+    // Get version from manifest.json
+    var cr = getChrome();
+    var version = 'unknown';
+    if (cr && cr.runtime && cr.runtime.getManifest) {
+      try {
+        var manifest = cr.runtime.getManifest();
+        version = manifest.version || 'unknown';
+      } catch (e) {
+        version = 'error reading manifest';
+      }
+    }
+    setVersion(version);
+
     readOptIn().then(function (opt) {
       if (opt.enabled) {
         setStatus('Active');
