@@ -94,10 +94,64 @@
           re: /\b(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\b|\b(?:[A-Fa-f0-9]{1,4}:){7}[A-Fa-f0-9]{1,4}\b/g
         },
         // ====================================================================
-        // NEW PATTERNS (v0.1.0-beta PII expansion, 2026-07-04)
-        // Each pattern is verified with positive + negative test cases in
-        // test/unit/regex-pii.test.mjs.
+        // CPT/HCPCS Medical Billing Codes (v0.3.1 addition, 2026-08-13)
+        // Healthcare fraud detection: billing codes in AI prompts
         // ====================================================================
+        pii_cpt_code: {
+          severity: 'medium',
+          // CPT: 5-digit numeric code
+          re: /\b[0-9]{5}\b/g
+        },
+        pii_cpt_code_label: {
+          severity: 'high',
+          // CPT with label
+          re: /(?:CPT|procedure\s+code)\s*[:=]?\s*[0-9]{5}\b/gi
+        },
+        pii_hcpcs_level2: {
+          severity: 'medium',
+          // HCPCS Level II: 1 letter + 4 digits
+          re: /\b[A-Z][0-9]{4}\b/g
+        },
+        pii_hcpcs_level2_label: {
+          severity: 'high',
+          // HCPCS with label
+          re: /(?:HCPCS|healthcare\s+procedure\s+code)\s*[:=]?\s*[A-Z][0-9]{4}\b/gi
+        },
+        pii_hcpcs_level3: {
+          severity: 'low',
+          // HCPCS Level III: 1 letter + 4 digits + 1 letter
+          re: /\b[A-Z][0-9]{4}[A-Z]\b/g
+        },
+        pii_cpt_cat2: {
+          severity: 'low',
+          // CPT Category II: 4 digits + F
+          re: /\b[0-9]{4}F\b/g
+        },
+        pii_cpt_cat3: {
+          severity: 'low',
+          // CPT Category III: 4 digits + T
+          re: /\b[0-9]{4}T\b/g
+        },
+        pii_cpt_evaluation: {
+          severity: 'medium',
+          // CPT evaluation/management codes (office visits)
+          re: /\b9(?:920[34]|921[1-5]|930[0-5]|940[1-4])\b/g
+        },
+        pii_cpt_lab: {
+          severity: 'medium',
+          // CPT laboratory/pathology codes
+          re: /\b8(?:0053|1000|2000|3000|4000|5000|6000|7000|8000)\b/g
+        },
+        pii_cpt_radiology: {
+          severity: 'medium',
+          // CPT radiology codes (X-ray, CT, MRI)
+          re: /\b7(?:0000|1000|2000|3000|4000|5000|6000|7000|8000)\b/g
+        },
+        pii_cpt_surgery: {
+          severity: 'high',
+          // CPT surgery codes (high-value procedures)
+          re: /\b(?:10004|20000|30000|40000|50000|60000)\b/g
+        },
   };
 
   if (typeof self !== 'undefined') self.__lensPII_us_core = { patterns: patterns };

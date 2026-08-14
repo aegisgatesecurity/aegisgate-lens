@@ -51,7 +51,22 @@
           severity: 'medium',
           re: /(?:Cashapp|cashapp|cash\s*app)\s*(?:username|handle)?\s*[:=]?\s*(\$?[a-zA-Z][a-zA-Z0-9._-]{1,20})\b/gi
         },
-        // Residence permit patterns
+        // SWIFT/BIC banking codes - international wire transfer identifiers
+        pii_banking_swift_bic: {
+          severity: 'high',
+          // SWIFT/BIC with label (8-11 characters: AAAABBBBXXX)
+          re: /(?:SWIFT|BIC|bank\s*identifier\s*code)\s*(?:code|identifier)?\s*[:=]?\s*([A-Z]{4}[A-Z]{2}[A-Z0-9]{2}(?:[A-Z0-9]{3})?)\b/gi
+        },
+        pii_banking_swift_8: {
+          severity: 'high',
+          // 8-character SWIFT code (bank + country + location)
+          re: /\b([A-Z]{4}[A-Z]{2}[0-9]{2})\b/gi
+        },
+        pii_banking_swift_11: {
+          severity: 'high',
+          // 11-character SWIFT code (includes branch code)
+          re: /\b([A-Z]{4}[A-Z]{2}[0-9]{2}[A-Z0-9]{3})\b/gi
+        },
   };
 
   if (typeof self !== 'undefined') self.__lensPII_financial = { patterns: patterns };

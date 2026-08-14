@@ -55,6 +55,7 @@
         "src/detectors/regex/pii-international-id.js",
         "src/detectors/regex/pii-financial.js",
         "src/detectors/regex/pii.js",
+        "src/detectors/regex/ot-protocols.js",
         "src/detectors/regex/secrets.js",
         "src/detectors/regex/source_xss.js",
         "src/detectors/regex/compliance.js",
