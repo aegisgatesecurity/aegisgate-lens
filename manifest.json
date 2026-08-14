@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "AegisGate Lens",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Privacy-first prompt safety for AI tools. Detects PII, secrets, XSS, compliance, and adversarial prompts on-device. Apache 2.0.",
   "author": "AegisGate Security, LLC",
   "homepage_url": "https://aegisgatesecurity.io/lens",
