@@ -184,3 +184,11 @@ test/headless-smoke/mini-smoke-bin
 
 # Lighthouse CI fake test fixtures (local only)
 .lighthouseci-fake-*/
+
+# === PROTECTED IP — DO NOT COMMIT ===
+# ML model weights (proprietary, trained by AegisGate Security, LLC)
+models/threat_cnn_bilstm_weights.bin.json
+# ML inference code (proprietary architecture)
+src/detectors/ml/threat-detector-js.js
+# Model card (contains architecture details)
+docs/MODEL-CARD.md
