@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "AegisGate Lens",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Privacy-first prompt safety for AI tools. Detects PII, secrets, XSS, compliance, and adversarial prompts on-device. Apache 2.0.",
   "author": "AegisGate Security, LLC",
   "homepage_url": "https://aegisgatesecurity.io/lens",
@@ -55,6 +55,7 @@
         "src/detectors/regex/pii-international-id.js",
         "src/detectors/regex/pii-financial.js",
         "src/detectors/regex/pii.js",
+        "src/detectors/regex/ot-protocols.js",
         "src/detectors/regex/secrets.js",
         "src/detectors/regex/source_xss.js",
         "src/detectors/regex/compliance.js",

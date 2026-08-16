@@ -67,6 +67,12 @@
       facets.push({ id: 'compliance', module: globalThis.__lensCompliance });
     }
 
+    if (typeof self !== 'undefined' && self.__lensOT_protocols) {
+      facets.push({ id: 'ot_protocols', module: self.__lensOT_protocols });
+    } else if (typeof globalThis !== 'undefined' && globalThis.__lensOT_protocols) {
+      facets.push({ id: 'ot_protocols', module: globalThis.__lensOT_protocols });
+    }
+
     return facets;
   }
 
@@ -320,7 +326,7 @@
   }
 
   // For testing: list the expected facets (so the test can assert)
-  var EXPECTED_FACETS = ['pii', 'secrets', 'xss', 'compliance'];
+  var EXPECTED_FACETS = ['pii', 'secrets', 'xss', 'compliance', 'ot_protocols'];
 
   var module = {
     detect: detect,
