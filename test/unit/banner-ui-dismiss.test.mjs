@@ -148,6 +148,36 @@ class MockElement {
   }
   scrollIntoView() {}
   click() {}
+  // v0.3.1: Support template elements (used by banner show/dismiss)
+  get content() {
+    if (this.tagName === 'TEMPLATE') {
+      var self = this;
+      return {
+        firstElementChild: self.children[0] || null,
+        cloneNode: function() {
+          return { childNodes: self.children.slice() };
+        }
+      };
+    }
+    return null;
+  }
+  // v0.3.1: Support replaceChildren (used by banner show)
+  replaceChildren() {
+    this.children = [];
+    for (var i = 0; i < arguments.length; i++) {
+      var child = arguments[i];
+      if (child && child.childNodes) {
+        for (var j = 0; j < child.childNodes.length; j++) {
+          this.children.push(child.childNodes[j]);
+        }
+      } else if (child) {
+        this.children.push(child);
+      }
+    }
+  }
+  // v0.3.1: firstChild/firstElementChild for detached element traversal
+  get firstChild() { return this.children[0] || null; }
+  get firstElementChild() { return this.children[0] || null; }
 }
 
 class MockDocument {

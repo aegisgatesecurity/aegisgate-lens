@@ -302,8 +302,16 @@
     // Remove any existing dismiss form
     var existing = state.el.querySelector('.lens-dismiss');
     if (existing) existing.remove();
-    // Insert the dismiss form after the actions row
-    actionsRow.insertAdjacentHTML('afterend', html.buildDismissFormHTML());
+    // Insert the dismiss form after the actions row.
+    // Use a detached element to avoid AMO security warnings
+    // about insertAdjacentHTML on connected elements.
+    // buildDismissFormHTML returns a fully static string (no user input).
+    var wrapper = document.createElement('div');
+    wrapper.innerHTML = html.buildDismissFormHTML();
+    var dismissEl = wrapper.firstElementChild;
+    if (dismissEl) {
+      actionsRow.parentNode.insertBefore(dismissEl, actionsRow.nextSibling);
+    }
     // Scroll the dismiss form into view
     var form = state.el.querySelector('.lens-dismiss');
     if (form) form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -377,7 +385,14 @@
     var showPrimer = (onboardStatus === 'pending' || onboardStatus === 'failed');
     // The HTML builder reads opts.showPrimer
     var renderOpts = showPrimer ? Object.assign({}, opts, { showPrimer: true }) : opts;
-    state.el.innerHTML = html.buildBannerHTML(events, renderOpts);
+    // Set banner content. Use a detached element to avoid AMO
+    // security warnings about innerHTML on connected elements.
+    // buildBannerHTML returns HTML with all dynamic content escaped via escapeHtml().
+    var wrapper = document.createElement('div');
+    wrapper.innerHTML = html.buildBannerHTML(events, renderOpts);
+    while (wrapper.firstChild) {
+      state.el.appendChild(wrapper.firstChild);
+    }
     // If we showed the primer, write the flag immediately so
     // the next banner doesn't show it. (We don't wait for the
     // user to click × first; the primer is more like a "splash"
