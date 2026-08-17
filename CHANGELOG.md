@@ -5,10 +5,12 @@ All notable changes to AegisGate Lens are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.1] — 2026-08-13
 
 ### Added
-- **Firefox support (MV3)** — AegisGate Lens now supports Firefox 128+ via Manifest V3. Added `browser_specific_settings.gecko` with AMO extension ID `lens@aegisgate.security` and `strict_min_version: 128.0`.
+- **23 New SOC Detection Patterns** — SWIFT/BIC banking codes (3 patterns), CPT/HCPCS medical billing codes (11 patterns), and OT/ICS protocol patterns (9 patterns: Modbus, DNP3, OPC-UA). Parity with Platform v4.1.0 and Rampart v0.6.1. Total regex patterns: 155.
+
+- **Firefox support (MV3)** — AegisGate Lens now supports Firefox 142+ via Manifest V3. Added `browser_specific_settings.gecko` with AMO extension ID `lens@aegisgate.security` and `strict_min_version: 142.0`.
 - **`src/browser-compat.js`** — Tiny compatibility shim loaded as the first content script. Aliases `browser.*` to `chrome.*` if `chrome` is undefined (Firefox pre-128 or GeckoView). No-op on Chrome and Firefox 128+ where `chrome.*` is native.
 - **`background.scripts`** — Added `scripts: ["src/background.js"]` alongside `service_worker` in the manifest. Firefox MV3 uses `scripts` as a fallback for background execution; Chrome uses `service_worker`. Both are declared for cross-browser compatibility.
 - **Dynamic injection file list fix** — The `chrome.scripting.executeScript()` file list in `background.js` was missing 13 of 29 content script files and all paths lacked the `src/` prefix. This was a pre-existing bug causing silent dynamic injection failures. Fixed to exactly match `manifest.json content_scripts[0].js`.
@@ -67,6 +69,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - In-page banner with PII/secrets/XSS/compliance detection.
 - Chrome Manifest V3 extension.
 
+[0.3.1]: https://github.com/aegisgatesecurity/aegisgate-lens/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/aegisgatesecurity/aegisgate-lens/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/aegisgatesecurity/aegisgate-lens/compare/v0.1.4...v0.2.0
 [0.1.4]: https://github.com/aegisgatesecurity/aegisgate-lens/releases/tag/v0.1.4

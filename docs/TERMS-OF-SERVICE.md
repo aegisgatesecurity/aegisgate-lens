@@ -1,7 +1,7 @@
 # AegisGate Lens — Terms of Service
 
 **Last updated:** 2026-08-05
-**Effective for:** AegisGate Lens v0.3.0
+**Effective for:** AegisGate Lens v0.3.1
 **Licensor:** AegisGate Security, LLC ("AegisGate", "we", "us")
 **Licensee:** End user of the AegisGate Lens Chrome extension ("you", "your")
 
@@ -316,6 +316,6 @@ If you have questions about these ToS, contact:
 
 **Signed-off-by:** AegisGate Security <legal@aegisgatesecurity.io>
 **Last updated:** 2026-08-05
-**Effective for:** AegisGate Lens v0.3.0
+**Effective for:** AegisGate Lens v0.3.1
 **License of this document:** CC-BY-4.0 (you may copy, modify,
 and redistribute)

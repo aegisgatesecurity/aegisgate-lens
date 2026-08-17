@@ -6,10 +6,11 @@ AegisGate Lens is a privacy product. Security reports are taken seriously and ha
 
 | Version | Supported          |
 |---------|--------------------|
-| 0.1.x   | ✅ (current dev)   |
-| < 0.1   | ❌                 |
+| 0.3.x (current) | ✅ Active |
+| 0.2.x | ⚠️ Security fixes only |
+| 0.1.x | ❌ Replaced by 0.2.x |
 
-The Lens is pre-release as of 2026-06-18. Only the latest `0.1.x` minor version receives security fixes.
+The current release is v0.3.1. Only the latest `0.3.x` minor version receives security fixes.
 
 ## Reporting a vulnerability
 

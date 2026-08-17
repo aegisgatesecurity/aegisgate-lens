@@ -4,10 +4,7 @@ The published Privacy Policy for AegisGate Lens is hosted at:
 
 **<https://aegisgatesecurity.io/lens/privacy>**
 
-The source of truth for the policy lives in the [AegisGate Platform monorepo](https://github.com/aegisgatesecurity/aegisgate-platform):
-
-- **Working draft:** [`AEGISGATE-LENS-PRIVACY-POLICY-DRAFT.md`](https://github.com/aegisgatesecurity/aegisgate-platform/blob/main/plans/AEGISGATE-LENS-PRIVACY-POLICY-DRAFT.md) (607 lines, awaiting founder legal review as of 2026-06-18).
-- **Published version:** the source is extracted from the working draft after founder review and published to the URL above. Once published, this file (`docs/PRIVACY-POLICY.md`) will be a pointer to the published version.
+The source of truth for the policy lives in the AegisGate Platform repository. The published version is hosted at the URL above.
 
 ## The 12 non-negotiables
 

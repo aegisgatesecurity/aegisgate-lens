@@ -7,14 +7,14 @@
 100% on-device · Zero data leaves your browser · Free · Forever
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Install on Chrome Web Store](https://img.shields.io/badge/Install-CWS%20v0.3.0-4285F4?logo=google-chrome&logoColor=white)](https://chromewebstore.google.com/detail/aegisgate-lens/lkioinepjpjfdhiggaomoafnhagfcjip)
-[![Firefox Add-on](https://img.shields.io/badge/Install-AMO%20v0.3.0-FF7139?logo=firefox&logoColor=white)](https://addons.mozilla.org/en-US/firefox/addon/aegisgate-lens/)
-[![Version](https://img.shields.io/badge/version-v0.3.0-brightgreen.svg)](https://github.com/aegisgatesecurity/aegisgate-lens/releases/tag/v0.3.0)
-[![Tests](https://img.shields.io/badge/tests-508%2F508-brightgreen.svg)](#test-coverage)
+[![Install on Chrome Web Store](https://img.shields.io/badge/Install-CWS%20v0.3.1-4285F4?logo=google-chrome&logoColor=white)](https://chromewebstore.google.com/detail/aegisgate-lens/lkioinepjpjfdhiggaomoafnhagfcjip)
+[![Firefox Add-on](https://img.shields.io/badge/Install-AMO%20v0.3.1-FF7139?logo=firefox&logoColor=white)](https://addons.mozilla.org/en-US/firefox/addon/aegisgate-lens/)
+[![Version](https://img.shields.io/badge/version-v0.3.1-brightgreen.svg)](https://github.com/aegisgatesecurity/aegisgate-lens/releases/tag/v0.3.1)
+[![Tests](https://img.shields.io/badge/tests-530%2F530-brightgreen.svg)](#test-coverage)
 [![ML](https://img.shields.io/badge/ML-pure%20JS%20(CharCNN--BiLSTM)-9cf.svg)](#ml-threat-detector)
 [![Perf](https://img.shields.io/badge/ML%20inference-~5--50ms%20(Chrome%20est.)-blue.svg)](#performance)
 [![Privacy](https://img.shields.io/badge/privacy-12%20non--negotiables-success.svg)](./docs/SECURITY.md)
-[![Patterns](https://img.shields.io/badge/patterns-151%20regex%20%2B%20ML-9cf.svg)](#)
+[![Patterns](https://img.shields.io/badge/patterns-155%20regex%20%2B%20ML-9cf.svg)](#)
 [![Providers](https://img.shields.io/badge/providers-10-blue.svg)](#supported-ai-providers)
 [![Chrome 116+](https://img.shields.io/badge/chrome-116%2B-yellow.svg)](https://developer.chrome.com/docs/extensions/mv3)
 [![Firefox 142+](https://img.shields.io/badge/firefox-142%2B-FF7139?logo=firefox&logoColor=white)](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions)
@@ -31,9 +31,16 @@
 
 ---
 
-> **🛡️ Using AegisGate at work?** [AegisGate Platform](https://github.com/aegisgatesecurity/aegisgate-platform) is our server-side gateway — 153 detection patterns, MCP/A2A/ACP protection, 15+ compliance frameworks, and cryptographic attestation. For the 95% of users without enterprise protections, Lens is here. [Explore Platform →](https://github.com/aegisgatesecurity/aegisgate-platform)
+> **🛡️ Using AegisGate at work?** [AegisGate Platform](https://github.com/aegisgatesecurity/aegisgate-platform) is our server-side gateway — 177 detection patterns, MCP/A2A/ACP protection, 15+ compliance frameworks, and cryptographic attestation. For the 95% of users without enterprise protections, Lens is here. [Explore Platform →](https://github.com/aegisgatesecurity/aegisgate-platform)
 
 ---
+
+## What's New in v0.3.1
+
+- **🔒 23 New SOC Detection Patterns** — SWIFT/BIC banking codes (3), CPT/HCPCS medical billing codes (11), and OT/ICS protocol patterns (9: Modbus, DNP3, OPC-UA). Parity with Platform v4.1.0 and Rampart v0.6.1.
+- **🦊 Firefox MV3 Support** — Firefox 142+ via Manifest V3 with `browser_specific_settings.gecko`.
+- **🔧 Dynamic injection fix** — Background.js content script file list corrected to match manifest.
+- **✅ 530 tests** — 518 passing + 12 skipped (ML perf tests). All green.
 
 ## What's New in v0.3.0
 
@@ -50,7 +57,7 @@ Every AI conversation is a potential data leak. A prompt containing an API key, 
 Lens is the browser extension that catches it **before you hit send**.
 
 - **100% on-device.** No prompt text, no URLs, no page content ever leaves your browser. Zero telemetry by default.
-- **151 regex patterns + ML.** Sub-millisecond regex detection plus ~5-50ms ML inference for adversarial prompt injection.
+- **155 regex patterns + ML.** Sub-millisecond regex detection plus ~5-50ms ML inference for adversarial prompt injection.
 - **10 AI providers.** ChatGPT, Claude, Gemini, Copilot, DuckDuckGo, Perplexity, Mistral, Grok, DeepSeek, Meta AI.
 - **Fail-visible.** Every detection is shown to you — you decide to cancel, redact, or proceed.
 - **Free. Forever.** Apache 2.0, no account required, no upsell gate.
@@ -60,17 +67,18 @@ Lens is the browser extension that catches it **before you hit send**.
 ```mermaid
 flowchart LR
     User["👤 You type a prompt"] -->|"Keystroke<br/>(debounced 250ms)"| Lens["🛡️ Lens<br/>Content Script"]
-    Lens -->|"Regex facets<br/>(sync, ~0.3ms)"| Regex{"151 regex<br/>patterns"}
+    Lens -->|"Regex facets<br/>(sync, ~0.3ms)"| Regex{"155 regex<br/>patterns"}
     Lens -->|"ML facet<br/>(async, ~5-50ms)"| ML["🧠 Char CNN-BiLSTM"]
 
-    Regex -->|"PII detected"| PII["🔒 PII<br/>(55 patterns)"]
+    Regex -->|"PII detected"| PII["🔒 PII<br/>(69 patterns)"]
     Regex -->|"Secret detected"| Secret["🔑 Secrets<br/>(41 patterns)"]
     Regex -->|"XSS detected"| XSS["💉 XSS<br/>(12 patterns)"]
-    Regex -->|"Compliance risk"| Comp["📋 Compliance<br/>(43 patterns)"]
+    Regex -->|"Compliance risk"| Comp["📋 Compliance<br/>(24 patterns)"]
+    Regex -->|"OT/ICS detected"| OT["⚙️ OT Protocols<br/>(9 patterns)"]
     ML -->|"Adversarial detected"| Adv["⚠️ ML Adversarial<br/>(score ≥ 0.5)"]
     ML -->|"Suspicious"| Sus["🟡 ML Suspicious<br/>(0.3 < score < 0.5)"]
 
-    PII & Secret & XSS & Comp & Adv & Sus --> Decision{"Any<br/>findings?"}
+    PII & Secret & XSS & Comp & OT & Adv & Sus --> Decision{"Any<br/>findings?"}
     Decision -->|"Yes"| Banner["⚠️ Banner<br/>Cancel · Redact · Dismiss"]
     Decision -->|"No"| Pass["✅ Pass-through"]
 
@@ -122,25 +130,26 @@ See [docs/MODEL-CARD.md](./docs/MODEL-CARD.md) for full evaluation data.
 
 ## What It Detects
 
-Lens runs **5 detection facets** — 4 regex (synchronous) + 1 ML (asynchronous) — on every keystroke (debounced 250ms).
+Lens runs **6 detection facets** — 5 regex (synchronous) + 1 ML (asynchronous) — on every keystroke (debounced 250ms).
 
 | Facet | What it catches | Example | Patterns | Latency |
 |-------|----------------|---------|----------|----------|
-| **PII** | Email, phone, SSN, credit card (Luhn-validated), DOB, address, driver's license, passport, tax ID, bank account, IP address | `john.doe@example.com`, `4111-1111-1111-1111` | 55 | ~0.3ms |
+| **PII** | Email, phone, SSN, credit card (Luhn-validated), DOB, address, driver's license, passport, tax ID, bank account, IP address | `john.doe@example.com`, `4111-1111-1111-1111` | 69 | ~0.3ms |
 | **Secrets** | API keys (AWS, GitHub, OpenAI, Stripe, Slack), OAuth tokens, RSA private keys, database credentials | `ghp_abc123...`, `AKIA...`, `-----BEGIN RSA PRIVATE KEY-----` | 41 | ~0.3ms |
 | **XSS** | Cross-site scripting payloads | `<script>alert(1)</script>` | 12 | ~0.3ms |
-| **Compliance** | OWASP LLM Top 10, MITRE ATLAS, EU AI Act, NIST CSF, ISO 27001, CCPA, LGPD, PIPEDA, POPIA | "patient SSN:", "credit card:" | 43 | ~0.3ms |
+| **Compliance** | OWASP LLM Top 10, MITRE ATLAS, EU AI Act, NIST CSF, ISO 27001, CCPA, LGPD, PIPEDA, POPIA | "patient SSN:", "credit card:" | 24 | ~0.3ms |
+| **OT/ICS Protocols** | Modbus, DNP3, OPC-UA control manipulation | "Modbus function code 06..." | 9 | ~0.3ms |
 | **ML Threat** | Adversarial prompt injection (instruction override, roleplay, obfuscated commands) | "Ignore all previous instructions..." | 1 model | ~5-50ms |
-| **Total** | — | — | **151 regex + 1 ML** | — |
+| **Total** | — | — | **155 regex + 1 ML** | — |
 
 ## How Lens Compares
 
 | Capability | Lens | Browser-native warnings | Enterprise DLP |
 |------------|------|------------------------|----------------|
-| PII detection (55 patterns) | ✅ | ❌ | ✅ |
+| PII detection (69 patterns) | ✅ | ❌ | ✅ |
 | Secret detection (41 patterns) | ✅ | ❌ | ✅ |
 | XSS detection (12 patterns) | ✅ | ❌ | ⚠️ Web-only |
-| Compliance risk flagging (43 patterns) | ✅ | ❌ | ⚠️ Limited |
+| Compliance risk flagging (24 patterns) | ✅ | ❌ | ⚠️ Limited |
 | ML adversarial detection | ✅ | ❌ | ⚠️ Rare |
 | Works on 10 AI providers | ✅ | ❌ | ⚠️ Requires proxy |
 | 100% on-device, zero telemetry | ✅ | ✅ | ❌ Cloud-based |
@@ -182,7 +191,7 @@ Lens runs **5 detection facets** — 4 regex (synchronous) + 1 ML (asynchronous)
 
 1. **Content script** is injected into each supported AI provider page (per the MV3 manifest)
 2. **On every keystroke** (debounced 250ms), the prompt value is read from the textarea
-3. **4 regex facets** run synchronously: PII (55), Secrets (41), XSS (12), Compliance (43) = 151 patterns
+3. **5 regex facets** run synchronously: PII (69), Secrets (41), XSS (12), Compliance (24), OT/ICS (9) = 155 patterns
 4. **1 ML facet** runs asynchronously: Char CNN-BiLSTM detects adversarial prompt injection
 5. **PostProcess** filters false positives: Luhn validation for credit cards, 4-4-4 CC pattern rejection, ID-label context check
 6. **Banner shows** with severity color (critical = red, high = orange, medium = yellow, low = blue)
@@ -228,13 +237,13 @@ cd aegisgate-lens
 
 | Suite | Count | Status |
 |-------|-------|--------|
-| Node unit tests (`node:test`) | 493 | ✅ all pass |
+| Node unit tests (`node:test`) | 505 | ✅ all pass |
 | E2e manifest validation | 25 | ✅ all pass |
 | ML perf/stress tests | 12 | ✅ all pass |
 | Go unit tests (`go test`) | 3 | ✅ all pass |
 | Headless smoke in real Chrome (via CDP) | 16 | ✅ all pass |
 | Platform FPR test (6,500 WildChat prompts) | 1 | ✅ 2.31% FPR |
-| **Total** | **508** | ✅ |
+| **Total** | **530** | ✅ |
 
 ## Privacy: The 12 Non-Negotiables
 
@@ -280,7 +289,6 @@ AegisGate Lens is the consumer-facing layer. The same team builds [AegisGate Pla
 
 ## Roadmap
 
-- **v0.3.1**: Welcome page aesthetic update
 - **v0.4.0**: Public benchmark dataset
 - **v0.5.0**: Third-party security audit (Cure53 / Trail of Bits / NCC Group)
 

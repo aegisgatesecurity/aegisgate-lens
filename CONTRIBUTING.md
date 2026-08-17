@@ -55,11 +55,11 @@ This check runs on every PR. It cannot be bypassed.
 - **Documentation improvements** — see `docs/API.md` for the bundle globals, `docs/ARCHITECTURE-v0.1.3.md` for the Mermaid diagrams, and `docs/PRODUCT-SUMMARY.md` for the public-safe product description.
 - **Privacy policy feedback** — open an issue with the label `privacy`.
 
-When the extension source is published (Step D in the build sequence), code contributions will be welcome. Until then, the source files in `src/` are placeholders; please do not open PRs adding to them.
+Code contributions are welcome. The extension source is published in this repository.
 
 ---
 
-## Pull request process (when source is published)
+## Pull request process
 
 1. **Open an issue first** for non-trivial changes. Discuss the approach before you write code.
 2. **Fork the repo** and create a feature branch.
@@ -67,7 +67,7 @@ When the extension source is published (Step D in the build sequence), code cont
 4. **Read the standing rules (lessons learned from v0.1.0-beta through v0.1.3 — most importantly Lessons #1-#8 on architecture, the no-npm rule, and the meta-lesson on full local simulation before pushing CI changes).
 
 5. **Verify locally** that:
-   - The Platform's CI checks pass: `cd ../aegisgate-platform && go test -race ./pkg/lensbackend/...`
+   - All tests pass: `bash tools/test-local.sh`
    - The `No npm check` passes: there is no `package.json` etc. anywhere in your changes.
    - The Node test suite passes (rebuilds the bundle + runs all e2e tests): `bash tools/test-local.sh` -- see `tools/test-local.sh` header for details.
 6. **Open a PR** with a clear description of what changed and why.
@@ -79,7 +79,7 @@ When the extension source is published (Step D in the build sequence), code cont
 
 For the Go build tool (in the Platform monorepo): follow the Platform's existing style. `gofmt`, `go vet`, `staticcheck` are enforced.
 
-For the TypeScript source (in this repo, when it lands in Step D): hand-written ES2020, no transpilation. The build tool's lint rules will enforce:
+For the JavaScript source (in this repo): hand-written ES2020, no transpilation. The build tool's lint rules will enforce:
 - No `eval`, no `Function(`, no `innerHTML`.
 - No `fetch` outside the allowlist.
 - No `import()` of remote URLs.

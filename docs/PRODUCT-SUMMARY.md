@@ -1,7 +1,7 @@
 # AegisGate Lens — Product Summary
 
-**Version**: v0.3.0
-**Last updated**: 2026-08-05
+**Version**: v0.3.1
+**Last updated**: 2026-08-17
 **Audience**: External readers who want a definitive description of
 what AegisGate Lens is and isn't.
 
@@ -25,7 +25,7 @@ default.
 Lens scans your prompt across five detection facets — four regex
 (synchronous, ~0.3ms) and one ML (asynchronous, ~5-50ms in Chrome):
 
-1. **Personal data** (55 patterns) — government-issued IDs, contact
+1. **Personal data** (69 patterns) — government-issued IDs, contact
    information, financial account numbers, and biometric identifiers.
    Coverage includes the US, EU, UK, Canada, Australia, Brazil, and
    India. Structural validation: Luhn for cards, IBAN mod-97, BIP39
@@ -49,7 +49,7 @@ Lens scans your prompt across five detection facets — four regex
    remote server. Runs asynchronously ~5-50ms after the regex
    detection, providing defense-in-depth.
 
-**Total: 151 regex patterns + 1 ML model.**
+**Total: 155 regex patterns + 1 ML model.**
 
 ## How it works
 

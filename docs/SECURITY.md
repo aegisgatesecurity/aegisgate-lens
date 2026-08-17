@@ -1,7 +1,7 @@
 # AegisGate Lens — Security Policy
 
-**Version**: v0.3.0
-**Last updated**: 2026-08-05
+**Version**: v0.3.1
+**Last updated**: 2026-08-17
 **Contact**: `security@aegisgatesecurity.io` (PGP key below)
 **Disclosure timeline**: We acknowledge within 3 business days,
 triage within 7, and aim to fix critical issues within 30 days.
