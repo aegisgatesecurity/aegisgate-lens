@@ -48,7 +48,7 @@ function loadAll() {
 
 // --- Lifecycle ---
 
-test('dispatcher: loads with all 4 regex facets', () => {
+test('dispatcher: loads with all 5 regex facets', () => {
   loadAll();
   const d = globalThis.__lensDispatcher;
   const facets = d.listFacets();
@@ -56,10 +56,10 @@ test('dispatcher: loads with all 4 regex facets', () => {
     'expected all 4 facets, got ' + JSON.stringify(facets));
 });
 
-test('dispatcher: expected facets list contains all 4', () => {
+test('dispatcher: expected facets list contains all 5', () => {
   loadAll();
   const d = globalThis.__lensDispatcher;
-  assert.deepEqual(d.EXPECTED_FACETS.sort(), ['compliance', 'pii', 'secrets', 'xss']);
+  assert.deepEqual(d.EXPECTED_FACETS.sort(), ['compliance', 'ot_protocols', 'pii', 'secrets', 'xss']);
 });
 
 // --- Empty / benign ---

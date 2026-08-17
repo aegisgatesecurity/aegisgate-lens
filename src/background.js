@@ -640,6 +640,7 @@
               'src/detectors/regex/secrets.js',
               'src/detectors/regex/source_xss.js',
               'src/detectors/regex/compliance.js',
+              'src/detectors/regex/ot-protocols.js',
               'src/privacy/schema.js',
               'src/privacy/domain_hash.js',
               'src/detectors/ml/char-normalizer.js',
