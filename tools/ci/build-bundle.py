@@ -36,8 +36,25 @@ parts.append('try {')
 for js in js_files:
     fpath = os.path.join(DIST, js)
     if not os.path.exists(fpath):
-        print('MISSING: ' + fpath, file=sys.stderr)
-        sys.exit(1)
+        # ML inference code (src/detectors/ml/threat-detector-js.js) is
+        # proprietary and .gitignored. In CI (fresh checkout), this file
+        # is absent. Create a stub that sets __lensThreatDetector = null
+        # so the detector orchestrator gracefully falls back to regex-only.
+        if 'threat-detector-js.js' in js or 'threat-detector.js' in js:
+            print('STUB: ' + fpath + ' (ML file is .gitignored — creating regex-only stub)', file=sys.stderr)
+            parts.append('')
+            parts.append('// === ' + js + ' (STUB — ML file is .gitignored) ===')
+            parts.append('(function (global) {')
+            parts.append("  'use strict';")
+            parts.append('  // CI stub: ML inference code is proprietary (.gitignored).')
+            parts.append('  // Sets __lensThreatDetector = null so the detector falls back to regex-only.')
+            parts.append("  var target = (typeof self !== 'undefined') ? self : (typeof globalThis !== 'undefined') ? globalThis : global;")
+            parts.append('  target.__lensThreatDetector = null;')
+            parts.append("})(typeof globalThis !== 'undefined' ? globalThis : typeof self !== 'undefined' ? self : this);")
+            continue
+        else:
+            print('MISSING: ' + fpath, file=sys.stderr)
+            sys.exit(1)
     with open(fpath) as f:
         src = f.read().rstrip()
     parts.append('')
