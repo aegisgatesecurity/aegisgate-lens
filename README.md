@@ -31,7 +31,7 @@
 
 ---
 
-> **🛡️ Using AegisGate at work?** [AegisGate Platform](https://github.com/aegisgatesecurity/aegisgate-platform) is our server-side gateway — 177 detection patterns, MCP/A2A/ACP protection, 15+ compliance frameworks, and cryptographic attestation. For the 95% of users without enterprise protections, Lens is here. [Explore Platform →](https://github.com/aegisgatesecurity/aegisgate-platform)
+> **🛡️ Using AegisGate at work?** [AegisGate Platform](https://github.com/aegisgatesecurity/aegisgate-platform) is our server-side gateway — 176 detection patterns, MCP/A2A/ACP protection, 15+ compliance frameworks, and cryptographic attestation. For the 95% of users without enterprise protections, Lens is here. [Explore Platform →](https://github.com/aegisgatesecurity/aegisgate-platform)
 
 ---
 
@@ -59,7 +59,7 @@ Lens is the browser extension that catches it **before you hit send**.
 - **100% on-device.** No prompt text, no URLs, no page content ever leaves your browser. Zero telemetry by default.
 - **155 regex patterns + ML.** Sub-millisecond regex detection plus ~5-50ms ML inference for adversarial prompt injection.
 - **10 AI providers.** ChatGPT, Claude, Gemini, Copilot, DuckDuckGo, Perplexity, Mistral, Grok, DeepSeek, Meta AI.
-- **Fail-visible.** Every detection is shown to you — you decide to cancel, redact, or proceed.
+- **Fail-visible.** Every detection is shown to you — you decide to cancel, edit, or proceed.
 - **Free. Forever.** Apache 2.0, no account required, no upsell gate.
 
 ## Detection Flow
@@ -79,7 +79,7 @@ flowchart LR
     ML -->|"Suspicious"| Sus["🟡 ML Suspicious<br/>(0.3 < score < 0.5)"]
 
     PII & Secret & XSS & Comp & OT & Adv & Sus --> Decision{"Any<br/>findings?"}
-    Decision -->|"Yes"| Banner["⚠️ Banner<br/>Cancel · Redact · Dismiss"]
+    Decision -->|"Yes"| Banner["⚠️ Banner<br/>Cancel · Edit · Dismiss"]
     Decision -->|"No"| Pass["✅ Pass-through"]
 
     style Lens fill:#1e40af,stroke:#3b82f6,color:#fff
@@ -195,7 +195,7 @@ Lens runs **6 detection facets** — 5 regex (synchronous) + 1 ML (asynchronous)
 4. **1 ML facet** runs asynchronously: Char CNN-BiLSTM detects adversarial prompt injection
 5. **PostProcess** filters false positives: Luhn validation for credit cards, 4-4-4 CC pattern rejection, ID-label context check
 6. **Banner shows** with severity color (critical = red, high = orange, medium = yellow, low = blue)
-7. **User chooses**: Cancel / Edit & Redact / Send Anyway / Dismiss for 24h
+7. **User chooses**: Cancel / Edit & Resend / Send Anyway / Dismiss for 24h
 8. **Dismissal** is stored in `chrome.storage.local` for 24h
 
 ## Installation
