@@ -142,6 +142,11 @@
           // We require a specific language label to avoid overlapping with US DLs.
           // Note: "DL" is intentionally NOT included here - that's handled by pii_driver_license
           re: /(?:(?:Driver's\s+License|State\s+ID|Permis\s+conduire|Führerschein|Patente|Licencia|Permiso|Brevetto|Korti\s+ajamiso|Dokument\s+tożsamosgi)\s*[:#]?\s*[A-Z]?\d{5,15}|(?:Korti\s+ajamiso|Dokument\s+tożsamosgi)\s*[:#]?\s*\d{5,15})\b/gi
+        },
+        // v0.3.2 parity sync — IPv6 standalone pattern
+        pii_ipv6: {
+          severity: 'low',
+          re: /(?:[A-Fa-f0-9]{1,4}:){7}[A-Fa-f0-9]{1,4}/g
         }
   };
 

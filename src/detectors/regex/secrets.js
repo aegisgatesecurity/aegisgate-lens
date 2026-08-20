@@ -182,6 +182,25 @@
       severity: 'critical',
       re: /(?:INTERNAL[_-]?API[_-]?KEY|INTERNAL[_-]?KEY|INTERNAL[_-]?TOKEN)\s*[:=]\s*['"]?([A-Za-z0-9_\-]{20,})['"]?/gi
     },
+    // ====================================================================
+    // v0.3.2 parity sync — patterns added for Platform/Rampart parity
+    // ====================================================================
+    secret_cursor_key: {
+      severity: 'high',
+      re: /\bcrsr_[A-Za-z0-9]{64}\b/g
+    },
+    secret_groq_key: {
+      severity: 'high',
+      re: /\bgsk_[A-Za-z0-9]{52}\b/g
+    },
+    secret_replicate_key: {
+      severity: 'high',
+      re: /\br8_[A-Za-z0-9]{37}\b/g
+    },
+    secret_vercel_key: {
+      severity: 'high',
+      re: /\bvck[A-Za-z0-9_-]{32,}\b/g
+    },
   };
 
   function postProcess(category, match) {

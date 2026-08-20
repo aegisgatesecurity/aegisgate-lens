@@ -152,6 +152,29 @@
           // CPT surgery codes (high-value procedures)
           re: /\b(?:10004|20000|30000|40000|50000|60000)\b/g
         },
+        // ====================================================================
+        // v0.3.2 parity sync — patterns added for Platform/Rampart parity
+        // ====================================================================
+        pii_icd10_code: {
+          severity: 'medium',
+          // ICD-10-CM diagnosis code
+          re: /\b[A-TV-Z][0-9][0-9AB]\.[0-9A-TV-Z]{1,4}\b/g
+        },
+        pii_mrn: {
+          severity: 'high',
+          // Medical Record Number (requires label)
+          re: /\b(?:MRN|Medical\s+Record\s+(?:Number|No\.?|#)|Patient\s+(?:ID|Number|No\.?|#))\b\s*[:=#]?\s*[A-Z0-9][A-Z0-9\-]{4,10}[A-Z0-9]\b/gi
+        },
+        pii_npi: {
+          severity: 'medium',
+          // National Provider Identifier (US healthcare)
+          re: /\b(?:NPI|National\s+Provider\s+(?:ID|Identifier|Number))\s*[:=#]?\s*[0-9]{10}\b/gi
+        },
+        pii_ssn_last4: {
+          severity: 'high',
+          // SSN last-4 digits (requires keyword context)
+          re: /\b(?:SSN|Social\s+Security)\s+(?:last|final)\s+(?:4|four)\s*(?:[:=#]|is|was|are|of|equals)?\s*[0-9]{4}\b/gi
+        },
   };
 
   if (typeof self !== 'undefined') self.__lensPII_us_core = { patterns: patterns };

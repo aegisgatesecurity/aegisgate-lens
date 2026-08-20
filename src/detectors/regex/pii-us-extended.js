@@ -103,6 +103,11 @@
           // FP risk: 0% on real user prompts.
           severity: 'medium',
           re: /\b(?:Bulevardul|Bd\.|Intrarea|Strada|Str\.|Aleea|Pia\u021ba|Calea)\s+[A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)*\s+Nr\.?\s+\d+\b/g
+        },
+        // v0.3.2 parity sync — IPv6 standalone pattern
+        pii_ip_address_v6: {
+          severity: 'low',
+          re: /(?:[A-Fa-f0-9]{1,4}:){7}[A-Fa-f0-9]{1,4}/g
         }
   };
 

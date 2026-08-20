@@ -14,7 +14,7 @@
 [![ML](https://img.shields.io/badge/ML-pure%20JS%20(CharCNN--BiLSTM)-9cf.svg)](#ml-threat-detector)
 [![Perf](https://img.shields.io/badge/ML%20inference-~5--50ms%20(Chrome%20est.)-blue.svg)](#performance)
 [![Privacy](https://img.shields.io/badge/privacy-12%20non--negotiables-success.svg)](./docs/SECURITY.md)
-[![Patterns](https://img.shields.io/badge/patterns-155%20regex%20%2B%20ML-9cf.svg)](#)
+[![Patterns](https://img.shields.io/badge/patterns-176%20regex%20%2B%20ML-9cf.svg)](#)
 [![Providers](https://img.shields.io/badge/providers-10-blue.svg)](#supported-ai-providers)
 [![Chrome 116+](https://img.shields.io/badge/chrome-116%2B-yellow.svg)](https://developer.chrome.com/docs/extensions/mv3)
 [![Firefox 142+](https://img.shields.io/badge/firefox-142%2B-FF7139?logo=firefox&logoColor=white)](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions)
@@ -57,7 +57,7 @@ Every AI conversation is a potential data leak. A prompt containing an API key, 
 Lens is the browser extension that catches it **before you hit send**.
 
 - **100% on-device.** No prompt text, no URLs, no page content ever leaves your browser. Zero telemetry by default.
-- **155 regex patterns + ML.** Sub-millisecond regex detection plus ~5-50ms ML inference for adversarial prompt injection.
+- **176 regex patterns + ML.** Sub-millisecond regex detection plus ~5-50ms ML inference for adversarial prompt injection.
 - **10 AI providers.** ChatGPT, Claude, Gemini, Copilot, DuckDuckGo, Perplexity, Mistral, Grok, DeepSeek, Meta AI.
 - **Fail-visible.** Every detection is shown to you — you decide to cancel, edit, or proceed.
 - **Free. Forever.** Apache 2.0, no account required, no upsell gate.
@@ -67,7 +67,7 @@ Lens is the browser extension that catches it **before you hit send**.
 ```mermaid
 flowchart LR
     User["👤 You type a prompt"] -->|"Keystroke<br/>(debounced 250ms)"| Lens["🛡️ Lens<br/>Content Script"]
-    Lens -->|"Regex facets<br/>(sync, ~0.3ms)"| Regex{"155 regex<br/>patterns"}
+    Lens -->|"Regex facets<br/>(sync, ~0.3ms)"| Regex{"176 regex<br/>patterns"}
     Lens -->|"ML facet<br/>(async, ~5-50ms)"| ML["🧠 Char CNN-BiLSTM"]
 
     Regex -->|"PII detected"| PII["🔒 PII<br/>(69 patterns)"]
@@ -140,7 +140,7 @@ Lens runs **6 detection facets** — 5 regex (synchronous) + 1 ML (asynchronous)
 | **Compliance** | OWASP LLM Top 10, MITRE ATLAS, EU AI Act, NIST CSF, ISO 27001, CCPA, LGPD, PIPEDA, POPIA | "patient SSN:", "credit card:" | 24 | ~0.3ms |
 | **OT/ICS Protocols** | Modbus, DNP3, OPC-UA control manipulation | "Modbus function code 06..." | 9 | ~0.3ms |
 | **ML Threat** | Adversarial prompt injection (instruction override, roleplay, obfuscated commands) | "Ignore all previous instructions..." | 1 model | ~5-50ms |
-| **Total** | — | — | **155 regex + 1 ML** | — |
+| **Total** | — | — | **176 regex + 1 ML** | — |
 
 ## How Lens Compares
 
@@ -191,7 +191,7 @@ Lens runs **6 detection facets** — 5 regex (synchronous) + 1 ML (asynchronous)
 
 1. **Content script** is injected into each supported AI provider page (per the MV3 manifest)
 2. **On every keystroke** (debounced 250ms), the prompt value is read from the textarea
-3. **5 regex facets** run synchronously: PII (69), Secrets (41), XSS (12), Compliance (24), OT/ICS (9) = 155 patterns
+3. **5 regex facets** run synchronously: PII (75), Secrets (45), XSS (12), Compliance (35), OT/ICS (9) = 176 patterns
 4. **1 ML facet** runs asynchronously: Char CNN-BiLSTM detects adversarial prompt injection
 5. **PostProcess** filters false positives: Luhn validation for credit cards, 4-4-4 CC pattern rejection, ID-label context check
 6. **Banner shows** with severity color (critical = red, high = orange, medium = yellow, low = blue)

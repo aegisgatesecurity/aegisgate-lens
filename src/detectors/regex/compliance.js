@@ -184,6 +184,53 @@
       // depression" should NOT fire; "I want to kill myself" SHOULD).
       severity: 'critical',
       re: /\b(?:suicid(?:e|al)|kill\s+(?:my)?self|hurt\s+(?:my)?self|end\s+(?:my\s+)?(?:life|suffering)|self\s*[-]?\s*harm|cut(?:ting)?)\b/gi
+    },
+    // ====================================================================
+    // v0.3.2 parity sync — patterns added for Platform/Rampart parity
+    // ====================================================================
+    eu_ai_act_article_10_data_governance: {
+      severity: 'medium',
+      re: /(?:train|retrain|fine-?tune|fit)\s+(?:the\s+)?(?:model|network|system|LLM)\s+(?:on|with)\s+(?:this\s+|the\s+)?(?:personal\s+data|PII|sensitive\s+data|user\s+data|user-?generated\s+content|UGC|children'?s?\s+data|biased\s+data|unrepresentative\s+data|unbalanced\s+dataset|incomplete\s+data|outdated\s+data)/gi
+    },
+    eu_ai_act_article_52_generative_ai: {
+      severity: 'high',
+      re: /(?:generate|create|produce|make|render)\s+(?:a\s+)?(?:deepfake|deep\s+fake)|(?:unlabeled|undisclosed|unwatermarked|AI[- ]generated|synthetic\s+media|deepfake)\s+(?:content|material|video|image|audio)|(?:generate|create)\s+(?:a\s+)?(?:face|video|audio|voice)\s+(?:that\s+(?:mimics|imitates|clones|replicates)\s+(?:a\s+)?(?:real\s+person|specific\s+person|someone))/gi
+    },
+    eu_ai_act_article_5_prohibited: {
+      severity: 'high',
+      re: /(?:build|create|design|develop|implement|deploy|launch)\s+(?:a\s+)?(?:system|solution|tool|application|app|model|AI)\s+(?:that\s+(?:would\s+)?)?(?:discriminat(?:e|ion|ing|es?)\s+(?:based\s+on|based\s+upon|on\s+the\s+basis\s+of|by)\s+(?:race|gender|religion|ethnicity|national\s+origin|sexual\s+orientation|disability|age|political\s+opinion))|(?:social\s+credit(?:\s+system)?)|(?:subliminal\s+manipulation|manipulat(?:e|ion)\s+users?\s+(?:without\s+(?:their\s+)?(?:awareness|knowledge|consent)))|(?:exploit\s+(?:vulnerabilities?\s+of|weaknesses\s+of)\s+(?:children|minors|elderly|disabled|people\s+with\s+disabilities))|(?:biometric\s+categorization\s+(?:of|to\s+(?:infer|determine|classify))\s+(?:race|political\s+opinions?|religious\s+beliefs?))|(?:real-?time\s+remote\s+biometric\s+identification)|(?:predictive?\s+policing\s+system)/gi
+    },
+    mitre_atlas_ta0001_reconnaissance: {
+      severity: 'low',
+      re: /(?:find|discover|probe|scan|test|examine|investigate|audit)\s+(?:the\s+)?(?:weaknesses?|vulnerabilities?|guard\s*rails?|safety\s+filters?|limit(?:ation)?s?|edge\s+cases?|behavior)\s+(?:of|in)\s+(?:this|the)\s+(?:model|AI|system|LLM|chatbot|assistant)/gi
+    },
+    mitre_atlas_ta0002_resource_development: {
+      severity: 'high',
+      re: /(?:give\s+me|create|generate|build|write)\s+(?:a\s+)?(?:tool|script|program|payload|exploit|malware|phishing\s+email|attack\s+tool)\s+(?:(?:that\s+(?:will\s+)?|to\s+))?(?:attack|exploit|breach|hack|compromise|bypass|infiltrate|pwn|target|phish)/gi
+    },
+    mitre_atlas_ta0009_collection: {
+      severity: 'high',
+      re: /(?:scrape|extract|harvest|collect|gather|compile)\s+(?:all\s+the\s+|the\s+|all\s+)?(?:training\s+data|training\s+(?:examples?|corpus|set)|labeled\s+data|annotated\s+data|dataset\s+(?:examples?|rows|records?|entries?))/gi
+    },
+    owasp_llm02_insecure_output: {
+      severity: 'high',
+      re: /(?:output|return|render|generate|include|insert)\s+(?:HTML|markdown|JavaScript|JS|code|script|iframe|eval|innerHTML|outerHTML)\s+(?:that\s+(?:will\s+)?)?(?:execute|run|be\s+evaluated|be\s+interpreted|be\s+rendered|inject|executes?\s+in\s+the\s+(?:browser|page|DOM))|(?:the\s+response\s+(?:will\s+)?(?:be\s+)?(?:evaluated|executed|rendered)\s+(?:as|in\s+the))\s+(?:HTML|code|script|browser|DOM|page)/gi
+    },
+    owasp_llm05_supply_chain: {
+      severity: 'medium',
+      re: /(?:install|load|import|use|deploy|register|fetch|download)\s+(?:this\s+|the\s+|a\s+)?(?:untrusted|unverified|unknown|custom|third-party|external|community)\s+(?:model|plugin|extension|package|library|module|tool|API|endpoint|repository|repo|checkpoint|weights?)/gi
+    },
+    owasp_llm06_sensitive_info_disclosure_system_prompt: {
+      severity: 'medium',
+      re: /(?:what(?:'s|\s+is)\s+)?(?:your|the)\s+(?:system\s+prompt|initial\s+instructions?|original\s+instructions?|hidden\s+instructions?|secret\s+instructions?|secret\s+prompt|underlying\s+prompt)|(?:reveal|show|print|display|output|expose|leak|share|give\s+me)\s+(?:your|the)\s+(?:system\s+message|system\s+prompt|initial\s+instructions?|original\s+instructions?|secret\s+instructions?|secret\s+prompt|underlying\s+prompt|hidden\s+prompt)/gi
+    },
+    owasp_llm09_overreliance_misinformation_explicit: {
+      severity: 'medium',
+      re: /(?:make\s+up|fabricat(?:e|ion|ed|ing)|invent|fake|create\s+(?:a\s+)?(?:fake|fabricated))\s+(?:a\s+)?(?:study|statistic|stat(?:s|istics)|source|citation|reference|quote|testimonial|review|article|news|headline|survey|paper|report)|(?:cite\s+(?:a\s+)?(?:fake|non-existent|fabricated|made-up|invented))|(?:write\s+(?:a\s+)?(?:misleading|fake|fabricated|inaccurate))\s+(?:article|headline|review|news|story|report)/gi
+    },
+    owasp_llm10_unbounded_consumption: {
+      severity: 'medium',
+      re: /(?:run|process|repeat|generate|output|call)\s+(?:this\s+)?(?:1[0-9]{3,}|[2-9][0-9]{3,})\s+times?|(?:run|process)\s+(?:this\s+)?(?:dataset|list|data|requests?)\s+(?:repeatedly|in\s+a\s+loop|exhaustively|infinitely|forever|continuously)|(?:use\s+the\s+most\s+expensive\s+model)|(?:maximize|exhaust)\s+(?:the\s+)?(?:API|token|cost|budget|context)/gi
     }
   };
 
