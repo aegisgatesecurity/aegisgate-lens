@@ -31,7 +31,7 @@
 
 ---
 
-> **🛡️ Using AegisGate at work?** [AegisGate Platform](https://github.com/aegisgatesecurity/aegisgate-platform) is our server-side gateway — 176 detection patterns, MCP/A2A/ACP protection, 15+ compliance frameworks, and cryptographic attestation. For the 95% of users without enterprise protections, Lens is here. [Explore Platform →](https://github.com/aegisgatesecurity/aegisgate-platform)
+> **🛡️ Using AegisGate at work?** [AegisGate Platform](https://github.com/aegisgatesecurity/aegisgate-platform) is our server-side gateway — 176 detection patterns, MCP/A2A/ACP protection, 31 compliance frameworks, and cryptographic attestation. For the 95% of users without enterprise protections, Lens is here. [Explore Platform →](https://github.com/aegisgatesecurity/aegisgate-platform)
 
 ---
 
