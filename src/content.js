@@ -83,15 +83,16 @@
 
   // The onDetect callback. Called by prompt-detect when detections
   // change. Shows the brand-matched banner above the input.
-  function onDetect(events, text) {
+  // L-5 fix: Made async to properly await dismiss checks before showing banner.
+  async function onDetect(events, text) {
     try {
-      // Expose lastDetections on window.__lens_cs for diagnostics,
-      // testing (headless smoke test), and the popup's "what was
-      // detected" panel. This is the bridge between prompt-detect's
-      // internal state and the test harness / popup UI.
+      // L-1 fix: Don't expose raw prompt text on window.__lens_cs.
+      // Store only the masked detections and metadata for diagnostics.
+      // The full text is kept in a module-level closure, not a global.
       if (window.__lens_cs) {
         window.__lens_cs.lastDetections = events || [];
-        window.__lens_cs.lastText = text || '';
+        // Don't expose raw prompt text — only whether text was present.
+        window.__lens_cs.lastTextLength = text ? text.length : 0;
         window.__lens_cs.lastDetectedAt = Date.now();
       }
       if (!events || events.length === 0) {
@@ -102,21 +103,20 @@
         log.warn('onDetect: bannerUI not available; cannot show banner');
         return;
       }
-      // Check if any event is currently dismissed (24h scope)
-      // If all events are dismissed, hide the banner
-      if (dismiss) {
+      // L-5 fix: Properly await the dismiss check before deciding to show the banner.
+      // Previously the async .then() callbacks ran AFTER bannerUI.show(), making the
+      // dismiss check a no-op. Now we return early if all events are dismissed.
+      if (dismiss && state.domainHash) {
         var allDismissed = true;
         for (var i = 0; i < events.length; i++) {
           var ev = events[i];
-          if (!state.domainHash) break;  // not yet known
-          dismiss.isDismissed(state.domainHash, ev.category, ev.category + '_v1')
-            .then(function (entry) {
-              if (!entry) allDismissed = false;
-            });
+          var entry = await dismiss.isDismissed(state.domainHash, ev.category, ev.category + '_v1');
+          if (!entry) { allDismissed = false; break; }
         }
-        // NOTE: the isDismissed check is async; for simplicity we
-        // show the banner regardless. The banner's dismiss action
-        // (× button) will record the dismissal for next time.
+        if (allDismissed) {
+          if (bannerUI) bannerUI.hide();
+          return;
+        }
       }
       bannerUI.show(events, {
         input: selectors && state.provider ? selectors.findInput(state.provider) : null,
@@ -277,7 +277,10 @@
         }
         // For diagnostic purposes, also log the first report
         if (payload && payload.reports && payload.reports[0]) {
-          log.info('FP report payload: ' + JSON.stringify(payload.reports[0]));
+          // L-2 fix: Gate FP report logging behind debug flag (was always logged).
+          if (typeof globalThis !== 'undefined' && globalThis.__lensDebug) {
+            log.info('FP report payload: ' + JSON.stringify(payload.reports[0]));
+          }
         }
       }
     } catch (err) {
@@ -346,21 +349,20 @@
     }
   }
 
-  // Run init
+  // M-2 fix: Kill switch MUST be checked BEFORE init() runs.
+  // Previously init() was called or scheduled before the kill switch
+  // check, making it completely non-functional.
+  if (typeof globalThis !== 'undefined' && globalThis.__lensDisabled === true) {
+    log.warn('content: __lensDisabled is true; exiting without initializing');
+    return; // exits the IIFE — before any init or listener registration
+  }
+
+  // Run init (only if kill switch is not active)
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
     init();
   }
-
-  // Kill switch: if globalThis.__lensDisabled is true, exit immediately.
-// This is a critical-bug mitigation: push a v0.2.0 with this set to
-// true to disable Lens in production within 24 hours, then roll out
-// the real fix in v0.2.1. See the ops runbook for the full procedure.
-if (typeof globalThis !== 'undefined' && globalThis.__lensDisabled === true) {
-  log.warn('content: __lensDisabled is true; exiting without initializing');
-  return; // exits the IIFE
-}
 
 // Test-only hook: expose the init function so the headless smoke
   // test runner can re-init prompt-detect between test cases (the

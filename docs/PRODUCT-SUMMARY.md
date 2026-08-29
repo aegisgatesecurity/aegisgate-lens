@@ -1,6 +1,6 @@
 # AegisGate Lens — Product Summary
 
-**Version**: v0.3.1
+**Version**: v0.3.2
 **Last updated**: 2026-08-17
 **Audience**: External readers who want a definitive description of
 what AegisGate Lens is and isn't.

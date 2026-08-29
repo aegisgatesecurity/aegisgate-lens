@@ -21,7 +21,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.0
       - name: Run linter
         run: |
           chmod +x tools/lint.sh
@@ -33,12 +33,12 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.0
         with:
           lfs: true
 
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v6.0.0
         with:
           node-version: '22'
 
@@ -87,8 +87,11 @@ jobs:
           echo "✅ No external npm dependencies"
 
       - name: "DCO sign-off check"
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+          AFTER_SHA: ${{ github.event.after }}
         run: |
-          COMMITS=$(git log --pretty=format:"%H" ${{ github.event.before }}..${{ github.event.after }} 2>/dev/null | head -10)
+          COMMITS=$(git log --pretty=format:"%H" ${BEFORE_SHA}..${AFTER_SHA} 2>/dev/null | head -10)
           for c in $COMMITS; do
             MSG=$(git log -1 --pretty=format:"%B" $c)
             if ! echo "$MSG" | grep -q "Signed-off-by:"; then
@@ -103,7 +106,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.0
       - name: Run OPSEC scan
         run: |
           chmod +x tools/opsec-scan.sh
@@ -115,9 +118,9 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.0
       - name: Run Trivy (src/ + tools/ only; ignore models/, corpora/, .workingdirectory/)
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@v0.36.1
         with:
           scan-type: 'fs'
           scan-ref: 'src'
@@ -131,9 +134,9 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.0
       - name: Run Trivy (Trivy scans src/ + tools/ only; ignore models/, corpora/, .workingdirectory/)
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@v0.36.1
         with:
           scan-type: 'fs'
           scan-ref: 'src'

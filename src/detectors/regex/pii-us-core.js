@@ -97,21 +97,15 @@
         // CPT/HCPCS Medical Billing Codes (v0.3.1 addition, 2026-08-13)
         // Healthcare fraud detection: billing codes in AI prompts
         // ====================================================================
-        pii_cpt_code: {
-          severity: 'medium',
-          // CPT: 5-digit numeric code
-          re: /\b[0-9]{5}\b/g
-        },
+        // L-9 fix: Removed unlabeled pii_cpt_code (was matching ANY 5-digit number).
+        // Use pii_cpt_code_label instead (requires CPT/procedure code label).
         pii_cpt_code_label: {
           severity: 'high',
           // CPT with label
           re: /(?:CPT|procedure\s+code)\s*[:=]?\s*[0-9]{5}\b/gi
         },
-        pii_hcpcs_level2: {
-          severity: 'medium',
-          // HCPCS Level II: 1 letter + 4 digits
-          re: /\b[A-Z][0-9]{4}\b/g
-        },
+        // L-9 fix: Removed unlabeled pii_hcpcs_level2 (was matching any letter+4digits).
+        // Use pii_hcpcs_level2_label instead (requires HCPCS label).
         pii_hcpcs_level2_label: {
           severity: 'high',
           // HCPCS with label

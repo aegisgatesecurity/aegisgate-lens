@@ -163,13 +163,14 @@
   async function isDismissed(domainHash, category, patternId) {
     var key = buildKey(domainHash, category, patternId);
     if (!key) return null;
-    var all = await getAll();
-    all = gc(all);
-    // Save back if we GC'd anything
-    if (Object.keys(all).length !== Object.keys(all).length) {
-      await saveAll(all);
+    var allRaw = await getAll();
+    var beforeCount = Object.keys(allRaw).length;
+    allRaw = gc(allRaw);
+    // L-3 fix: Compare pre-GC count to post-GC count (was comparing all to itself).
+    if (Object.keys(allRaw).length !== beforeCount) {
+      await saveAll(allRaw);
     }
-    return all[key] || null;
+    return allRaw[key] || null;
   }
 
   // Dismiss a detection. If `reason` is non-null, this is the

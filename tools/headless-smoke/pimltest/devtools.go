@@ -31,6 +31,7 @@ type CDPClient struct {
 	pending  map[int]chan json.RawMessage
 	events   chan json.RawMessage
 	closeEv  chan struct{}
+	closeOnce sync.Once
 	closed   bool
 	timeout  time.Duration
 }
@@ -100,14 +101,14 @@ func newCDPClient(port int, timeout time.Duration) (*CDPClient, cdpTarget, error
 }
 
 func (c *CDPClient) close() error {
-	if c.closed {
-		return nil
-	}
-	c.closed = true
-	close(c.closeEv)
-	if c.conn != nil {
-		_ = c.conn.Close()
-	}
+	// H-4 fix: Use sync.Once to make close idempotent (prevents double-close panic).
+	c.closeOnce.Do(func() {
+		c.closed = true
+		close(c.closeEv)
+		if c.conn != nil {
+			_ = c.conn.Close()
+		}
+	})
 	return nil
 }
 
@@ -245,7 +246,14 @@ func (c *CDPClient) readLoop() {
 	for {
 		_, data, err := c.conn.ReadMessage()
 		if err != nil {
-			close(c.closeEv)
+			// H-4 fix: Use closeOnce to prevent double-close panic.
+			c.closeOnce.Do(func() {
+				c.closed = true
+				close(c.closeEv)
+				if c.conn != nil {
+					_ = c.conn.Close()
+				}
+			})
 			return
 		}
 		var msg struct {

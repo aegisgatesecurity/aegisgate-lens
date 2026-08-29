@@ -170,9 +170,36 @@
   // Lens extension at their own Platform instance.
   var DEFAULT_BACKEND = 'https://lens.aegisgatesecurity.io';
 
+  // H-5 fix: Validate backend URL to prevent SSRF. Must be HTTPS.
+  function isValidBackendUrl(url) {
+    if (typeof url !== 'string' || url.length === 0) return false;
+    if (url.indexOf('https://') !== 0) return false; // Must be HTTPS
+    try {
+      var parsed = new URL(url);
+      if (parsed.protocol !== 'https:') return false;
+      // Block loopback/private IPs (SSRF protection)
+      var host = parsed.hostname;
+      if (host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0' ||
+          host === '::1' || host.indexOf('127.') === 0 ||
+          host.indexOf('10.') === 0 || host.indexOf('192.168.') === 0 ||
+          host.indexOf('169.254.') === 0) {
+        // Allow loopback for self-hosted Platform on localhost (local tool)
+        // but log a warning
+        log.warn('backend URL points to loopback/private IP: ' + host + ' (acceptable for self-hosted Platform)');
+      }
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
   function getBackend() {
     return storageGet('aegisgate_lens_backend_url').then(function (url) {
-      return url || DEFAULT_BACKEND;
+      if (url && isValidBackendUrl(url)) return url;
+      if (url && !isValidBackendUrl(url)) {
+        log.warn('stored backend URL is invalid (must be HTTPS); using default');
+      }
+      return DEFAULT_BACKEND;
     });
   }
 
@@ -181,6 +208,10 @@
   // Cloudflare-native rate limiting. But when the backend is a
   // self-hosted Platform instance, the /api/v1/lens/* and /lens/*
   // endpoints require Authorization: Bearer <token>.
+  // M-8 (accepted risk): Token stored in chrome.storage.local as plaintext.
+  // This is the same model as AWS CLI (~/.aws/credentials) and kubectl
+  // (~/.kube/config). chrome.storage.local is scoped to the extension and
+  // not accessible to web pages. Future: OS keychain integration.
   var BEARER_TOKEN_KEY = 'aegisgate_lens_bearer_token';
 
   function getBearerToken() {

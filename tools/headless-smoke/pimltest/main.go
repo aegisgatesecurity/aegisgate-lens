@@ -440,14 +440,17 @@ func injectPIMLConfig(cdp *CDPClient, target cdpTarget, mlDir string, mockPort i
 	if err != nil { return fmt.Errorf("read tokenizer: %w", err) }
 	cfgBytes, err := ioutil.ReadFile(cfgPath)
 	if err != nil { return fmt.Errorf("read config: %w", err) }
+	// L-10 fix: Base64-encode JSON content to prevent injection via file content.
+	tokB64 := base64.StdEncoding.EncodeToString(tokBytes)
+	cfgB64 := base64.StdEncoding.EncodeToString(cfgBytes)
 	jsExpr := fmt.Sprintf(`(function() {
 		try {
-			window.__lensTokenizerJSON = %s;
-			window.__lensModelConfig = %s;
+			window.__lensTokenizerJSON = JSON.parse(atob('%s'));
+			window.__lensModelConfig = JSON.parse(atob('%s'));
 			window.__lensModelURL = 'https://localhost:%d/detectors/ml/pi-model-int8.onnx';
 			return 'ok: vocab=' + Object.keys(window.__lensTokenizerJSON.model.vocab).length;
 		} catch (e) { return 'error: ' + e.message; }
-	})()`, string(tokBytes), string(cfgBytes), mockPort)
+	})()`, tokB64, cfgB64, mockPort)
 	res, err := cdp.evaluate(jsExpr, false)
 	if err != nil { return fmt.Errorf("inject config: %w", err) }
 	if !bytesContains(res, "ok") { return fmt.Errorf("config inject failed: %s", string(res)) }

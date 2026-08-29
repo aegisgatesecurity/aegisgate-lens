@@ -104,13 +104,14 @@
       category: category,                     // e.g. 'pii_credit_card'
       severity: severity,                     // 'critical' | 'high' | 'medium' | 'low'
       count: matches.length,                  // how many matches
-      // For display: the masked values (first match is enough;
-      // the banner shows the first 4 + last 4 chars).
-      sample: matches[0].value,
+      // M-7 fix: Mask the sample value for display (first 4 + last 4 chars).
+      // The full value is available in matches[].value for the redaction feature,
+      // but the event's sample field should not expose raw PII if logged/serialized.
+      sample: maskSampleValue(matches[0].value, category),
       // All matches, in original order
       matches: matches.map(function (m) {
         return {
-          value: m.value,
+          value: m.value,   // Full value retained for redaction feature
           index: m.index,
           severity: m.severity,
           // cardType is added by pii.js for credit cards (Luhn-validated)
@@ -170,6 +171,19 @@
   // This is intentional: the content script's MutationObserver path needs
   // synchronous detection for real-time banner updates. The ML facet
   // runs on a separate async path and updates the banner when ready.
+  // M-7 fix: Mask a sample value for display in event objects.
+  function maskSampleValue(value, category) {
+    if (typeof value !== 'string' || value.length === 0) return '';
+    if (value.length <= 10) {
+      if (value.length <= 1) return value + '\u2026' + value;
+      return value.substring(0, 2) + '\u2026' + value.substring(value.length - 2);
+    }
+    return value.substring(0, 4) + '\u2026' + value.substring(value.length - 4);
+  }
+
+  // M-4 fix: Cap input length to prevent resource exhaustion (176 regex patterns).
+  var MAX_INPUT_LENGTH = 50000;
+
   function detect(text) {
     if (typeof text !== 'string') text = '';
     var result = {
@@ -181,6 +195,13 @@
     };
 
     if (text.length === 0) return result;
+
+    // M-4 fix: Truncate overly long inputs to prevent blocking the main thread.
+    if (text.length > MAX_INPUT_LENGTH) {
+      log.warn('input truncated from ' + text.length + ' to ' + MAX_INPUT_LENGTH + ' chars (resource protection)');
+      text = text.substring(0, MAX_INPUT_LENGTH);
+      result.text = text;
+    }
 
     var facets = getFacets();
     var schemaModule = getSchema();

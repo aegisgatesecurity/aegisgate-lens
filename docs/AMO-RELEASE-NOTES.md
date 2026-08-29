@@ -1,4 +1,4 @@
-# AegisGate Lens — AMO Release Notes (v0.3.1)
+# AegisGate Lens — AMO Release Notes (v0.3.2)
 
 **Extension ID:** `lens@aegisgate.security`
 **Version:** 0.3.1
@@ -9,7 +9,7 @@
 
 ## Version Notes (for AMO listing)
 
-### What's New in v0.3.1
+### What's New in v0.3.2
 
 - **23 New SOC Detection Patterns** — SWIFT/BIC banking codes (3), CPT/HCPCS medical billing codes (11), and OT/ICS protocol patterns (9: Modbus, DNP3, OPC-UA). Brings total to 155 regex patterns.
 - **Firefox MV3 Support** — Firefox 142+ via Manifest V3 with `browser_specific_settings.gecko`.
@@ -95,7 +95,7 @@ ChatGPT, Claude, Gemini, Microsoft Copilot, DuckDuckGo AI, Perplexity, Grok, Mis
 
 1. **This is a content-script-only extension.** All detection logic runs in content scripts injected into AI chat pages. The background service worker handles extension lifecycle (install, update) and the popup provides user controls.
 
-2. **The `innerHTML` usage** (if flagged by the linter): All HTML strings are built by `src/util/banner-ui-html.js` using template literals. All dynamic values (detection category, sample text, URLs) are passed through `escapeHtml()` which escapes `&`, `<`, `>`, `"`, and `'`. As of v0.3.1, we've switched to using detached DOM elements for HTML insertion (no `innerHTML` or `insertAdjacentHTML` on connected elements) to address AMO security warnings.
+2. **The `innerHTML` usage** (if flagged by the linter): All HTML strings are built by `src/util/banner-ui-html.js` using template literals. All dynamic values (detection category, sample text, URLs) are passed through `escapeHtml()` which escapes `&`, `<`, `>`, `"`, and `'`. As of v0.3.2, we've switched to using detached DOM elements for HTML insertion (no `innerHTML` or `insertAdjacentHTML` on connected elements) to address AMO security warnings.
 
 3. **The ML inference code** (`src/detectors/ml/threat-detector-js.js`) is a pure JavaScript implementation of a Char CNN-BiLSTM neural network. It does not use WASM, eval, or any external library. It reads model weights from a JSON file and performs matrix multiplication in vanilla JS. The code is proprietary (not in the open-source GitHub repo) but is included in the AMO package for full functionality.
 

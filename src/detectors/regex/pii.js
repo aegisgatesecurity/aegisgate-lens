@@ -46,6 +46,10 @@
     return g.patterns || {};
   }
 
+  // M-5 fix: Module-level BIP39 cache (was per-call allocation).
+  var BIP39_COMMON = null;
+  var BIP39_SET = null;
+
   var us_core          = loadSubFile('__lensPII_us_core');
   var us_extended      = loadSubFile('__lensPII_us_extended');
   var international_id = loadSubFile('__lensPII_international_id');
@@ -166,7 +170,9 @@
       // words. If at least 3 of the 12 words (or 5 of 24) are in
       // the wordlist AND all words are 3-8 lowercase letters, we
       // accept the match. Otherwise drop it as a false positive.
-      var BIP39_COMMON = ['abandon', 'ability', 'able', 'about', 'above', 'absent',
+      // M-5 fix: Use cached Set for O(1) lookups instead of per-call array + O(n) indexOf.
+      if (!BIP39_SET) {
+        BIP39_COMMON = ['abandon', 'ability', 'able', 'about', 'above', 'absent',
         'absorb', 'abstract', 'absurd', 'abuse', 'access', 'accident',
         'account', 'accuse', 'achieve', 'acid', 'acoustic', 'acquire',
         'across', 'act', 'action', 'actor', 'actress', 'actual', 'adapt',
@@ -440,6 +446,8 @@
         'world', 'worry', 'worth', 'wrap', 'wreck', 'wrestle', 'wrist', 'write',
         'wrong', 'yard', 'year', 'yellow', 'you', 'young', 'youth', 'zebra',
         'zero', 'zone', 'zoo'];
+        BIP39_SET = new Set(BIP39_COMMON);
+      }
 
       var words = (match.value || '').toLowerCase().split(/\s+/).filter(function (w) {
         return /^[a-z]{3,8}$/.test(w);
@@ -447,7 +455,7 @@
       // Count how many of the matched words are in the BIP39 common wordlist.
       var validCount = 0;
       for (var w = 0; w < words.length; w++) {
-        if (BIP39_COMMON.indexOf(words[w]) !== -1) {
+        if (BIP39_SET.has(words[w])) {
           validCount++;
         }
       }
@@ -485,8 +493,16 @@ return match;
   // -------------------------------------------------------------------------
   // The detect function. Takes a string, returns Array<match>.
   // -------------------------------------------------------------------------
+  // L-8 fix: Strip zero-width characters before regex detection (anti-evasion).
+  function stripZeroWidth(text) {
+    if (typeof text !== 'string') return text;
+    return text.replace(/[\u200B\u200C\u200D\u200E\u200F\uFEFF\u00AD]/g, '');
+  }
+
   function detect(text) {
     if (typeof text !== 'string' || text.length === 0) return [];
+    // L-8 fix: Normalize input to prevent trivial regex evasion via zero-width chars.
+    text = stripZeroWidth(text);
     var matches = [];
     var keys = Object.keys(patterns);
     for (var i = 0; i < keys.length; i++) {

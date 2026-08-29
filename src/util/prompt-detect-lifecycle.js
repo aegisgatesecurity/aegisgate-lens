@@ -50,9 +50,12 @@
                                     (constants && constants.DEBOUNCE_MS) || 250);
       state.input.addEventListener('input', debouncedInput, true);
       state.input.addEventListener('keyup', debouncedInput, true);
-      state.input.addEventListener('keydown', function (e) { dom.onKeyDown(e, state, detectPrompt, detectPromptAsync); }, true);
+      // M-3 fix: Store listener references so detach() can actually remove them.
+      state._onKeyDown = function (e) { dom.onKeyDown(e, state, detectPrompt, detectPromptAsync); };
+      state._onSendClick = function (e) { dom.onSendClick(e, state, detectPrompt, detectPromptAsync); };
+      state.input.addEventListener('keydown', state._onKeyDown, true);
       if (state.sendButton) {
-        state.sendButton.addEventListener('click', function (e) { dom.onSendClick(e, state, detectPrompt, detectPromptAsync); }, true);
+        state.sendButton.addEventListener('click', state._onSendClick, true);
       }
       state._debouncedInput = debouncedInput;
       state.attached = true;
@@ -77,10 +80,15 @@
           state.input.removeEventListener('input', state._debouncedInput, true);
           state.input.removeEventListener('keyup', state._debouncedInput, true);
         }
-        state.input.removeEventListener('keydown', function (e) { dom.onKeyDown(e, state, arguments.callee && arguments.callee.prototype); }, true);
+        // M-3 fix: Use stored function references (was using new anonymous functions + arguments.callee which threw in strict mode).
+        if (state._onKeyDown) {
+          state.input.removeEventListener('keydown', state._onKeyDown, true);
+        }
       }
       if (state.sendButton) {
-        state.sendButton.removeEventListener('click', function (e) { dom.onSendClick(e, state, arguments.callee && arguments.callee.prototype); }, true);
+        if (state._onSendClick) {
+          state.sendButton.removeEventListener('click', state._onSendClick, true);
+        }
       }
       state.attached = false;
       // v0.1.1 item 19: remove the on-page indicator when the

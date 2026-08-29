@@ -166,7 +166,14 @@
       if (typeof r.domain_hash !== 'string' || !/^[0-9a-f]{16}$/.test(r.domain_hash)) return false;
       if (typeof r.category !== 'string') return false;
       if (typeof r.facet !== 'string') return false;
-      if (typeof r.severity !== 'string') return false;
+      if (typeof r.severity !== 'string' || ['low', 'medium', 'high', 'critical'].indexOf(r.severity) === -1) return false;
+      // L-4 fix: Validate optional fields when present.
+      if (r.reason !== undefined && (typeof r.reason !== 'string' || ['test_data', 'own_data', 'legitimate_use_case'].indexOf(r.reason) === -1)) return false;
+      if (r.timestamp !== undefined && (typeof r.timestamp !== 'number' || r.timestamp <= 0)) return false;
+      if (r.pattern_id !== undefined && typeof r.pattern_id !== 'string') return false;
+      if (r.ml_score !== undefined && typeof r.ml_score !== 'number') return false;
+      if (r.ml_threshold !== undefined && typeof r.ml_threshold !== 'number') return false;
+      if (r.ml_model_version !== undefined && typeof r.ml_model_version !== 'string') return false;
     }
     return true;
   }

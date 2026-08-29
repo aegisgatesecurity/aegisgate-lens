@@ -1,6 +1,6 @@
 # AegisGate Lens — Bundle API Reference
 
-**Version**: v0.3.1
+**Version**: v0.3.2
 **Status**: Stable (within v0.3.x)
 **Audience**: Developers integrating with the Lens content script, or
 contributors who need to understand the module contracts.

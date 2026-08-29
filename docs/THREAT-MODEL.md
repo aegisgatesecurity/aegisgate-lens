@@ -1,6 +1,6 @@
-# AegisGate Lens v0.3.1 — Threat Model
+# AegisGate Lens v0.3.2 — Threat Model
 
-**Status:** v0.3.1 (all findings triaged against the shipped product; 11 resolved, 1 residual, 1 accepted, 1 partial)
+**Status:** v0.3.2 (all findings triaged against the shipped product; 11 resolved, 1 residual, 1 accepted, 1 partial)
 **Date:** 2026-08-17
 **Audience:** Chrome Web Store reviewers, enterprise security buyers, third-party auditors, end users with security questions
 **Methodology:** STRIDE (Spoofing, Tampering, Repudiation, Information Disclosure, Denial of Service, Elevation of Privilege)

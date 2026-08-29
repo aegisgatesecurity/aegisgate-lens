@@ -72,9 +72,11 @@
     var maxItems = (constants && constants.BANNER_MAX_ITEMS) || 8;
     for (var i = 0; i < events.length && i < maxItems; i++) {
       var ev = events[i];
-      listHtml += '<div class="lens-item lens-item-' + ev.severity + '">';
+      // M-1 fix: Escape ev.severity to prevent XSS (defense-in-depth).
+      var safeSeverity = formatters.escapeHtml(ev.severity);
+      listHtml += '<div class="lens-item lens-item-' + safeSeverity + '">';
       listHtml += '<span class="lens-item-category">' + formatters.escapeHtml(formatters.formatCategory(ev.category)) + '</span>';
-      listHtml += '<span class="lens-pill lens-pill-' + ev.severity + '">' + ev.severity + '</span>';
+      listHtml += '<span class="lens-pill lens-pill-' + safeSeverity + '">' + safeSeverity + '</span>';
       if (ev.sample) {
         listHtml += '<span class="lens-item-match" dir="ltr">' + formatters.escapeHtml(formatters.maskValue(ev.sample, ev.category)) + '</span>';
       }

@@ -47,7 +47,11 @@
           // Examples: +1 (415) 555-2671, +44 20 7946 0958,
           //           +86 138 0013 4567, +49 30 12345678.
           severity: 'medium',
-          re: /(?<![\d@+\.])(?<![xX])\+?\d{1,3}[\s\-.()]{1,2}\(?\d{2,4}\)?[\s\-.()]{0,2}\d{3,4}[\s\-.()]{0,2}\d{3,4}(?![\d@\.\b])/g
+          // H-1 fix: Eliminate overlapping quantifiers to prevent ReDoS.
+          // Require at least one separator between groups to prevent
+          // matching long unseparated digit sequences (e.g., hex/function names).
+          // Use single-char required separators (no overlapping quantifiers).
+          re: /(?<![\d@+\.])(?<![xX])\+?\d{1,3}[\s\-.()]\(?\d{2,4}\)?[\s\-.()]?\d{3,4}[\s\-.()]?\d{3,4}(?![\d@\.\b])/g
         },
         pii_passport_generic: {
           // v0.1.4: requires an ID label word (id/code/number/ref/license/

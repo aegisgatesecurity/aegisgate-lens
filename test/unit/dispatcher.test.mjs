@@ -176,7 +176,10 @@ test('dispatcher: event has sample field with first match', () => {
   loadAll();
   const d = globalThis.__lensDispatcher;
   const r = d.detect('My SSN is 123-45-6789');
-  assert.equal(r.events[0].sample, '123-45-6789');
+  // M-7 fix: sample is now masked (first 4 + last 4 chars) for privacy.
+  assert.equal(r.events[0].sample, '123-\u20266789');
+  // Full value still available in matches[0].value for redaction feature.
+  assert.equal(r.events[0].matches[0].value, '123-45-6789');
 });
 
 test('dispatcher: event matches array has correct shape', () => {

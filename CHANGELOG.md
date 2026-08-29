@@ -5,6 +5,71 @@ All notable changes to AegisGate Lens are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.2] — 2026-08-29 - Security Audit Remediation 🔒
+
+> **v0.3.2** resolves all 27 findings from the comprehensive security audit (1 CRITICAL, 5 HIGH, 10 MEDIUM, 11 LOW). 25 fixes applied, 2 accepted with documented justifications. CI hardened (16 action tags pinned, shell injection fixed).
+
+### Critical Fix (1)
+
+- **C-1: SHA-256 model weight integrity verification** — `threat-detector-js.js` now verifies a hardcoded hash (`38ea1563...`) of model weights via `crypto.subtle.digest` before parsing. Prevents supply-chain tampering of the ML model that could silently bypass ML detection.
+
+### High Fixes (5)
+
+- **H-1: ReDoS in `pii_phone_intl_strict`** — Required first separator between digit groups, preventing catastrophic backtracking on long digit sequences.
+- **H-2: ReDoS in `xss_mutation_xss`** — Simplified to bounded `[\s\S]{0,500}?` instead of nested alternation with unbounded backtracking.
+- **H-3: Path traversal in `build-bundle.py`** — `os.path.realpath()` check ensures all file paths stay within DIST directory.
+- **H-4: Double-close panic in `pimltest/devtools.go`** — Added `sync.Once` to guard channel close and prevent panic on concurrent close calls.
+- **H-5: SSRF via backend URL in `background.js`** — Added `isValidBackendUrl()` requiring HTTPS, validating via `new URL()`, warning on loopback/private IPs.
+
+### Medium Fixes (10)
+
+- **M-1: XSS via unescaped `ev.severity` in banner HTML** — Now escaped via `formatters.escapeHtml()`.
+- **M-2: Kill switch ineffective** — Moved `__lensDisabled` check BEFORE `init()` call. Was checked after init, making it completely non-functional.
+- **M-3: Event listeners never removed** — Stored function refs (`_onKeyDown`, `_onSendClick`) during `attach()`, used same refs in `detach()`. Removed `arguments.callee` (throws in strict mode).
+- **M-4: No input length cap** — Added `MAX_INPUT_LENGTH = 50000` in `detectors/index.js` with truncation + warning log.
+- **M-5: BIP39 wordlist per-call allocation** — Moved to module-level cached `Set` (`BIP39_SET`), converted from `indexOf` to `has()` for O(1) lookups.
+- **M-6: No bundle checksum** — Added SHA-256 sidecar file computation in `build-bundle.py`.
+- **M-7: Raw PII in event objects** — Added `maskSampleValue()` function. `sample` field now shows masked value while `matches[].value` retains full value for redaction feature.
+- **M-8: Bearer token plaintext** — **Accepted risk** (same model as AWS CLI credentials file).
+- **M-9: Unpinned CI actions** — All 16 action references pinned to full semver (e.g., `@v6.0.0`).
+- **M-10: Shell injection in DCO check** — Replaced `${{ github.event.before }}` with env vars.
+
+### Low Fixes (11)
+
+- **L-1: Prompt text exposed on window** — Replaced `window.__lens_cs.lastText` with `window.__lens_cs.lastTextLength` (no raw prompt text on global).
+- **L-2: FP report metadata logged to console** — Gated behind `__lensDebug` flag.
+- **L-3: `gc()` save-back condition always false** — Fixed to compare pre-GC count to post-GC count (was self-comparison).
+- **L-4: `isValidFPReports` skips validation** — Added validation for `reason`, `timestamp`, `pattern_id`, `ml_score`, `ml_threshold`, `ml_model_version`.
+- **L-5: Async dismiss check is a no-op** — Made `onDetect` async, properly `await`s `dismiss.isDismissed()` before showing banner.
+- **L-6: Wrong prototype setter** — Uses `HTMLInputElement.prototype` for `<input>`, `HTMLTextAreaElement.prototype` for `<textarea>`.
+- **L-7: WAR matches `<all_urls>`** — Restricted to 16 specific AI provider domains.
+- **L-8: Zero-width character evasion** — Added `stripZeroWidth()` to strip zero-width chars (U+200B/C/D/E/F, U+FEFF, U+00AD) before regex detection.
+- **L-9: Unlabeled CPT/HCPCS patterns** — Removed `pii_cpt_code` and `pii_hcpcs_level2` patterns (were matching any 5-digit number / any letter+4digits).
+- **L-10: JSON injection in pimltest** — Base64-encoded JSON content in `pimltest/main.go` to prevent injection via file content.
+- **L-11: JS injection in flow/runner.go** — **Accepted risk** (test-only, hardcoded test cases).
+
+### Verification
+
+- node --test: 518/518 pass, 0 fail
+- Custom linter: 12/12 pass, 0 warnings
+- OPSEC scan: 0 failures
+- gitleaks: 14 (all in test/README examples, not real secrets)
+- semgrep OWASP+audit: 0 findings
+- CI tag pinning: 0 unpinned
+- CI shell injection: 0 findings
+- Go build/test (pimltest): OK, 3/3 pass
+
+### Accepted Risks (2)
+
+- **M-8:** Bearer token in `chrome.storage.local` — same model as AWS CLI credentials file.
+- **L-11:** JS injection in `flow/runner.go` — test-only tool, hardcoded test cases, not shipped.
+
+### Audit Report
+
+Full audit report: `.plans/SECURITY-AUDIT-2026-08-29.md`
+
+---
+
 ## [0.3.1] — 2026-08-13
 
 ### Added

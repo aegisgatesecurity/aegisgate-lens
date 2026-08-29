@@ -35,6 +35,10 @@ parts.append('window.__lens_test_wrapper = { started: Date.now() };')
 parts.append('try {')
 for js in js_files:
     fpath = os.path.join(DIST, js)
+    # H-3 fix: Validate path stays within DIST (prevent path traversal via manifest.json)
+    if not os.path.realpath(fpath).startswith(os.path.realpath(DIST) + os.sep):
+        print('ERROR: path traversal detected: ' + js, file=sys.stderr)
+        sys.exit(1)
     if not os.path.exists(fpath):
         # ML inference code (src/detectors/ml/threat-detector-js.js) is
         # proprietary and .gitignored. In CI (fresh checkout), this file
@@ -70,4 +74,13 @@ parts.append('')
 with open(BUNDLE, 'w') as f:
     f.write('\n'.join(parts))
 
+# M-6 fix: Compute SHA-256 checksum of the output bundle for supply-chain integrity.
+import hashlib
+bundle_bytes = '\n'.join(parts).encode('utf-8')
+bundle_hash = hashlib.sha256(bundle_bytes).hexdigest()
+checksum_path = BUNDLE + '.sha256'
+with open(checksum_path, 'w') as f:
+    f.write(bundle_hash + '  ' + os.path.basename(BUNDLE) + '\n')
+
 print('Built bundle: ' + BUNDLE + ' (' + str(os.path.getsize(BUNDLE)) + ' bytes)')
+print('Bundle SHA-256: ' + bundle_hash)

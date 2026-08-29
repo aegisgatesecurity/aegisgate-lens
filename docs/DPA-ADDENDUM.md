@@ -1,7 +1,7 @@
 # AegisGate Lens — Data Processing Addendum (DPA)
 
 **Last updated:** 2026-08-17
-**Effective for:** AegisGate Lens v0.3.1
+**Effective for:** AegisGate Lens v0.3.2
 **Data processor:** AegisGate Security, LLC ("AegisGate")
 **Data controller:** The end user / customer (you)
 
@@ -253,5 +253,5 @@ If you have questions about this DPA, contact:
 
 **Signed-off-by:** AegisGate Security <privacy@aegisgatesecurity.io>
 **Last updated:** 2026-08-17
-**Effective for:** AegisGate Lens v0.3.1
+**Effective for:** AegisGate Lens v0.3.2
 **License of this document:** CC-BY-4.0

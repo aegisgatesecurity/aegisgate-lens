@@ -240,9 +240,11 @@
   function setInputValue(input, value) {
     if (!input) return;
     if (input.tagName === 'TEXTAREA' || input.tagName === 'INPUT') {
-      var nativeSetter = Object.getOwnPropertyDescriptor(
-        window.HTMLTextAreaElement.prototype, 'value'
-      ).set;
+      // L-6 fix: Use correct prototype for INPUT vs TEXTAREA elements.
+      var proto = input.tagName === 'TEXTAREA'
+        ? window.HTMLTextAreaElement.prototype
+        : window.HTMLInputElement.prototype;
+      var nativeSetter = Object.getOwnPropertyDescriptor(proto, 'value').set;
       nativeSetter.call(input, value);
       input.dispatchEvent(new Event('input', { bubbles: true }));
       input.dispatchEvent(new Event('change', { bubbles: true }));

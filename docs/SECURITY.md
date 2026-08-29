@@ -1,6 +1,6 @@
 # AegisGate Lens — Security Policy
 
-**Version**: v0.3.1
+**Version**: v0.3.2
 **Last updated**: 2026-08-17
 **Contact**: `security@aegisgatesecurity.io` (PGP key below)
 **Disclosure timeline**: We acknowledge within 3 business days,

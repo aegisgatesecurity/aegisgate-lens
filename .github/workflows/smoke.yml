@@ -49,15 +49,15 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.0
 
       - name: Setup Node.js (for unit tests + bundle.js rebuild)
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v6.0.0
         with:
           node-version: '22'
 
       - name: Setup Go (for the smoke binary)
-        uses: actions/setup-go@v7
+        uses: actions/setup-go@v7.0.0
         with:
           go-version: '1.25'
 
@@ -155,7 +155,7 @@ jobs:
 
       - name: Upload smoke report
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.0
         with:
           name: smoke-report
           path: smoke-report.json
@@ -164,7 +164,7 @@ jobs:
 
       - name: Upload unit test output
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.0
         with:
           name: unit-test-output
           path: unit-test-output.log
@@ -173,7 +173,7 @@ jobs:
 
       - name: Upload lint output
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.0
         with:
           name: lint-output
           path: lint-output.log
@@ -187,15 +187,15 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v6.0.0
         with:
           node-version: '22'
 
       - name: Setup Go
-        uses: actions/setup-go@v7
+        uses: actions/setup-go@v7.0.0
         with:
           go-version: '1.25'
 
@@ -262,7 +262,7 @@ jobs:
 
       - name: Upload mini smoke report
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.0
         with:
           name: mini-smoke-report
           path: mini-smoke-report.json

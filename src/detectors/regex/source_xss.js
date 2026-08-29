@@ -71,7 +71,12 @@
       // or 'javascript:'. This reduces FPs on normal title text
       // like '<title>Page Title</title>'.
       severity: 'high',
-      re: /<\s*(?:noembed|noscript|title|xmp|iframe|noframes|plaintext|listing)\b[^>]*>(?:[^<]|<(?!\s*\/\s*(?:noembed|noscript|title|xmp|iframe|noframes|plaintext|listing)\s*>)){0,500}?(?:<[^>]*(?:on\w+\s*=|javascript:)[^>]*>|javascript:)[^<]{0,500}?<\s*\/\s*(?:noembed|noscript|title|xmp|iframe|noframes|plaintext|listing)\s*>/gi
+      // H-2 fix: Simplified to avoid catastrophic backtracking.
+      // Two-pass approach: match opening tag + inner content (bounded,
+      // non-greedy but without nested quantifier traps) + closing tag.
+      // Inner content limited to 500 chars with a simple [^] negated
+      // class instead of the alternation that caused ReDoS.
+      re: /<\s*(?:noembed|noscript|title|xmp|iframe|noframes|plaintext|listing)\b[^>]*>[\s\S]{0,500}?<[^>]*(?:on\w+\s*=|javascript:)[^>]*>[\s\S]{0,500}?<\s*\/\s*(?:noembed|noscript|title|xmp|iframe|noframes|plaintext|listing)\s*>/gi
     },
     xss_polyglot: {
       // Polyglot XSS: a single payload that is valid in multiple
