@@ -120,7 +120,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6.0.0
       - name: Run Trivy (src/ + tools/ only; ignore models/, corpora/, .workingdirectory/)
-        uses: aquasecurity/trivy-action@v0.36.1
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: 'fs'
           scan-ref: 'src'
@@ -136,7 +136,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6.0.0
       - name: Run Trivy (Trivy scans src/ + tools/ only; ignore models/, corpora/, .workingdirectory/)
-        uses: aquasecurity/trivy-action@v0.36.1
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: 'fs'
           scan-ref: 'src'
