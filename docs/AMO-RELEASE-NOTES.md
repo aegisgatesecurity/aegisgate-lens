@@ -1,7 +1,7 @@
 # AegisGate Lens — AMO Release Notes (v0.3.2)
 
 **Extension ID:** `lens@aegisgate.security`
-**Version:** 0.3.1
+**Version:** 0.3.2
 **Date:** 2026-08-13
 **License:** Apache 2.0
 
