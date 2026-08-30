@@ -1,0 +1,15 @@
+version: 2
+
+enable-beta-ecosystems: true
+
+updates:
+  # GitHub Actions workflows (no npm — vanilla JS browser extension)
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "ci-cd"
