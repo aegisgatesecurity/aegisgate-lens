@@ -21,7 +21,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6.0.0
+        uses: actions/checkout@v7.0.1
       - name: Run linter
         run: |
           chmod +x tools/lint.sh
@@ -33,7 +33,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6.0.0
+        uses: actions/checkout@v7.0.1
         with:
           lfs: true
 
@@ -106,7 +106,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6.0.0
+        uses: actions/checkout@v7.0.1
       - name: Run OPSEC scan
         run: |
           chmod +x tools/opsec-scan.sh
@@ -118,7 +118,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6.0.0
+        uses: actions/checkout@v7.0.1
       - name: Run Trivy (src/ + tools/ only; ignore models/, corpora/, .workingdirectory/)
         uses: aquasecurity/trivy-action@v0.36.0
         with:
@@ -134,7 +134,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6.0.0
+        uses: actions/checkout@v7.0.1
       - name: Run Trivy (Trivy scans src/ + tools/ only; ignore models/, corpora/, .workingdirectory/)
         uses: aquasecurity/trivy-action@v0.36.0
         with:
