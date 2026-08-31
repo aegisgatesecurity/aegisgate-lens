@@ -4,6 +4,8 @@
 
 **Privacy-first browser extension that warns you before you hit send.**
 
+*A free browser extension that catches your Social Security number, passwords, API keys, and prompt injection attacks before they reach an AI company — 100% on-device, zero data leaves your browser.*
+
 100% on-device · Zero data leaves your browser · Free · Forever
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
@@ -35,32 +37,67 @@
 
 ---
 
-## What's New in v0.3.2
-
-- **🔒 23 New SOC Detection Patterns** — SWIFT/BIC banking codes (3), CPT/HCPCS medical billing codes (11), and OT/ICS protocol patterns (9: Modbus, DNP3, OPC-UA). Parity with Platform v4.1.0 and Rampart v0.6.1.
-- **🦊 Firefox MV3 Support** — Firefox 142+ via Manifest V3 with `browser_specific_settings.gecko`.
-- **🔧 Dynamic injection fix** — Background.js content script file list corrected to match manifest.
-- **✅ 530 tests** — 518 passing + 12 skipped (ML perf tests). All green.
-
-## What's New in v0.3.0
-
-- **🧠 ML Threat Detector** — Char CNN-BiLSTM with Attention, running in pure JavaScript. No WASM, no ONNX Runtime, no external dependencies. Detects adversarial prompt injections (instruction override, roleplay injection, obfuscated commands) in ~5-50ms.
-- **🔍 DeepSeek + Meta AI** — Two new AI providers with live-verified DOM selectors (10 providers total).
-- **📦 6x smaller** — Extension reduced from 25MB (WASM) to 4.2MB (pure JS).
-- **🔒 Stricter CSP** — `script-src 'self'` only. No `wasm-unsafe-eval`, no `eval()`, no `Function()`.
-- **✅ 504 tests** — 492 unit + 12 ML perf/stress tests. All passing.
-
 ## Why AegisGate Lens?
 
 Every AI conversation is a potential data leak. A prompt containing an API key, a social security number, or a database credential gets sent in plain text to a third-party LLM — and you can never take it back.
 
 Lens is the browser extension that catches it **before you hit send**.
 
+Think of it like a spellchecker for privacy — but instead of catching typos, it catches your Social Security number, credit card number, passwords, API keys, and other things you really don't want going to an AI company.
+
 - **100% on-device.** No prompt text, no URLs, no page content ever leaves your browser. Zero telemetry by default.
 - **176 regex patterns + ML.** Sub-millisecond regex detection plus ~5-50ms ML inference for adversarial prompt injection.
 - **10 AI providers.** ChatGPT, Claude, Gemini, Copilot, DuckDuckGo, Perplexity, Mistral, Grok, DeepSeek, Meta AI.
 - **Fail-visible.** Every detection is shown to you — you decide to cancel, edit, or proceed.
 - **Free. Forever.** Apache 2.0, no account required, no upsell gate.
+
+## Installation
+
+**It takes 10 seconds. No account needed.**
+
+| Browser | Link |
+|---------|------|
+| **Google Chrome** | [Install from Chrome Web Store →](https://chromewebstore.google.com/detail/aegisgate-lens/lkioinepjpjfdhiggaomoafnhagfcjip) |
+| **Mozilla Firefox** | [Install from Firefox Add-ons →](https://addons.mozilla.org/en-US/firefox/addon/aegisgate-lens/) |
+
+**Supported AI tools (10):** ChatGPT, Claude, Gemini, Microsoft Copilot, DuckDuckGo, Perplexity, Mistral, Grok, DeepSeek, Meta AI
+
+<details>
+<summary><strong>📦 Install from source (development / testing)</strong></summary>
+
+```bash
+git clone https://github.com/aegisgatesecurity/aegisgate-lens.git
+cd aegisgate-lens
+# No npm install needed — zero external dependencies
+```
+
+**Load in Chrome:**
+1. Navigate to `chrome://extensions`
+2. Enable **Developer mode** (top right)
+3. Click **Load unpacked**
+4. Select the `aegisgate-lens` directory
+
+**Load in Firefox:**
+1. Navigate to `about:debugging#/runtime/this-firefox`
+2. Click **Load Temporary Add-on**
+3. Select `manifest.json` from the `aegisgate-lens` directory
+
+</details>
+
+## What does it look like?
+
+When you're about to send sensitive data, Lens shows a warning banner at the top of the page:
+
+> ⚠️ **AegisGate Lens detected potential risks in your prompt:**
+>
+> - 🔐 **Credit Card Number** — A 16-digit card number was detected. Sending this to an AI service may expose your financial data.
+>
+> **What would you like to do?**
+> - **Cancel** — Don't send this prompt
+> - **Edit & Resend** — Go back and remove the sensitive data yourself
+> - **Send Anyway** — I understand the risks, send it
+
+The banner is **non-blocking** — it doesn't prevent you from sending. It just makes sure you know what you're about to share. **You're always in control.**
 
 ## Detection Flow
 
@@ -88,6 +125,47 @@ flowchart LR
     style Pass fill:#16a34a,stroke:#22c55e,color:#fff
 ```
 
+## What It Detects
+
+Lens runs **6 detection facets** — 5 regex (synchronous) + 1 ML (asynchronous) — on every keystroke (debounced 250ms).
+
+| Facet | What it catches | Example | Patterns | Latency |
+|-------|----------------|---------|----------|----------|
+| **PII** | Email, phone, SSN, credit card (Luhn-validated), DOB, address, driver's license, passport, tax ID, bank account, IP address | `john.doe@example.com`, `4111-1111-1111-1111` | 69 | ~0.3ms |
+| **Secrets** | API keys (AWS, GitHub, OpenAI, Stripe, Slack), OAuth tokens, RSA private keys, database credentials | `ghp_abc123...`, `AKIA...`, `-----BEGIN RSA PRIVATE KEY-----` | 41 | ~0.3ms |
+| **XSS** | Cross-site scripting payloads | `<script>alert(1)</script>` | 12 | ~0.3ms |
+| **Compliance** | OWASP LLM Top 10, MITRE ATLAS, EU AI Act, NIST CSF, ISO 27001, CCPA, LGPD, PIPEDA, POPIA | "patient SSN:", "credit card:" | 24 | ~0.3ms |
+| **OT/ICS Protocols** | Modbus, DNP3, OPC-UA control manipulation | "Modbus function code 06..." | 9 | ~0.3ms |
+| **ML Threat** | Adversarial prompt injection (instruction override, roleplay, obfuscated commands) | "Ignore all previous instructions..." | 1 model | ~5-50ms |
+| **Total** | — | — | **176 regex + 1 ML** | — |
+
+## Security Posture
+
+| Metric | Value |
+|--------|-------|
+| Prompt data sent to servers | **0 bytes** (all on-device) |
+| External dependencies | **0** (no npm, no node_modules) |
+| WASM binaries | **0** (removed in v0.3.0, pure JS instead) |
+| Telemetry by default | **Off** (opt-in FP reporting sends hashes only) |
+| Content Security Policy | **MV3 strict** (`script-src 'self'`; no inline, no remote, no eval, no wasm-unsafe-eval) |
+| Commit signing | **Ed25519** on all commits |
+| Vulnerability disclosure | **RFC 9116** (security@aegisgatesecurity.io) |
+
+## Performance
+
+| Metric | v0.3.0 | v0.2.0 |
+|--------|--------|--------|
+| Regex detection (p99) | **<1ms** | <1ms |
+| ML inference (p50, Chrome est.) | **~5-50ms** | n/a |
+| ML inference (p50, Node.js) | **~420ms** | n/a |
+| Model load time | **~120ms** | n/a |
+| Extension size | **4.2MB** | ~2MB |
+| FPR (regex, WildChat) | **2.31%** | 2.31% |
+| ML adversarial detection | **100%** (10/10) | n/a |
+| ML benign pass-through | **81.8%** (9/11) | n/a |
+
+**Source**: [docs/MODEL-CARD.md](./docs/MODEL-CARD.md) — detection metrics and evaluation data
+
 ## ML Threat Detector
 
 v0.3.0 adds a **Char CNN-BiLSTM with Attention** model that detects adversarial prompt injections — the kind of attacks that regex can't catch (paraphrased instructions, roleplay injection, obfuscated commands).
@@ -105,7 +183,8 @@ v0.3.0 adds a **Char CNN-BiLSTM with Attention** model that detects adversarial 
 
 The ML detector runs **asynchronously** alongside the regex facets. Regex detections appear immediately (~0.3ms); ML detections update the banner when ready (~5-50ms in Chrome). This gives defense-in-depth: regex catches known patterns, ML catches paraphrased and obfuscated variants.
 
-**ML evaluation results (Node.js; Chrome expected ~10x faster):**
+<details>
+<summary><strong>🧠 ML Evaluation Results</strong></summary>
 
 | Metric | Value |
 |--------|-------|
@@ -116,31 +195,7 @@ The ML detector runs **asynchronously** alongside the regex facets. Regex detect
 
 See [docs/MODEL-CARD.md](./docs/MODEL-CARD.md) for full evaluation data.
 
-## Security Posture
-
-| Metric | Value |
-|--------|-------|
-| Prompt data sent to servers | **0 bytes** (all on-device) |
-| External dependencies | **0** (no npm, no node_modules) |
-| WASM binaries | **0** (removed in v0.3.0, pure JS instead) |
-| Telemetry by default | **Off** (opt-in FP reporting sends hashes only) |
-| Content Security Policy | **MV3 strict** (`script-src 'self'`; no inline, no remote, no eval, no wasm-unsafe-eval) |
-| Commit signing | **Ed25519** on all commits |
-| Vulnerability disclosure | **RFC 9116** (security@aegisgatesecurity.io) |
-
-## What It Detects
-
-Lens runs **6 detection facets** — 5 regex (synchronous) + 1 ML (asynchronous) — on every keystroke (debounced 250ms).
-
-| Facet | What it catches | Example | Patterns | Latency |
-|-------|----------------|---------|----------|----------|
-| **PII** | Email, phone, SSN, credit card (Luhn-validated), DOB, address, driver's license, passport, tax ID, bank account, IP address | `john.doe@example.com`, `4111-1111-1111-1111` | 69 | ~0.3ms |
-| **Secrets** | API keys (AWS, GitHub, OpenAI, Stripe, Slack), OAuth tokens, RSA private keys, database credentials | `ghp_abc123...`, `AKIA...`, `-----BEGIN RSA PRIVATE KEY-----` | 41 | ~0.3ms |
-| **XSS** | Cross-site scripting payloads | `<script>alert(1)</script>` | 12 | ~0.3ms |
-| **Compliance** | OWASP LLM Top 10, MITRE ATLAS, EU AI Act, NIST CSF, ISO 27001, CCPA, LGPD, PIPEDA, POPIA | "patient SSN:", "credit card:" | 24 | ~0.3ms |
-| **OT/ICS Protocols** | Modbus, DNP3, OPC-UA control manipulation | "Modbus function code 06..." | 9 | ~0.3ms |
-| **ML Threat** | Adversarial prompt injection (instruction override, roleplay, obfuscated commands) | "Ignore all previous instructions..." | 1 model | ~5-50ms |
-| **Total** | — | — | **176 regex + 1 ML** | — |
+</details>
 
 ## How Lens Compares
 
@@ -156,21 +211,6 @@ Lens runs **6 detection facets** — 5 regex (synchronous) + 1 ML (asynchronous)
 | Zero dependencies, no WASM | ✅ | ✅ | ❌ Requires agent |
 | Free (Apache 2.0) | ✅ | ✅ | ❌ Paid license |
 | Fail-visible (user sees every detection) | ✅ | ✅ | ❌ Silent block |
-
-## Performance
-
-| Metric | v0.3.0 | v0.2.0 |
-|--------|--------|--------|
-| Regex detection (p99) | **<1ms** | <1ms |
-| ML inference (p50, Chrome est.) | **~5-50ms** | n/a |
-| ML inference (p50, Node.js) | **~420ms** | n/a |
-| Model load time | **~120ms** | n/a |
-| Extension size | **4.2MB** | ~2MB |
-| FPR (regex, WildChat) | **2.31%** | 2.31% |
-| ML adversarial detection | **100%** (10/10) | n/a |
-| ML benign pass-through | **81.8%** (9/11) | n/a |
-
-**Source**: [docs/MODEL-CARD.md](./docs/MODEL-CARD.md) — detection metrics and evaluation data
 
 ## Supported AI Providers
 
@@ -197,41 +237,6 @@ Lens runs **6 detection facets** — 5 regex (synchronous) + 1 ML (asynchronous)
 6. **Banner shows** with severity color (critical = red, high = orange, medium = yellow, low = blue)
 7. **User chooses**: Cancel / Edit & Resend / Send Anyway / Dismiss for 24h
 8. **Dismissal** is stored in `chrome.storage.local` for 24h
-
-## Installation
-
-### Chrome Web Store (recommended)
-
-1. Visit the [Chrome Web Store listing](https://chromewebstore.google.com/detail/aegisgate-lens/lkioinepjpjfdhiggaomoafnhagfcjip)
-2. Click **Add to Chrome**
-3. Click the AegisGate Lens icon in your toolbar to verify it's active
-
-### Firefox Add-ons (AMO)
-
-Lens v0.3.0+ supports Firefox 142+ via Manifest V3.
-
-1. Visit the [AegisGate Lens listing on AMO](https://addons.mozilla.org/en-US/firefox/addon/aegisgate-lens/)
-2. Click **Add to Firefox**
-3. Click the AegisGate Lens icon in your toolbar to verify it's active
-
-### From source (development / testing)
-
-```bash
-git clone https://github.com/aegisgatesecurity/aegisgate-lens.git
-cd aegisgate-lens
-# No npm install needed — zero external dependencies
-```
-
-**Load in Chrome:**
-1. Navigate to `chrome://extensions`
-2. Enable **Developer mode** (top right)
-3. Click **Load unpacked**
-4. Select the `aegisgate-lens` directory
-
-**Load in Firefox:**
-1. Navigate to `about:debugging#/runtime/this-firefox`
-2. Click **Load Temporary Add-on**
-3. Select `manifest.json` from the `aegisgate-lens` directory
 
 ## Test Coverage
 
@@ -276,6 +281,27 @@ See [docs/SECURITY.md](./docs/SECURITY.md) for the full privacy policy and secur
 - **RFC 9116** vulnerability disclosure (contact `security@aegisgatesecurity.io`)
 
 See [docs/SECURITY.md](./docs/SECURITY.md) for the full security model and [docs/NO-EXTERNAL-DEPS.md](./docs/NO-EXTERNAL-DEPS.md) for the dependency policy.
+
+<details>
+<summary><strong>📦 What's New in v0.3.2</strong></summary>
+
+- **🔒 23 New SOC Detection Patterns** — SWIFT/BIC banking codes (3), CPT/HCPCS medical billing codes (11), and OT/ICS protocol patterns (9: Modbus, DNP3, OPC-UA). Parity with Platform v4.1.0 and Rampart v0.6.1.
+- **🦊 Firefox MV3 Support** — Firefox 142+ via Manifest V3 with `browser_specific_settings.gecko`.
+- **🔧 Dynamic injection fix** — Background.js content script file list corrected to match manifest.
+- **✅ 530 tests** — 518 passing + 12 skipped (ML perf tests). All green.
+
+</details>
+
+<details>
+<summary><strong>📦 What's New in v0.3.0</strong></summary>
+
+- **🧠 ML Threat Detector** — Char CNN-BiLSTM with Attention, running in pure JavaScript. No WASM, no ONNX Runtime, no external dependencies. Detects adversarial prompt injections (instruction override, roleplay injection, obfuscated commands) in ~5-50ms.
+- **🔍 DeepSeek + Meta AI** — Two new AI providers with live-verified DOM selectors (10 providers total).
+- **📦 6x smaller** — Extension reduced from 25MB (WASM) to 4.2MB (pure JS).
+- **🔒 Stricter CSP** — `script-src 'self'` only. No `wasm-unsafe-eval`, no `eval()`, no `Function()`.
+- **✅ 504 tests** — 492 unit + 12 ML perf/stress tests. All passing.
+
+</details>
 
 ## For Enterprise Teams
 
