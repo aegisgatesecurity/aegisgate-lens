@@ -24,7 +24,7 @@
     },
     secret_gcp_key: {
       severity: 'high',
-      re: /\bAIza[0-9A-Za-z_-]{30,50}\b/g
+      re: /\bAIza[0-9A-Za-z_-]{20,}\b/g
     },
     secret_azure_key: {
       severity: 'high',
@@ -200,6 +200,11 @@
     secret_vercel_key: {
       severity: 'high',
       re: /\bvck[A-Za-z0-9_-]{32,}\b/g
+    },
+    // Phase 3 parity fix — 2026-09-02
+    secret_german_tax_id: {
+      severity: 'high',
+      re: /\b(?:Steuer-?ID|Steuernummer)[:\s]*\d{11}\b/gi
     },
   };
 

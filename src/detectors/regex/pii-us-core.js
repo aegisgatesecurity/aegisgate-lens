@@ -42,6 +42,15 @@
           // total (with separators allowed).
           re: /\b(?:\d{4}[ -]?){3}\d{1,7}\b|\b\d{13,19}\b/g
         },
+        // Phase 3 parity fix — 2026-09-02: brand-specific credit card patterns
+        pii_credit_card_mastercard: {
+          severity: 'critical',
+          re: /\b5[1-5]\d{2}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b/g
+        },
+        pii_credit_card_amex: {
+          severity: 'critical',
+          re: /\b3[47]\d{2}[\s-]?\d{6}[\s-]?\d{5}\b/g
+        },
         // ========================================================================
         // v0.1.0-beta Path 1 coverage expansion (2026-07-08, per benchmark v3):
         //   8 new patterns to close the top-3 recall gaps (phone, ID, passport)
