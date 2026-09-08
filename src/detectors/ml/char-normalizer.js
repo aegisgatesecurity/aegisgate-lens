@@ -1,14 +1,16 @@
 // AegisGate Lens — ml/char-normalizer.js
 // Character-level normalizer for the Char CNN-BiLSTM threat detection model.
 //
-// Port of pkg/ml/normalizer.go from AegisGate Platform v4.0.0.
+// Port of pkg/ml/normalizer.go from AegisGate Platform v4.3.2 (v9 model).
 // Converts raw text into a fixed-length Int32Array suitable for ONNX inference.
 //
 // Input pipeline:
-//   raw text → normalize → truncate/pad → char IDs → [1, 128] int32 tensor
+//   raw text → normalize → truncate/pad → char IDs → [1, 256] int32 tensor
 //
-// Character vocabulary: 128 ASCII characters (0-127).
-// Unknown characters are mapped to UNK token (id=1).
+// Character vocabulary: 256 Latin-1 characters (0-255).
+// Printable ASCII [32-126] mapped directly.
+// Latin-1 supplement [128-255] mapped directly.
+// Non-printable ASCII and non-Latin-1 characters mapped to UNK token (id=1).
 // Padding is done with PAD token (id=0).
 //
 // Apache 2.0. Copyright 2026 AegisGate Security, LLC.
@@ -16,10 +18,10 @@
 (function (global) {
   'use strict';
 
-  var MAX_SEQ_LEN = 128;
+  var MAX_SEQ_LEN = 256;
   var PAD_ID = 0;
   var UNK_ID = 1;
-  var VOCAB_SIZE = 128;
+  var VOCAB_SIZE = 256;  // Latin-1 (0-255)
 
   // Normalize preprocesses text for model input.
   // Steps:
@@ -35,7 +37,7 @@
     text = text.trim();
     // Collapse multiple whitespace
     text = text.replace(/\s+/g, ' ');
-    // Truncate to MAX_SEQ_LEN characters
+    // Truncate to MAX_SEQ_LEN (256) characters
     if (text.length > MAX_SEQ_LEN) {
       text = text.substring(0, MAX_SEQ_LEN);
     }
@@ -55,11 +57,11 @@
       if (code >= 32 && code <= 126) {
         // Printable ASCII → map directly
         result[i] = code;
-      } else if (code < 128) {
-        // Non-printable ASCII → UNK
-        result[i] = UNK_ID;
+      } else if (code >= 128 && code <= 255) {
+        // Latin-1 supplement → map directly (v9 model uses Latin-1 vocab)
+        result[i] = code;
       } else {
-        // Non-ASCII → UNK
+        // Non-printable ASCII or non-Latin-1 → UNK
         result[i] = UNK_ID;
       }
     }
@@ -94,6 +96,9 @@
         continue;
       }
       if (id >= 32 && id <= 126) {
+        result += String.fromCharCode(id);
+      } else if (id >= 128 && id <= 255) {
+        // Latin-1 supplement
         result += String.fromCharCode(id);
       }
     }

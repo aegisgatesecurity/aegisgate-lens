@@ -173,11 +173,11 @@ v0.3.0 adds a **Char CNN-BiLSTM with Attention** model that detects adversarial 
 | Property | Value |
 |----------|-------|
 | Architecture | Char CNN-BiLSTM with Attention |
-| Parameters | 1,589,378 (1.58M) |
-| Input | Character-level, max 128 chars |
+| Parameters | 1,597,570 (1.60M) |
+| Input | Character-level, max 256 chars, Latin-1 vocab (256) |
 | Output | Sigmoid score [0, 1] |
 | Threshold | 0.5 (adversarial), 0.3 (suspicious) |
-| Weight format | float16, gzip+base64 JSON (~3.7MB) |
+| Weight format | float16, gzip+base64 JSON (~3.75MB) |
 | Inference | Pure JavaScript (no WASM, no ONNX) |
 | CSP requirement | `script-src 'self'` only |
 

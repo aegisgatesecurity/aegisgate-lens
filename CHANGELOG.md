@@ -1,3 +1,23 @@
+## [0.4.0] — 2026-09-08 - v9 Neural Threat Detection Model 🔒
+
+> **v0.4.0** upgrades the Char CNN-BiLSTM threat detection model from v4 to v9, matching Platform and Rampart. Exported v9 ONNX weights to float16 JSON format for browser inference.
+
+### Security Enhancements
+
+- **v9 Model Upgrade**: MAX_SEQ_LEN 128→256, VOCAB_SIZE 128→256, Latin-1 character support (0-255). MODEL_VERSION v4→v9.0-js. Updated EXPECTED_MODEL_HASH.
+- **Temporal Query FP Mitigation**: Post-inference regex check downgrades block→warn for temporal queries.
+- **Telemetry version updated**: v4.0→v9.0
+
+### Weight Export
+
+- New `training/export_lens_weights.py` script: ONNX → float16 → gzip → base64 JSON (3.75MB, 23 tensors)
+
+### Testing
+
+- All 15 char-normalizer tests updated for Latin-1 encoding
+- Performance tests updated for v9 model version
+- 80% adversarial detection, 90.9% benign pass-through
+
 # Changelog
 
 All notable changes to AegisGate Lens are documented in this file.

@@ -180,6 +180,7 @@ function setupMocks() {
       ok: true,
       status: 200,
       statusText: 'OK',
+      text: async () => data,
       json: async () => JSON.parse(data)
     };
   };
@@ -299,8 +300,8 @@ const BENIGN_PROMPTS = [
 const EDGE_CASE_INPUTS = {
   'empty string': '',
   'single char': 'a',
-  'max length (128 chars)': 'a'.repeat(128),
-  'over max length (200 chars)': 'b'.repeat(200),
+  'max length (256 chars)': 'a'.repeat(256),
+  'over max length (300 chars)': 'b'.repeat(300),
   'only whitespace': '   \t\n  ',
   'unicode heavy': 'こんにちは世界مرحباПривет',
   'special chars': '!@#$%^&*()_+-=[]{}|;:\'",.<>?/~`',
@@ -326,9 +327,9 @@ mlTest('ml-perf: model loads successfully', async () => {
   assert.equal(diag.modelLoaded, true, 'model should be loaded');
   assert.equal(diag.inferenceEngine, 'pure-js', 'engine should be pure-js');
   assert.ok(diag.weightCount > 0, 'should have loaded weight tensors');
-  assert.equal(diag.modelVersion, 'char-cnn-bilstm-v4.0-js', 'model version should match');
+  assert.equal(diag.modelVersion, 'char-cnn-bilstm-v9.0-js', 'model version should match');
   assert.equal(diag.threshold, 0.5, 'threshold should be 0.5');
-  assert.equal(diag.maxSeqLen, 128, 'max seq length should be 128');
+  assert.equal(diag.maxSeqLen, 256, 'max seq length should be 256');
 
   det.unloadModel();
 });
@@ -362,8 +363,9 @@ mlTest('ml-perf: inference latency across input lengths', async () => {
     { label: '10 chars', text: 'Hello worl' },
     { label: '50 chars', text: 'Hello world, this is a test prompt for the model.' },
     { label: '100 chars', text: 'Hello world, this is a test prompt for the model. It has about 100 chars total, which is typical.' },
-    { label: '128 chars (max)', text: 'A'.repeat(128) },
-    { label: '200 chars (truncated)', text: 'B'.repeat(200) },
+    { label: '128 chars', text: 'A'.repeat(128) },
+    { label: '256 chars (max)', text: 'A'.repeat(256) },
+    { label: '300 chars (truncated)', text: 'B'.repeat(300) },
     { label: '500 chars (truncated)', text: 'C'.repeat(500) },
     { label: '1000 chars (truncated)', text: 'D'.repeat(1000) },
   ];

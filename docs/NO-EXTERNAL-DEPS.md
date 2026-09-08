@@ -16,7 +16,7 @@ Starting in v0.3.0, the Lens includes an **on-device ML threat detector** that r
 
 1. **Not an npm dependency.** The inference engine is hand-written vanilla JS — no imports, no bundler, no transpiler. The weights are a static JSON file loaded via `fetch(chrome.runtime.getURL())`.
 2. **No WASM, no eval.** The CSP is `script-src 'self'; object-src 'self'` — no `wasm-unsafe-eval`, no `eval()`, no `Function()`. This is a hard requirement per the security model.
-3. **Verified supply chain.** The model is the same Char CNN-BiLSTM used by AegisGate Platform v4.0.0. Weights are float16-quantized (max error ~0.0005) from the Platform's float32 ONNX model.
+3. **Verified supply chain.** The model is the same Char CNN-BiLSTM used by AegisGate Platform v4.3.2 (v9 model). Weights are float16-quantized (max error ~0.0002) from the Platform's float32 ONNX model.
 4. **Privacy-preserving.** All ML inference happens in the browser's JS engine. No data leaves the device. The model file is bundled in the extension package.
 5. **Auditable.** The inference engine is ~500 lines of readable JS. No black-box runtime.
 
