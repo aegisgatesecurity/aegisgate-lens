@@ -1,7 +1,7 @@
 // AegisGate Lens — ml/char-normalizer.js
 // Character-level normalizer for the Char CNN-BiLSTM threat detection model.
 //
-// Port of pkg/ml/normalizer.go from AegisGate Platform v4.3.2 (v9 model).
+// Port of pkg/ml/normalizer.go from AegisGate Platform v4.4.0 (v11b model).
 // Converts raw text into a fixed-length Int32Array suitable for ONNX inference.
 //
 // Input pipeline:
@@ -28,7 +28,7 @@
   //   1. Convert to lowercase
   //   2. Strip leading/trailing whitespace
   //   3. Collapse multiple whitespace
-  //   4. Truncate to max length (128 chars)
+  //   4. Truncate to max length (256 chars)
   function normalize(text) {
     if (typeof text !== 'string') return '';
     // Lowercase

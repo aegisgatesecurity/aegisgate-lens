@@ -327,7 +327,7 @@ mlTest('ml-perf: model loads successfully', async () => {
   assert.equal(diag.modelLoaded, true, 'model should be loaded');
   assert.equal(diag.inferenceEngine, 'pure-js', 'engine should be pure-js');
   assert.ok(diag.weightCount > 0, 'should have loaded weight tensors');
-  assert.equal(diag.modelVersion, 'char-cnn-bilstm-v9.0-js', 'model version should match');
+  assert.equal(diag.modelVersion, 'char-cnn-bilstm-v11b-js', 'model version should match');
   assert.equal(diag.threshold, 0.5, 'threshold should be 0.5');
   assert.equal(diag.maxSeqLen, 256, 'max seq length should be 256');
 
