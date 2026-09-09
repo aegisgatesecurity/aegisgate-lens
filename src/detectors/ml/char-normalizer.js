@@ -23,12 +23,95 @@
   var UNK_ID = 1;
   var VOCAB_SIZE = 256;  // Latin-1 (0-255)
 
+  // keyWalkReverse maps QWERTY right-shifted keys back to their original
+  // position. This is the exact inverse of the keyboardWalkShift transform
+  // used in the augmentation engine and the evasion suite.
+  // Both use RIGHT shift (a→s, s→d, etc.), so we reverse with LEFT shift
+  // (s→a, d→s, etc.). Includes mappings for ; and , (the shifted outputs
+  // of l and m), plus uppercase.
+  //
+  // Ported from:
+  //   - Platform: upstream/aegisgate/pkg/scanner/normalize.go (line 127)
+  //   - Rampart:  internal/detectors/normalize.go (line 53)
+  //
+  // Used by reverseKeyboardWalk() for regex-level evasion resistance.
+  // NOT applied to ML model input (the model learns to handle obfuscation
+  // via training data augmentation). Used by regex facets to catch
+  // keyboard-walked evasion like "sjnpef" → "ignore".
+  var keyWalkReverse = {
+    // Home row (lowercase): s→a, d→s, f→d, g→f, h→g, j→h, k→j, l→k, ;→l
+    's': 'a', 'd': 's', 'f': 'd', 'g': 'f', 'h': 'g', 'j': 'h', 'k': 'j', 'l': 'k', ';': 'l',
+    // Top row (lowercase): w→q, e→w, r→e, t→r, y→t, u→y, i→u, o→i, p→o
+    'w': 'q', 'e': 'w', 'r': 'e', 't': 'r', 'y': 't', 'u': 'y', 'i': 'u', 'o': 'i', 'p': 'o',
+    // Bottom row (lowercase): x→z, c→x, v→c, b→v, n→b, m→n, ,→m
+    'x': 'z', 'c': 'x', 'v': 'c', 'b': 'v', 'n': 'b', 'm': 'n', ',': 'm',
+    // Uppercase (same shifts, uppercase output)
+    'S': 'A', 'D': 'S', 'F': 'D', 'G': 'F', 'H': 'G', 'J': 'H', 'K': 'J', 'L': 'K', ':': 'L',
+    'W': 'Q', 'E': 'W', 'R': 'E', 'T': 'R', 'Y': 'T', 'U': 'Y', 'I': 'U', 'O': 'I', 'P': 'O',
+    'X': 'Z', 'C': 'X', 'V': 'C', 'B': 'V', 'N': 'B', 'M': 'N', '<': 'M'
+  };
+
+  // reverseKeyboardWalk shifts each key one position LEFT on QWERTY.
+  // This reverses the "keyboard walk right" evasion technique where an
+  // attacker shifts each character one key to the right on the keyboard
+  // (a→s, s→d, etc.) to evade regex pattern matching.
+  //
+  // Example: "sjnpef" → "ignore" (each key shifted right on QWERTY).
+  //
+  // This is a DESTRUCTIVE normalization — it will corrupt normal text
+  // that happens to contain shifted characters. Callers should scan
+  // BOTH the original text and the reversed variant, not just the
+  // reversed version. See normalizeAllVariants().
+  function reverseKeyboardWalk(text) {
+    if (typeof text !== 'string') return '';
+    var result = '';
+    for (var i = 0; i < text.length; i++) {
+      var ch = text[i];
+      if (keyWalkReverse.hasOwnProperty(ch)) {
+        result += keyWalkReverse[ch];
+      } else {
+        result += ch;
+      }
+    }
+    return result;
+  }
+
+  // normalizeAllVariants returns the original text plus normalized
+  // variants for regex scanning. The caller should scan each variant
+  // against detection patterns and union the results.
+  //
+  // This mirrors Platform's NormalizeAllVariants() and Rampart's
+  // NormalizeAllVariants() — providing the same evasion-resistant
+  // scanning surface in the browser extension.
+  //
+  // Variants:
+  //   1. Original text (as-is)
+  //   2. reverseKeyboardWalk (keyboard-walk evasion reversal)
+  //
+  // Note: NFKC, zero-width stripping, and ROT13 are handled separately
+  // (pii.js stripZeroWidth for zero-width; the ML model handles Unicode
+  // normalization via its training augmentation pipeline).
+  function normalizeAllVariants(text) {
+    if (typeof text !== 'string') return [text];
+    var variants = [text];
+    var kw = reverseKeyboardWalk(text);
+    if (kw !== text) {
+      variants.push(kw);
+    }
+    return variants;
+  }
+
   // Normalize preprocesses text for model input.
   // Steps:
   //   1. Convert to lowercase
   //   2. Strip leading/trailing whitespace
   //   3. Collapse multiple whitespace
   //   4. Truncate to max length (256 chars)
+  //
+  // Note: This is the ML input normalizer. It does NOT apply
+  // keyWalkReverse — the model learns to handle keyboard-walk
+  // obfuscation through training data augmentation. The regex
+  // scanner uses normalizeAllVariants() instead.
   function normalize(text) {
     if (typeof text !== 'string') return '';
     // Lowercase
@@ -113,7 +196,10 @@
     normalize: normalize,
     encode: encode,
     encodeBatch: encodeBatch,
-    decode: decode
+    decode: decode,
+    reverseKeyboardWalk: reverseKeyboardWalk,
+    normalizeAllVariants: normalizeAllVariants,
+    keyWalkReverse: keyWalkReverse
   };
 
   if (typeof self !== 'undefined') self.__lensCharNormalizer = module;
