@@ -1,0 +1,9 @@
+# AegisGate Lens — Code Owners
+
+* @jcolvin1056
+
+# ML detector (protected IP — gitignored)
+src/detectors/ml/    @jcolvin1056
+
+# Regex patterns
+src/detectors/regex/ @jcolvin1056

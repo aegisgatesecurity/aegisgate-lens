@@ -1,0 +1,21 @@
+title = "AegisGate Rampart Gitleaks Config"
+
+[extend]
+# Start from the default gitleaks config
+useDefault = true
+
+# Allowlist — test files with example secrets for detection testing
+[allowlist]
+description = "Test files containing example secrets for detection engine verification"
+paths = [
+  '''internal/certinit/certinit_comprehensive_test\.go''',
+  '''internal/certinit/certinit_coverage_test\.go''',
+  '''internal/detectors/detectors_test\.go''',
+  '''internal/response/response_comprehensive_test\.go''',
+  '''internal/response/response_coverage_test\.go''',
+  '''internal/scanner/batch_test\.go''',
+  '''pkg/detector/detector_bench_test\.go''',
+  '''tests/load/k6/break-test\.js''',
+  '''tests/load/k6/crush-test\.js''',
+  '''tests/load/k6/endurance-test\.js''',
+]

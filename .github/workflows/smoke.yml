@@ -26,7 +26,7 @@ on:
   pull_request:
     branches: [main, 'v0.1.*']
   push:
-    branches: ['v0.1.*']
+    branches: [main, 'v0.1.*']
   workflow_dispatch:  # allow manual runs
   schedule:
     # Weekly: Monday 09:00 UTC

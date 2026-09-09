@@ -1,3 +1,25 @@
+## [0.4.1] — 2026-09-09 - v11b Model + Evasion Suite + OPSEC Hardening 🔒
+
+> **v0.4.1** upgrades Lens's Char CNN-BiLSTM threat detection model from v9 to v11b, matching Platform and Rampart. Weights re-exported as float16 gzip base64 JSON (3.75 MB). Adds 550-test adversarial evasion suite. OPSEC hardening: CODEOWNERS, gitleaks config, CI smoke tests now run on push to main.
+
+### Security Enhancements
+- **v11b Neural Model**: JS weights re-exported from v11b ONNX. SHA-256: `c09eef58...`. MODEL_VERSION: `char-cnn-bilstm-v11b-js`
+- **Latin-1 encoding fix**: Inline encoder now handles characters 128-255 (was truncating at 128)
+- **Evasion suite** (`test/unit/ml-evasion-suite.test.mjs`): 50 transforms × 11 ATLAS payloads = 550 adversarial tests
+
+### Bug Fixes
+- Fixed stale comment in char-normalizer.js (128→256 truncation)
+- Fixed MODEL_VERSION assertion in perf test
+- Fixed CI: smoke.yml now triggers on push to main (was only PRs)
+
+### Version & Infrastructure
+- README badges: v0.3.2 → v0.4.0, CWS/AMO badges updated
+- Test count badge: 530/530 → 257/530
+- Added: `.github/CODEOWNERS`, `.gitleaks.toml`
+- CI: `smoke.yml` trigger now includes `push: branches: [main]`
+
+---
+
 ## [0.4.0] — 2026-09-08 - v9 Neural Threat Detection Model 🔒
 
 > **v0.4.0** upgrades the Char CNN-BiLSTM threat detection model from v4 to v9, matching Platform and Rampart. Exported v9 ONNX weights to float16 JSON format for browser inference.
