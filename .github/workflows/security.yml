@@ -144,3 +144,60 @@ jobs:
           format: 'table'
           exit-code: '0'
           severity: 'CRITICAL,HIGH'
+
+  # ========================================
+  # SBOM — CycloneDX + SPDX
+  # ========================================
+  sbom:
+    name: "SBOM Generation (CycloneDX + SPDX)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7.0.1
+        with:
+          lfs: true
+
+      - name: Generate CycloneDX SBOM
+        uses: anchore/sbom-action@v0.24.2
+        with:
+          format: cyclonedx
+          output-file: sbom-cyclonedx.json
+
+      - name: Generate SPDX SBOM
+        uses: anchore/sbom-action@v0.24.2
+        with:
+          format: spdx-json
+          output-file: sbom-spdx.json
+
+      - name: Validate SBOMs
+        run: |
+          echo "=== CycloneDX SBOM ==="
+          if [ -s sbom-cyclonedx.json ]; then
+            echo "✅ CycloneDX: $(wc -c < sbom-cyclonedx.json) bytes"
+            python3 -c "import json; json.load(open('sbom-cyclonedx.json')); print('JSON valid')"
+          else
+            echo "❌ CycloneDX SBOM missing or empty"
+            exit 1
+          fi
+          echo ""
+          echo "=== SPDX SBOM ==="
+          if [ -s sbom-spdx.json ]; then
+            echo "✅ SPDX: $(wc -c < sbom-spdx.json) bytes"
+            python3 -c "import json; json.load(open('sbom-spdx.json')); print('JSON valid')"
+          else
+            echo "❌ SPDX SBOM missing or empty"
+            exit 1
+          fi
+
+      - name: Upload SBOMs
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: sbom
+          path: |
+            sbom-cyclonedx.json
+            sbom-spdx.json
+          retention-days: 90
