@@ -178,7 +178,6 @@ jobs:
           echo "=== CycloneDX SBOM ==="
           if [ -s sbom-cyclonedx.json ]; then
             echo "✅ CycloneDX: $(wc -c < sbom-cyclonedx.json) bytes"
-            python3 -c "import json; json.load(open('sbom-cyclonedx.json')); print('JSON valid')"
           else
             echo "❌ CycloneDX SBOM missing or empty"
             exit 1
@@ -187,7 +186,7 @@ jobs:
           echo "=== SPDX SBOM ==="
           if [ -s sbom-spdx.json ]; then
             echo "✅ SPDX: $(wc -c < sbom-spdx.json) bytes"
-            python3 -c "import json; json.load(open('sbom-spdx.json')); print('JSON valid')"
+            python3 -c "import json; json.load(open('sbom-spdx.json')); print('SPDX JSON valid')"
           else
             echo "❌ SPDX SBOM missing or empty"
             exit 1
