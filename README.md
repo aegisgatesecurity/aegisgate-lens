@@ -9,9 +9,9 @@
 100% on-device · Zero data leaves your browser · Free · Forever
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Install on Chrome Web Store](https://img.shields.io/badge/Install-CWS%20v0.4.0-4285F4?logo=google-chrome&logoColor=white)](https://chromewebstore.google.com/detail/aegisgate-lens/lkioinepjpjfdhiggaomoafnhagfcjip)
-[![Firefox Add-on](https://img.shields.io/badge/Install-AMO%20v0.4.0-FF7139?logo=firefox&logoColor=white)](https://addons.mozilla.org/en-US/firefox/addon/aegisgate-lens/)
-[![Version](https://img.shields.io/badge/version-v0.4.0-brightgreen.svg)](https://github.com/aegisgatesecurity/aegisgate-lens/releases/tag/v0.4.0)
+[![Install on Chrome Web Store](https://img.shields.io/badge/Install-CWS%20v0.4.1-4285F4?logo=google-chrome&logoColor=white)](https://chromewebstore.google.com/detail/aegisgate-lens/lkioinepjpjfdhiggaomoafnhagfcjip)
+[![Firefox Add-on](https://img.shields.io/badge/Install-AMO%20v0.4.1-FF7139?logo=firefox&logoColor=white)](https://addons.mozilla.org/en-US/firefox/addon/aegisgate-lens/)
+[![Version](https://img.shields.io/badge/version-v0.4.1-brightgreen.svg)](https://github.com/aegisgatesecurity/aegisgate-lens/releases/tag/v0.4.1)
 [![Tests](https://img.shields.io/badge/tests-257%20passing-brightgreen.svg)](#test-coverage)
 [![ML](https://img.shields.io/badge/ML-pure%20JS%20(CharCNN--BiLSTM)-9cf.svg)](#ml-threat-detector)
 [![Perf](https://img.shields.io/badge/ML%20inference-~5--50ms%20(Chrome%20est.)-blue.svg)](#performance)
