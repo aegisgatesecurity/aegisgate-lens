@@ -146,6 +146,39 @@ jobs:
           severity: 'CRITICAL,HIGH'
 
   # ========================================
+  # Gitleaks — Secret Detection
+  # ========================================
+  gitleaks:
+    name: "Gitleaks secret scan"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks
+        run: |
+          GITLEAKS_VERSION=8.21.2
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" | tar -xz -C /usr/local/bin gitleaks
+          chmod +x /usr/local/bin/gitleaks
+          
+          echo "## Gitleaks Results" >> $GITHUB_STEP_SUMMARY
+          gitleaks detect --source . --verbose --redact --no-banner 2>&1 | tee gitleaks-output.txt
+          EXIT_CODE=$?
+          
+          if [ $EXIT_CODE -eq 0 ]; then
+            echo "✅ No secrets detected by Gitleaks" >> $GITHUB_STEP_SUMMARY
+          elif [ $EXIT_CODE -eq 1 ]; then
+            echo "❌ Gitleaks detected potential secrets — see output above" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          else
+            echo "⚠️ Gitleaks scan encountered an error (exit code $EXIT_CODE)" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+  # ========================================
   # SBOM — CycloneDX + SPDX
   # ========================================
   sbom:
