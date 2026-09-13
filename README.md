@@ -24,8 +24,11 @@
 [![CSP](https://img.shields.io/badge/CSP-script--src%20'self'-success.svg)](#security)
 [![CodeQL](https://github.com/aegisgatesecurity/aegisgate-lens/actions/workflows/security.yml/badge.svg)](https://github.com/aegisgatesecurity/aegisgate-lens/actions/workflows/security.yml)
 [![Security Policy](https://img.shields.io/badge/security-RFC%209116-blue.svg)](./SECURITY.md)
+[![Patent Pending](https://img.shields.io/badge/IP-Patent_Pending-8B5CF6?logo=uspto)](https://github.com/aegisgatesecurity/aegisgate-lens#ip-notice)
 
 [Install](#installation) · [How It Works](#how-it-works) · [ML Detector](#ml-threat-detector) · [Detection](#what-it-detects) · [Privacy](./docs/SECURITY.md) · [Architecture](./docs/ARCHITECTURE-v0.1.3.md) · [Releases](https://github.com/aegisgatesecurity/aegisgate-lens/releases)
+
+[![GitHub stars](https://img.shields.io/github/stars/aegisgatesecurity/aegisgate-lens?style=social)](https://github.com/aegisgatesecurity/aegisgate-lens) — **If Lens helps you protect your privacy in AI conversations, please consider ⭐ starring this repo. It helps others discover it.**
 
 </div>
 
@@ -33,7 +36,7 @@
 
 ---
 
-> **🛡️ Using AegisGate at work?** [AegisGate Platform](https://github.com/aegisgatesecurity/aegisgate-platform) is our server-side gateway — 176 detection patterns, MCP/A2A/ACP protection, 31 compliance frameworks, and cryptographic attestation. For the 95% of users without enterprise protections, Lens is here. [Explore Platform →](https://github.com/aegisgatesecurity/aegisgate-platform)
+> **🛡️ Using AegisGate at work?** [AegisGate Platform](https://github.com/aegisgatesecurity/aegisgate-platform) is our server-side gateway — 216 detection patterns, MCP/A2A/ACP protection, 30+ compliance frameworks, and cryptographic attestation. For the 95% of users without enterprise protections, Lens is here. [Explore Platform →](https://github.com/aegisgatesecurity/aegisgate-platform)
 
 ---
 
@@ -331,6 +334,14 @@ Apache 2.0 for source code — see [LICENSE](./LICENSE) for the full text. The t
 ## Contributing
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md).
+
+---
+
+<div align="center">
+
+## IP Notice
+
+AegisGate's core technologies are patent pending with the USPTO (Provisional App. Nos. 64/153,573–64/153,577, filed September 12, 2026). Source code is © 2024-2026 AegisGate Security, LLC. Licensed under Apache 2.0. Trained ML model weights are separately licensed under the [AegisGate Model Weight License](WEIGHTS-LICENSE.md).
 
 ---
 
