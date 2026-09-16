@@ -323,6 +323,7 @@ AegisGate Lens is the consumer-facing layer. The same team builds [AegisGate Pla
 
 ## Community & Support
 
+- **Discord**: [https://discord.gg/cvJ4QcY9B](https://discord.gg/cvJ4QcY9B)
 - **X/Twitter**: [https://x.com/aegisgate](https://x.com/aegisgate)
 - **Mastodon**: [https://mastodon.social/@aegisgate](https://mastodon.social/@aegisgate)
 - **Email**: [support@aegisgatesecurity.io](mailto:support@aegisgatesecurity.io)
@@ -347,7 +348,7 @@ AegisGate's core technologies are patent pending with the USPTO (Provisional App
 
 <div align="center">
 
-[🌐 AegisGate Security](https://aegisgatesecurity.io) · [✉️ support@aegisgatesecurity.io](mailto:support@aegisgatesecurity.io) · [𝕏 @aegisgate](https://x.com/aegisgate) · [🐘 @aegisgate@mastodon.social](https://mastodon.social/@aegisgate)
+[🌐 AegisGate Security](https://aegisgatesecurity.io) · [💬 Discord](https://discord.gg/cvJ4QcY9B) · [✉️ support@aegisgatesecurity.io](mailto:support@aegisgatesecurity.io) · [𝕏 @aegisgate](https://x.com/aegisgate) · [🐘 @aegisgate@mastodon.social](https://mastodon.social/@aegisgate)
 
 Made with 🖤 by AegisGate Security developers to secure the AI attack surface.
 
