@@ -95,6 +95,10 @@
       'cu_consumer_rights', 'cu_minor_protection',
       'ccpa_reference', 'iso_27001_reference', 'lgpd_reference', 'nist_csf_reference', 'pipeda_reference', 'popia_reference',
       'cu_minor_protection',
+      // v0.3.3 parity sync (Platform v4.5.0)
+      'prompt_injection_ssti', 'prompt_injection_eval_atob',
+      'owasp_llm10_model_theft_query', 'owasp_llm06_system_prompt_extraction_variant',
+      'atlas_safety_protocol_bypass', 'atlas_data_exfiltration_query',
     ],
     toxicity: [
       'toxicity_hate', 'toxicity_insult', 'toxicity_obscene',

@@ -41,7 +41,7 @@
     owasp_llm10_model_theft: {
       severity: 'high',
       // Model extraction / theft
-      re: /(?:extract|reveal|expose|leak|give\s+me)\s+(?:the\s+)?(?:model|weights?|parameters?|architecture|training\s+data|embeddings?)/gi
+      re: /(?:extract|reveal|expose|leak|give\s+me|print|show|output|display|share|tell\s+me)\s+(?:me\s+)?(?:your\s+|the\s+)?(?:model|weights?|parameters?|architecture|training\s+data|embeddings?)/gi
     },
 
     // --- MITRE ATLAS ---
@@ -231,6 +231,41 @@
     owasp_llm10_unbounded_consumption: {
       severity: 'medium',
       re: /(?:run|process|repeat|generate|output|call)\s+(?:this\s+)?(?:1[0-9]{3,}|[2-9][0-9]{3,})\s+times?|(?:run|process)\s+(?:this\s+)?(?:dataset|list|data|requests?)\s+(?:repeatedly|in\s+a\s+loop|exhaustively|infinitely|forever|continuously)|(?:use\s+the\s+most\s+expensive\s+model)|(?:maximize|exhaust)\s+(?:the\s+)?(?:API|token|cost|budget|context)/gi
+    },
+    // ====================================================================
+    // v0.3.3 parity sync — patterns added for Platform v4.5.0 detection parity
+    // These close real-world detection gaps identified through k6 adversarial
+    // testing on the Platform. See GitHub Release v4.5.0 for details.
+    // ====================================================================
+    // --- SSTI (Server-Side Template Injection) ---
+    prompt_injection_ssti: {
+      severity: 'critical',
+      re: /\{\{[^}]*(?:constructor|process|require|mainModule|exec|spawn|child_process)[^}]*\}\}|<%[^>]*(?:exec|system|require|spawn|eval|response\.write|Server\.CreateObject)[^%>]*%>|#\{[^}]*(?:exec|system|Runtime|getRuntime)[^}]*\}|\{\{[^}]*(?:__class__|__subclasses__|__globals__|__builtins__)[^}]*\}\}/gi
+    },
+    // --- eval/atob obfuscated code execution ---
+    prompt_injection_eval_atob: {
+      severity: 'critical',
+      re: /eval\s*\(\s*atob\s*\(|eval\s*\(\s*decodeURIComponent\s*\(|eval\s*\(\s*unescape\s*\(|eval\s*\(\s*String\.fromCharCode|Function\s*\(\s*atob\s*\(|window\.atob\s*\(|Buffer\.from\s*\(\s*[^)]+,\s*['"]base64['"]\)/gi
+    },
+    // --- Model theft via question-form queries ---
+    owasp_llm10_model_theft_query: {
+      severity: 'high',
+      re: /what\s+are\s+(?:your|the)\s+(?:model\s+)?weights|what\s+is\s+(?:your|the)\s+(?:model\s+)?architecture|export\s+(?:your\s+)?(?:neural\s+network|model|weights|parameters)|show\s+me\s+(?:your\s+)?(?:model\s+)?(?:weights|parameters|architecture)|what\s+(?:model|architecture)\s+(?:are|is)\s+you/gi
+    },
+    // --- System prompt extraction via variant phrasings ---
+    owasp_llm06_system_prompt_extraction_variant: {
+      severity: 'high',
+      re: /give\s+me\s+(?:your|the)\s+(?:system\s+prompt|instructions?)\s+(?:in\s+full|completely|verbatim)|(?:what|which)\s+instructions\s+(?:were\s+you\s+given|do\s+you\s+have|are\s+you\s+using)\s+(?:about|regarding|for|on)\s+(?:content\s+filtering|safety|guidelines|restrictions)|(?:tell|show)\s+me\s+(?:everything|all)\s+(?:about\s+)?(?:your|the)\s+(?:system\s+prompt|instructions?|configuration|rules?)/gi
+    },
+    // --- Safety protocol bypass ---
+    atlas_safety_protocol_bypass: {
+      severity: 'critical',
+      re: /(?:disable|deactivate|turn\s+off|remove|bypass|override|circumvent)\s+(?:all\s+)?(?:safety\s+(?:protocols?|measures?|guidelines?|filters?|restrictions?)|content\s+(?:filters?|moderation|policy|guidelines))/gi
+    },
+    // --- Direct data exfiltration queries ---
+    atlas_data_exfiltration_query: {
+      severity: 'critical',
+      re: /(?:(?:list|show|display|output|print|reveal|give\s+me|tell\s+me)\s+(?:me\s+)?(?:all\s+)?(?:the\s+)?|what\s+(?:is|are)\s+(?:the\s+)?)(?:environment\s+variables?\s+(?:including\s+)?(?:API\s+keys?|secrets?|tokens?)?|database\s+connection\s+(?:strings?|URL|DSN)|contents?\s+of\s+\/etc\/(?:passwd|shadow|hosts)|credentials?\s+(?:file|store|vault)|password\s+(?:file|hash|database))/gi
     }
   };
 
