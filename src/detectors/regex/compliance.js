@@ -250,7 +250,7 @@
     // --- Model theft via question-form queries ---
     owasp_llm10_model_theft_query: {
       severity: 'high',
-      re: /what\s+are\s+(?:your|the)\s+(?:model\s+)?weights|what\s+is\s+(?:your|the)\s+(?:model\s+)?architecture|export\s+(?:your\s+)?(?:neural\s+network|model|weights|parameters)|show\s+me\s+(?:your\s+)?(?:model\s+)?(?:weights|parameters|architecture)|what\s+(?:model|architecture)\s+(?:are|is)\s+you/gi
+      re: /what\s+are\s+your\s+(?:model\s+)?weights|what\s+is\s+your\s+(?:model\s+)?architecture|export\s+(?:your\s+)?(?:neural\s+network|model|weights|parameters)|show\s+me\s+(?:your\s+)?(?:model\s+)?(?:weights|parameters|architecture)|what\s+(?:model|architecture)\s+(?:are|is)\s+you|give\s+me\s+(?:your\s+)?(?:model\s+)?(?:weights|parameters|architecture|hyperparameters)/gi
     },
     // --- System prompt extraction via variant phrasings ---
     owasp_llm06_system_prompt_extraction_variant: {
