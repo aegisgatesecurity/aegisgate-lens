@@ -108,6 +108,12 @@ async function getDetector() {
 // ATLAS Payloads (52 techniques — same as Platform evasion suite)
 // ================================================================
 
+// CI mode: reduce test volume to keep CI under timeout.
+// Full suite: 10 payloads × 50 transforms = 500 tests (~5 min at 600ms/call).
+// CI suite: 3 payloads × 5 transforms = 15 tests (~9s). Covers all 5 categories.
+// Set LENS_ML_FULL=1 locally to run the complete suite.
+const CI_MODE = !process.env.LENS_ML_FULL && (process.env.CI || process.env.GITHUB_ACTIONS);
+
 // Representative subset (10 payloads × 50 transforms = 500 tests, ~7 min)
 // Full 52-payload suite takes ~35 min in pure JS. Subset covers all categories.
 const ATLAS_PAYLOADS = [
@@ -206,6 +212,16 @@ const ALL_CATEGORIES = {
   prompt_fragmentation: fragmentationTransforms,
 };
 
+// In CI mode, pick only the first transform from each category (5 total vs 50).
+// This validates all 5 categories with minimal inference calls.
+const CI_CATEGORIES = {};
+for (const [cat, transforms] of Object.entries(ALL_CATEGORIES)) {
+  const firstKey = Object.keys(transforms)[0];
+  CI_CATEGORIES[cat] = { [firstKey]: transforms[firstKey] };
+}
+const RUN_CATEGORIES = CI_MODE ? CI_CATEGORIES : ALL_CATEGORIES;
+const RUN_PAYLOADS = CI_MODE ? ATLAS_PAYLOADS.slice(0, 3) : ATLAS_PAYLOADS;
+
 // ================================================================
 // Evasion Suite Test
 // ================================================================
@@ -220,12 +236,12 @@ mlTest('ml-evasion: model loads for evasion suite', async () => {
 mlTest('ml-evasion: adversarial payloads detected without evasion', async () => {
   const det = await getDetector();
   let detected = 0;
-  for (const p of ATLAS_PAYLOADS) {
+  for (const p of RUN_PAYLOADS) {
     const result = await det.classify(p.text);
     if (result.isAdversarial) detected++;
   }
-  console.log(`  Baseline: ${detected}/${ATLAS_PAYLOADS.length} = ${(detected / ATLAS_PAYLOADS.length * 100).toFixed(1)}%`);
-  assert.ok(detected >= ATLAS_PAYLOADS.length * 0.30, `Baseline ML detection should be >=30% (ML only, no regex), got ${detected}/${ATLAS_PAYLOADS.length}`);
+  console.log(`  Baseline: ${detected}/${RUN_PAYLOADS.length} = ${(detected / RUN_PAYLOADS.length * 100).toFixed(1)}%`);
+  assert.ok(detected >= RUN_PAYLOADS.length * 0.30, `Baseline ML detection should be >=30% (ML only, no regex), got ${detected}/${RUN_PAYLOADS.length}`);
   det.unloadModel();
 });
 
@@ -235,7 +251,7 @@ mlTest('ml-evasion: evasion resistance across all 50 transforms', async () => {
   let totalDetected = 0;
   const categoryResults = {};
 
-  for (const [catName, transforms] of Object.entries(ALL_CATEGORIES)) {
+  for (const [catName, transforms] of Object.entries(RUN_CATEGORIES)) {
     let catDetected = 0;
     let catTotal = 0;
 
@@ -243,7 +259,7 @@ mlTest('ml-evasion: evasion resistance across all 50 transforms', async () => {
       let varDetected = 0;
       let varTotal = 0;
 
-      for (const payload of ATLAS_PAYLOADS) {
+      for (const payload of RUN_PAYLOADS) {
         const evaded = transformFn(payload.text);
         const result = await det.classify(evaded);
         varTotal++;

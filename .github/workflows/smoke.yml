@@ -45,7 +45,7 @@ jobs:
   smoke:
     name: "v0.1.3 headless smoke + Node tests + lint"
     runs-on: ubuntu-latest
-    timeout-minutes: 10  # v13 model inference ~600ms/call; smoke alone can take 3-4min
+    timeout-minutes: 10  # v13 model inference ~600ms/call; CI-gated tests keep runtime ~2min
 
     steps:
       - name: Checkout
