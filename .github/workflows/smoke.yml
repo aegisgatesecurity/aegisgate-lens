@@ -73,6 +73,20 @@ jobs:
           # We don't need Pillow here (the PNG generation is a one-time
           # dev step, not a CI step).
 
+      - name: Build the test bundle
+        # Needed by both e2e tests (manifest validation) and the headless smoke test.
+        run: |
+          mkdir -p test/headless-smoke/dist
+          rm -rf test/headless-smoke/dist/*
+          cp -r src test/headless-smoke/dist/
+          cp manifest.json test/headless-smoke/dist/manifest.json
+          cp -r icons test/headless-smoke/dist/icons
+          python3 tools/ci/build-bundle.py
+          ls test/headless-smoke/dist/ | head -20
+          test -f test/headless-smoke/dist/icons/banner-1x.png && echo "banner-1x.png present" || (echo "banner-1x.png MISSING"; exit 1)
+          test -f test/headless-smoke/dist/icons/banner-2x.png && echo "banner-2x.png present" || (echo "banner-2x.png MISSING"; exit 1)
+          test -f test/headless-smoke/dist/icons/banner-3x.png && echo "banner-3x.png present" || (echo "banner-3x.png MISSING"; exit 1)
+
       - name: Run unit tests + e2e tests
         # v0.1.4 polish: include test/e2e/ (F-7 manifest validation, 20 tests).
         # 497 + 20 = 517 total tests, ~2s. No network, no browser, no deps.
@@ -110,21 +124,6 @@ jobs:
         run: |
           cd tools/headless-smoke/flow
           go test -v ./...
-
-      - name: Build the test bundle (for headless smoke)
-        # Single build: the dist bundle is needed only for the headless smoke test,
-        # not for the unit/e2e tests (which test source files directly).
-        run: |
-          mkdir -p test/headless-smoke/dist
-          rm -rf test/headless-smoke/dist/*
-          cp -r src test/headless-smoke/dist/
-          cp manifest.json test/headless-smoke/dist/manifest.json
-          cp -r icons test/headless-smoke/dist/icons
-          python3 tools/ci/build-bundle.py
-          ls test/headless-smoke/dist/ | head -20
-          test -f test/headless-smoke/dist/icons/banner-1x.png && echo "banner-1x.png present" || (echo "banner-1x.png MISSING"; exit 1)
-          test -f test/headless-smoke/dist/icons/banner-2x.png && echo "banner-2x.png present" || (echo "banner-2x.png MISSING"; exit 1)
-          test -f test/headless-smoke/dist/icons/banner-3x.png && echo "banner-3x.png present" || (echo "banner-3x.png MISSING"; exit 1)
 
       - name: Run the v0.1.3 headless smoke test
         # The smoke runs 16 detection cases in real Chrome and writes

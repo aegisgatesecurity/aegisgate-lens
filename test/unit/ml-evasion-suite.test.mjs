@@ -296,7 +296,7 @@ mlTest('ml-evasion: evasion resistance across all 50 transforms', async () => {
   try { mkdirSync(reportDir, { recursive: true }); } catch (e) { }
   const report = {
     timestamp: new Date().toISOString(),
-    model: 'char-cnn-bilstm-v11b-js',
+    model: 'char-cnn-bilstm-v13-js',
     totalTests,
     totalDetected,
     evasionResistanceScore: parseFloat(overallRate),
