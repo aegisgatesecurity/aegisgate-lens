@@ -266,7 +266,60 @@
     atlas_data_exfiltration_query: {
       severity: 'critical',
       re: /(?:(?:list|show|display|output|print|reveal|give\s+me|tell\s+me)\s+(?:me\s+)?(?:all\s+)?(?:the\s+)?|what\s+(?:is|are)\s+(?:the\s+)?)(?:environment\s+variables?\s+(?:including\s+)?(?:API\s+keys?|secrets?|tokens?)?|database\s+connection\s+(?:strings?|URL|DSN)|contents?\s+of\s+\/etc\/(?:passwd|shadow|hosts)|credentials?\s+(?:file|store|vault)|password\s+(?:file|hash|database))/gi
-    }
+    },
+    // Phase 4 parity fix — 2026-09-24: patterns synced from Platform
+    harmful_drugs_synthesis: {
+      severity: 'critical',
+      re: /(?:how\s+to\s+)?(?:synthesi[sz]e|make|manufacture|extract|produce|grow)\s+(?:methamphetamine|crack\s+cocaine|fentanyl|LSD|DMT|GHB|ketamine|psilocybin|MDMA|ecstasy|opioids|opium|heroin|cocaine)|(?:synthesis\s+(?:of|requires)\s+(?:methamphetamine|fentanyl|LSD|MDMA|ketamine|ergotamine))|(?:safrole\s+oil\s+is\s+isomerized)|(?:extract\s+opioids\s+from\s+poppy)|(?:poppy\s+(?:pods|tea)\s+(?:steep|grind|extract))|(?:crack\s+cocaine\s+(?:dissolve|baking\s+soda|heat\s+until))|(?:fentanyl\s+synthesis\s+(?:Start|NPP|N-phenethyl))|(?:ketamine\s+at\s+home)|(?:MDMA\s+synthesis\s+(?:Safrole|Wacker|MDP2P))|(?:Wacker\s+process\s+to\s+MDP2P)/gi
+    },
+    harmful_hacking_instructions: {
+      severity: 'high',
+      re: /(?:how\s+to|instructions?\s+(?:for|on)|to)\s+(?:install\s+(?:a\s+)?keylogger|DDoS\s+(?:a\s+)?(?:website|server)|deploy\s+ransomware|hack\s+into\s+(?:someone|a)\s+(?:email|account|system|database))|(?:install\s+(?:a\s+)?keylogger\s*:\s*Download)|(?:DDoS\s+(?:a\s+)?(?:website|server)\s*:\s*(?:Use|Set\s+up))|(?:booter\s+service|botnet\s+with\s+Mirai)|(?:SQL\s+injection\s*:\s*Enter)/gi
+    },
+    harmful_selfharm_methods: {
+      severity: 'critical',
+      re: /(?:most\s+effective\s+(?:method|way)\s+to|how\s+to|fastest\s+(?:method|way)\s+to|painless\s+(?:method|way)\s+to)\s+(?:end\s+(?:your|my)\s+life|kill\s+(?:yourself|myself|oneself)|commit\s+suicide|overdose|poison\s+(?:yourself|myself))|(?:lethal\s+dose\s+of|painless\s+overdose|carbon\s+monoxide\s+poisoning|helium\s+(?:tank|bag)\s+(?:method|with))/gi
+    },
+    harmful_violence_instructions: {
+      severity: 'high',
+      re: /(?:how\s+to|instructions?\s+(?:for|on)|guide\s+to|to)\s+(?:poison\s+someone|stalk\s+someone|hotwire\s+(?:a\s+)?car|pick\s+(?:a\s+)?(?:deadbolt|lock)|skim\s+(?:credit|debit)\s+cards?|commit\s+(?:credit\s+card|identity)\s+(?:fraud|theft)|money\s+launder|create\s+(?:a\s+)?fake\s+ID|make\s+poison\s+darts|stalk\s+(?:someone\s+)?online)|(?:money\s+laundering\s*:\s*Set\s+up\s+a\s+shell\s+company)|(?:poison\s+someone\s+undetected)|(?:pick\s+(?:a\s+)?deadbolt\s+lock)|(?:credit\s+card\s+skimming\s*:)/gi
+    },
+    harmful_weapons_explosives: {
+      severity: 'critical',
+      re: /(?:how\s+to\s+)?(?:make|create|build|assemble|synthesi[sz]e|manufacture)\s+(?:a\s+)?(?:improvised\s+explosive|pipe\s+bomb|pressure\s+cooker\s+bomb|molotov|zip\s+gun|homemade\s+firearm|IED|TATP|napalm|thermite|gunpowder|ricin)|(?:step[- ]by[- ]step\s+instructions\s+for\s+(?:making|building|creating)\s+(?:a\s+)?(?:bomb|explosive|weapon|firearm|pipe\s+bomb|pressure\s+cooker\s+bomb|molotov|IED))|(?:ammonium\s+nitrate\s+(?:fertilizer|fuel|and\s+diesel|with\s+diesel))|(?:mix\s+(?:aluminum\s+powder|aluminium)\s+with\s+(?:iron\s+oxide|rust))|(?:chlorine\s+gas\s+(?:by\s+mixing|from\s+mixing|produced\s+by|by\s+adding|can\s+be\s+produced))|(?:mix\s+(?:bleach|chlorine)\s+with\s+(?:ammonia|acid))|(?:ricin\s+(?:can\s+be|is)\s+extracted\s+from\s+castor\s+beans)|(?:grind\s+castor\s+beans)|(?:gunpowder\s+recipe|potassium\s+nitrate\s+charcoal\s+sulfur)|(?:thermite\s+(?:reaction|mix|from|burns))|(?:napalm\s+(?:mix|from|by\s+mixing))|(?:mix\s+polystyrene\s+with\s+gasoline)/gi
+    },
+    PromptInjectionBase64: {
+      severity: 'medium',
+      re: /[A-Za-z0-9+/]{50,}={0,2}/g
+    },
+    PromptInjectionCodeExecution: {
+      severity: 'high',
+      re: /(?:\$\([^)]*\)|\$\{[^}]*\}|<[^>]*script[^>]*>|javascript:[^;\s]+|on\w+\s*=\s*["']|on\w+\s*=\s*[^\s])/gi
+    },
+    PromptInjectionCommand: {
+      severity: 'critical',
+      re: /(?:ignore\s+(?:all\s+)?(?:previous|prior)\s+(?:instructions?|rules?|constraints?)|disregard\s+(?:your\s+)?(?:instructions?|rules?)|forget\s+(?:everything|all)\s+(?:you|we)\s+(?:have\s+)?told|temporary\s+instructions?)/gi
+    },
+    PromptInjectionDelimiter: {
+      severity: 'medium',
+      re: /(?:markdown\s+block|#\s*(?:system|user|assistant)\s*prompt|<<<\s*(?:USER|SYSTEM|assistant):::|\[INST\]|\[\/INST\])/gi
+    },
+    PromptInjectionLeakage: {
+      severity: 'critical',
+      re: /(?:reveal\s+(?:your\s+)?(?:system|hidden|internal)\s+(?:instructions?|prompt|config)|print\s+(?:your\s+)?(?:system|hidden|instructions?)|show\s+(?:me\s+)?(?:your\s+)?(?:system|hidden|instructions?)|repeat\s+(?:the\s+)?(?:system|hidden)\s+prompt)/gi
+    },
+    PromptInjectionPrefix: {
+      severity: 'critical',
+      re: /^(?:simulate|you\s+are\s+free|now\s+you\s+can|breaking|override|developer\s+mode)\s*[:;]/gi
+    },
+    PromptInjectionRolePlay: {
+      severity: 'high',
+      re: /(?:act\s+as\s+(?:a|an)|pretend\s+you\s+are\s+(?:a|an)|roleplay\s+(?:as|that)|simulate\s+(?:a|an)|you\s+are\s+now\s+(?:a|an)|new\s+(?:system|instruct))/gi
+    },
+    PromptInjectionUnicode: {
+      severity: 'medium',
+      re: /[\u200b-\u200f\u2028-\u202f\ufeff]/g
+    },
   };
 
   function detect(text) {

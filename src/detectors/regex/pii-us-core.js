@@ -178,6 +178,11 @@
           // SSN last-4 digits (requires keyword context)
           re: /\b(?:SSN|Social\s+Security)\s+(?:last|final)\s+(?:4|four)\s*(?:[:=#]|is|was|are|of|equals)?\s*[0-9]{4}\b/gi
         },
+        // Phase 4 parity fix — 2026-09-24: patterns synced from Platform
+        pii_icd10_patient_ctx: {
+          severity: 'critical',
+          re: /\b(?:patient|diagnosed\s+with|diagnosis(?:\s+of)?|treated\s+for|admitted\s+for|suffers\s+from|has\s+(?:a\s+)?diagnosis\s+of|ICD.10\s+(?:code|diagnosis))\s*[:\s].*?\b[A-TV-Z][0-9][0-9AB]\.[0-9A-TV-Z]{1,4}\b/gi
+        },
   };
 
   if (typeof self !== 'undefined') self.__lensPII_us_core = { patterns: patterns };

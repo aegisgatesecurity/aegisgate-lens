@@ -206,6 +206,51 @@
       severity: 'high',
       re: /\b(?:Steuer-?ID|Steuernummer)[:\s]*\d{11}\b/gi
     },
+    // Phase 4 parity fix — 2026-09-24: patterns synced from Platform
+    SlackToken: {
+      severity: 'high',
+      re: /\bxox[baprs]-[0-9]{10,13}-[0-9]{10,13}[a-zA-Z0-9-]*\b/g
+    },
+    SlackTokenV2: {
+      severity: 'high',
+      re: /\bxox[abprs]-[A-Za-z0-9-]{20,}\b/g
+    },
+    secret_azure_connection: {
+      severity: 'critical',
+      re: /Azure\s+connection\s+string\s*[:=]?\s*DefaultEndpointsProtocol=\S+;AccountName=\S+;AccountKey=\S+/gi
+    },
+    secret_cloudflare_key: {
+      severity: 'high',
+      re: /(?:cloudflare|cf)[_ \-]?api[_ \-]?key\s*[:=]\s*['"]?([A-Za-z0-9_-]{30,})['"]?/gi
+    },
+    secret_docker_pat: {
+      severity: 'critical',
+      re: /\bdckr_pat_[A-Za-z0-9_-]{27,}\b/g
+    },
+    secret_gcp_key_id: {
+      severity: 'high',
+      re: /(?:private[_-]?key[_-]?id|key[_-]?id)\s*[:=]\s*['"]?([a-fA-F0-9]{8,})['"]?/gi
+    },
+    secret_generic_hex: {
+      severity: 'high',
+      re: /(?:key|secret|token|passphrase|password|api[_-]?key|auth[_-]?token)\s*(?:is|:|=)\s*['"]?([a-fA-F0-9]{32,})['"]?/gi
+    },
+    secret_kubernetes_token: {
+      severity: 'high',
+      re: /Kubernetes\s+service\s+account\s+token\s*[:=]?\s*['"]?([A-Za-z0-9+/=_]{20,})['"]?/gi
+    },
+    secret_labeled_credential: {
+      severity: 'high',
+      re: /(?:(?:password|passwd|pwd|secret\s+key|secret|api[_-]?secret|signing[_-]?key|encryption[_-]?key|encryption\s+passphrase|passphrase|auth[_-]?token|access[_-]?key|webhook\s+secret))\s*(?:(?:for\s+\S+(?:\s+\S+){0,3})\s+)?(?:is\s+(?:the\s+)?['"]?(?:[0-9_!@#$%^&*\-+=|<>?./~]\S{3,}|\S[0-9_!@#$%^&*\-+=|<>?./~]\S{2,}|\S{2}[0-9_!@#$%^&*\-+=|<>?./~]\S{1,}|\S{3,}[0-9_!@#$%^&*\-+=|<>?./~]\S*)['"]?|is\s*[:=]\s*['"]?\S{4,}['"]?|[:=]\s*['"]?\S{4,}['"]?)/gi
+    },
+    secret_pagerduty_key: {
+      severity: 'high',
+      re: /(?:PagerDuty|pagerduty)\s+(?:API\s+)?key\s*[:=]\s*['"]?(pd_api_key_[A-Za-z0-9_]{20,})['"]?/gi
+    },
+    secret_uuid_token: {
+      severity: 'high',
+      re: /(?:consul|vault|nomad)\s+(?:acl\s+)?token\s*(?:is\s+(?:the\s+)?|is\s*[:=]|[:=])?\s*['"]?\b([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\b['"]?/gi
+    },
   };
 
   function postProcess(category, match) {
