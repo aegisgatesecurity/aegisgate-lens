@@ -207,6 +207,44 @@ jobs:
           retention-days: 30
           if-no-files-found: warn
 
+  evasion-suite-full:
+    name: "ML Evasion Suite (FULL — 81 payloads × 50 transforms = 4,050 tests)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    # Full suite takes ~60 min in pure JS. Only runs on schedule or manual
+    # dispatch to avoid burning CI minutes on every push. The CI-mode job
+    # above runs on every push/PR as a fast gate (405 tests, ~8 min).
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7.0.0
+        with:
+          node-version: '22'
+
+      - name: Run evasion suite (FULL — 4,050 tests)
+        run: |
+          LENS_ML_FULL=1 node test/unit/ml-evasion-suite.test.mjs 2>&1 | tee evasion-results-full.txt
+          SCORE=$(grep "Evasion Resistance Score" evasion-results-full.txt | grep -oP '[\d.]+/100' | cut -d/ -f1)
+          echo "Evasion Resistance Score: $SCORE/100"
+          if awk -v score="$SCORE" 'BEGIN { exit (score < 99.0) ? 1 : 0 }'; then
+            echo "✅ Full evasion suite PASSED (score: $SCORE/100)"
+          else
+            echo "❌ Full evasion suite FAILED (score: $SCORE/100, threshold: 99.0)"
+            exit 1
+          fi
+
+      - name: Upload full evasion results
+        if: always()
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: evasion-suite-results-full
+          path: evasion-results-full.txt
+          retention-days: 90
+          if-no-files-found: warn
+
   mini-smoke:
     name: "v0.1.4 per-provider mini smoke (128 tests)"
     runs-on: ubuntu-latest
