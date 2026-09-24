@@ -1,7 +1,7 @@
 // AegisGate Lens — ml/char-normalizer.js
 // Character-level normalizer for the Char CNN-BiLSTM threat detection model.
 //
-// Port of pkg/ml/normalizer.go from AegisGate Platform v4.4.0 (v11b model).
+// Port of pkg/ml/normalizer.go from AegisGate Platform v4.5.0 (v13 model).
 // Converts raw text into a fixed-length Int32Array suitable for ONNX inference.
 //
 // Input pipeline:
