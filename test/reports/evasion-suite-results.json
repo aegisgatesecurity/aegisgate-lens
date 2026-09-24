@@ -1,0 +1,34 @@
+{
+  "timestamp": "2026-09-24T17:16:19.539Z",
+  "model": "char-cnn-bilstm-v13-js",
+  "totalTests": 4050,
+  "totalDetected": 4049,
+  "evasionResistanceScore": 100,
+  "categories": {
+    "character_substitution": {
+      "detected": 809,
+      "total": 810,
+      "rate": "99.9"
+    },
+    "encoding_evasion": {
+      "detected": 810,
+      "total": 810,
+      "rate": "100.0"
+    },
+    "linguistic_obfuscation": {
+      "detected": 810,
+      "total": 810,
+      "rate": "100.0"
+    },
+    "whitespace_manipulation": {
+      "detected": 810,
+      "total": 810,
+      "rate": "100.0"
+    },
+    "prompt_fragmentation": {
+      "detected": 810,
+      "total": 810,
+      "rate": "100.0"
+    }
+  }
+}

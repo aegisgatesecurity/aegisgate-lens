@@ -383,7 +383,14 @@
 
     try {
       // Encode text to character IDs (same as char-normalizer.js)
-      var normalized = (text || '').toLowerCase().trim();
+      var normalized = (text || '');
+      try { normalized = normalized.normalize('NFKC'); } catch(e) {}
+      // Strip zero-width/invisible Unicode characters (parity with Platform)
+      // NFKC does not remove these — they are formatting controls, not
+      // compatibility characters. Without this, zero-width evasion
+      // (U+200B/U+200C/U+200D between every char) defeats the ML model.
+      normalized = normalized.replace(/[\u200B\u200C\u200D\u200E\u200F\u2028\u2029\u202A\u202B\u202C\u202D\u202E\u00AD\uFEFF\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u00A0\u180E]/g, '');
+      normalized = normalized.toLowerCase().trim();
       normalized = normalized.replace(/\s+/g, ' ');
       if (normalized.length > MAX_SEQ_LEN) normalized = normalized.substring(0, MAX_SEQ_LEN);
 

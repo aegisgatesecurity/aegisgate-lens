@@ -171,6 +171,42 @@ jobs:
           retention-days: 7
           if-no-files-found: warn
 
+  # Evasion suite job — runs the ML evasion suite in CI mode (81 payloads × 5 transforms = 405 tests, ~8 min).
+  # Gate: score must be ≥95/100. Full mode (LENS_ML_FULL=1) runs 4,050 tests but takes ~60 min.
+  evasion-suite:
+    name: "ML Evasion Suite (CI mode — 81 payloads × 5 transforms)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7.0.0
+        with:
+          node-version: '22'
+
+      - name: Run evasion suite (CI mode)
+        run: |
+          CI=1 node test/unit/ml-evasion-suite.test.mjs 2>&1 | tee evasion-results.txt
+          SCORE=$(grep "Evasion Resistance Score" evasion-results.txt | grep -oP '[\d.]+/100' | cut -d/ -f1)
+          echo "Evasion Resistance Score: $SCORE/100"
+          if awk -v score="$SCORE" 'BEGIN { exit (score < 95.0) ? 1 : 0 }'; then
+            echo "✅ Evasion suite PASSED (score: $SCORE/100)"
+          else
+            echo "❌ Evasion suite FAILED (score: $SCORE/100, threshold: 95.0)"
+            exit 1
+          fi
+
+      - name: Upload evasion results
+        if: always()
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: evasion-suite-results
+          path: evasion-results.txt
+          retention-days: 30
+          if-no-files-found: warn
+
   mini-smoke:
     name: "v0.1.4 per-provider mini smoke (128 tests)"
     runs-on: ubuntu-latest
