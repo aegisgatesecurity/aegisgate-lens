@@ -195,13 +195,13 @@ jobs:
           lfs: true
 
       - name: Generate CycloneDX SBOM
-        uses: anchore/sbom-action@v0.24.2
+        uses: anchore/sbom-action@v0.24.3
         with:
           format: cyclonedx
           output-file: sbom-cyclonedx.json
 
       - name: Generate SPDX SBOM
-        uses: anchore/sbom-action@v0.24.2
+        uses: anchore/sbom-action@v0.24.3
         with:
           format: spdx-json
           output-file: sbom-spdx.json
