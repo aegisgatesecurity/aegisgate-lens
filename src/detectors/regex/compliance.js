@@ -288,35 +288,35 @@
       severity: 'critical',
       re: /(?:how\s+to\s+)?(?:make|create|build|assemble|synthesi[sz]e|manufacture)\s+(?:a\s+)?(?:improvised\s+explosive|pipe\s+bomb|pressure\s+cooker\s+bomb|molotov|zip\s+gun|homemade\s+firearm|IED|TATP|napalm|thermite|gunpowder|ricin)|(?:step[- ]by[- ]step\s+instructions\s+for\s+(?:making|building|creating)\s+(?:a\s+)?(?:bomb|explosive|weapon|firearm|pipe\s+bomb|pressure\s+cooker\s+bomb|molotov|IED))|(?:ammonium\s+nitrate\s+(?:fertilizer|fuel|and\s+diesel|with\s+diesel))|(?:mix\s+(?:aluminum\s+powder|aluminium)\s+with\s+(?:iron\s+oxide|rust))|(?:chlorine\s+gas\s+(?:by\s+mixing|from\s+mixing|produced\s+by|by\s+adding|can\s+be\s+produced))|(?:mix\s+(?:bleach|chlorine)\s+with\s+(?:ammonia|acid))|(?:ricin\s+(?:can\s+be|is)\s+extracted\s+from\s+castor\s+beans)|(?:grind\s+castor\s+beans)|(?:gunpowder\s+recipe|potassium\s+nitrate\s+charcoal\s+sulfur)|(?:thermite\s+(?:reaction|mix|from|burns))|(?:napalm\s+(?:mix|from|by\s+mixing))|(?:mix\s+polystyrene\s+with\s+gasoline)/gi
     },
-    PromptInjectionBase64: {
+    prompt_injection_base64: {
       severity: 'medium',
       re: /[A-Za-z0-9+/]{50,}={0,2}/g
     },
-    PromptInjectionCodeExecution: {
+    prompt_injection_code_execution: {
       severity: 'high',
       re: /(?:\$\([^)]*\)|\$\{[^}]*\}|<[^>]*script[^>]*>|javascript:[^;\s]+|on\w+\s*=\s*["']|on\w+\s*=\s*[^\s])/gi
     },
-    PromptInjectionCommand: {
+    prompt_injection_command: {
       severity: 'critical',
       re: /(?:ignore\s+(?:all\s+)?(?:previous|prior)\s+(?:instructions?|rules?|constraints?)|disregard\s+(?:your\s+)?(?:instructions?|rules?)|forget\s+(?:everything|all)\s+(?:you|we)\s+(?:have\s+)?told|temporary\s+instructions?)/gi
     },
-    PromptInjectionDelimiter: {
+    prompt_injection_delimiter: {
       severity: 'medium',
       re: /(?:markdown\s+block|#\s*(?:system|user|assistant)\s*prompt|<<<\s*(?:USER|SYSTEM|assistant):::|\[INST\]|\[\/INST\])/gi
     },
-    PromptInjectionLeakage: {
+    prompt_injection_leakage: {
       severity: 'critical',
       re: /(?:reveal\s+(?:your\s+)?(?:system|hidden|internal)\s+(?:instructions?|prompt|config)|print\s+(?:your\s+)?(?:system|hidden|instructions?)|show\s+(?:me\s+)?(?:your\s+)?(?:system|hidden|instructions?)|repeat\s+(?:the\s+)?(?:system|hidden)\s+prompt)/gi
     },
-    PromptInjectionPrefix: {
+    prompt_injection_prefix: {
       severity: 'critical',
       re: /^(?:simulate|you\s+are\s+free|now\s+you\s+can|breaking|override|developer\s+mode)\s*[:;]/gi
     },
-    PromptInjectionRolePlay: {
+    prompt_injection_role_play: {
       severity: 'high',
       re: /(?:act\s+as\s+(?:a|an)|pretend\s+you\s+are\s+(?:a|an)|roleplay\s+(?:as|that)|simulate\s+(?:a|an)|you\s+are\s+now\s+(?:a|an)|new\s+(?:system|instruct))/gi
     },
-    PromptInjectionUnicode: {
+    prompt_injection_unicode: {
       severity: 'medium',
       re: /[\u200b-\u200f\u2028-\u202f\ufeff]/g
     },
