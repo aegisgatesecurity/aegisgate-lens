@@ -146,7 +146,7 @@ jobs:
 
       - name: Upload smoke report
         if: always()
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: smoke-report
           path: smoke-report.json
@@ -155,7 +155,7 @@ jobs:
 
       - name: Upload unit test output
         if: always()
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: unit-test-output
           path: unit-test-output.log
@@ -164,7 +164,7 @@ jobs:
 
       - name: Upload lint output
         if: always()
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: lint-output
           path: lint-output.log
@@ -200,7 +200,7 @@ jobs:
 
       - name: Upload evasion results
         if: always()
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: evasion-suite-results
           path: evasion-results.txt
@@ -238,7 +238,7 @@ jobs:
 
       - name: Upload full evasion results
         if: always()
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: evasion-suite-results-full
           path: evasion-results-full.txt
@@ -330,7 +330,7 @@ jobs:
 
       - name: Upload mini smoke report
         if: always()
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: mini-smoke-report
           path: mini-smoke-report.json
