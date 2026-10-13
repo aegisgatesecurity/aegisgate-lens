@@ -343,7 +343,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ## IP Notice
 
-AegisGate's core technologies are patent pending with the USPTO (Provisional App. Nos. 64/153,573–64/153,577, filed September 12, 2026). Source code is © 2024-2026 AegisGate Security, LLC. Licensed under Apache 2.0. Trained ML model weights are separately licensed under the [AegisGate Model Weight License](WEIGHTS-LICENSE.md).
+AegisGate's core technologies are patent pending with the USPTO (Provisional App. Nos. 64/153,573–64/153,577, filed September 12, 2026; and 64/174,824, filed October 12, 2026). Source code is © 2024-2026 AegisGate Security, LLC. Licensed under Apache 2.0. Trained ML model weights are separately licensed under the [AegisGate Model Weight License](WEIGHTS-LICENSE.md).
 
 ---
 
