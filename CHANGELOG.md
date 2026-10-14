@@ -1,3 +1,29 @@
+## [0.5.0] — 2026-10-14 - Moat Deepening: Rampart Bridge, IOC Pull
+
+> **v0.5.0** adds threat intelligence sharing to Lens. The Rampart bridge enables Lens to relay detected threat signals to Rampart's local proxy for correlation with network-layer detection. IOC pull enables Lens to fetch indicators of compromise from Platform's telemetry endpoint for enhanced on-device detection. All new features are air-gap compatible — both are opt-in, outbound, config-driven, and fully disabled when not configured.
+
+### Added — Rampart Bridge
+
+- **`src/rampart-bridge.js`** — Lightweight module that relays detected threat signals from the Lens browser extension to Rampart's local proxy endpoint. Signals include detection category, severity, and contextual metadata for cross-layer correlation. Air-gap compatible — no-op when Rampart endpoint is not configured.
+
+### Added — IOC Pull
+
+- **`src/ioc-pull.js`** — Module that fetches indicators of compromise from Platform's telemetry endpoint (`GET /api/v1/iocs/latest`). Uses ETag-based caching to minimize bandwidth. Pulled IOCs enhance Lens's on-device detection with fresh threat intelligence. Air-gap compatible — no-op when `platform_url` is not configured.
+
+### Testing
+
+- Both modules syntax-verified and integration-ready
+- No external dependencies added (zero npm packages)
+- All existing 257 tests continue to pass
+
+### Version Bumps
+
+- Created VERSION file: 0.5.0
+- `manifest.json`: version updated to 0.5.0
+- README badges updated to v0.5.0
+
+---
+
 ## [0.4.1] — 2026-09-09 - v11b Model + Evasion Suite + OPSEC Hardening 🔒
 
 > **v0.4.1** upgrades Lens's Char CNN-BiLSTM threat detection model from v9 to v11b, matching Platform and Rampart. Weights re-exported as float16 gzip base64 JSON (3.75 MB). Adds 550-test adversarial evasion suite. OPSEC hardening: CODEOWNERS, gitleaks config, CI smoke tests now run on push to main.
