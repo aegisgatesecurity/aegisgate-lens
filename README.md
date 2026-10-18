@@ -9,14 +9,14 @@
 100% on-device · Zero data leaves your browser · Free · Forever
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Install on Chrome Web Store](https://img.shields.io/badge/Install-CWS%20v0.5.0-4285F4?logo=google-chrome&logoColor=white)](https://chromewebstore.google.com/detail/aegisgate-lens/lkioinepjpjfdhiggaomoafnhagfcjip)
-[![Firefox Add-on](https://img.shields.io/badge/Install-AMO%20v0.5.0-FF7139?logo=firefox&logoColor=white)](https://addons.mozilla.org/en-US/firefox/addon/aegisgate-lens/)
-[![Version](https://img.shields.io/badge/version-v0.5.0-brightgreen.svg)](https://github.com/aegisgatesecurity/aegisgate-lens/releases/tag/v0.5.0)
-[![Tests](https://img.shields.io/badge/tests-257%20passing-brightgreen.svg)](#test-coverage)
+[![Install on Chrome Web Store](https://img.shields.io/badge/Install-CWS%20v0.5.1-4285F4?logo=google-chrome&logoColor=white)](https://chromewebstore.google.com/detail/aegisgate-lens/lkioinepjpjfdhiggaomoafnhagfcjip)
+[![Firefox Add-on](https://img.shields.io/badge/Install-AMO%20v0.5.1-FF7139?logo=firefox&logoColor=white)](https://addons.mozilla.org/en-US/firefox/addon/aegisgate-lens/)
+[![Version](https://img.shields.io/badge/version-v0.5.1-brightgreen.svg)](https://github.com/aegisgatesecurity/aegisgate-lens/releases/tag/v0.5.1)
+[![Tests](https://img.shields.io/badge/tests-550%20passing-brightgreen.svg)](#test-coverage)
 [![ML](https://img.shields.io/badge/ML-pure%20JS%20(CharCNN--BiLSTM)-9cf.svg)](#ml-threat-detector)
 [![Perf](https://img.shields.io/badge/ML%20inference-~5--50ms%20(Chrome%20est.)-blue.svg)](#performance)
 [![Privacy](https://img.shields.io/badge/privacy-12%20non--negotiables-success.svg)](./docs/SECURITY.md)
-[![Patterns](https://img.shields.io/badge/patterns-209%20regex%20%2B%20ML-9cf.svg)](#)
+[![Patterns](https://img.shields.io/badge/patterns-211%20regex%20%2B%20ML-9cf.svg)](#)
 [![Providers](https://img.shields.io/badge/providers-10-blue.svg)](#supported-ai-providers)
 [![Chrome 116+](https://img.shields.io/badge/chrome-116%2B-yellow.svg)](https://developer.chrome.com/docs/extensions/mv3)
 [![Firefox 142+](https://img.shields.io/badge/firefox-142%2B-FF7139?logo=firefox&logoColor=white)](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions)
@@ -36,7 +36,7 @@
 
 ---
 
-> **🛡️ Using AegisGate at work?** [AegisGate Platform](https://github.com/aegisgatesecurity/aegisgate-platform) is our server-side gateway — 257 canonical detection patterns, MCP/A2A/ACP protection, 30+ compliance frameworks, and cryptographic attestation. For the 95% of users without enterprise protections, Lens is here. [Explore Platform →](https://github.com/aegisgatesecurity/aegisgate-platform)
+> **🛡️ Using AegisGate at work?** [AegisGate Platform](https://github.com/aegisgatesecurity/aegisgate-platform) is our server-side gateway — 276 canonical detection patterns, MCP/A2A/ACP protection, 30+ compliance frameworks, and cryptographic attestation. For the 95% of users without enterprise protections, Lens is here. [Explore Platform →](https://github.com/aegisgatesecurity/aegisgate-platform)
 
 ---
 

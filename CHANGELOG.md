@@ -1,3 +1,26 @@
+## [0.5.1] — 2026-10-17 - STS Session Token Detection + JWT Near-Expiry
+
+> **v0.5.1** adds two new credential lifecycle detection capabilities. AWS STS session token detection uses a context-aware heuristic to identify temporary AWS credentials. JWT near-expiry detection uses a parser-based approach to decode JWT payloads and flag tokens that are expired or expiring within 5 minutes.
+
+### Added — AWS STS Session Token Heuristic
+- Context-aware regex: requires variable name + 400+ char base64 string
+- Handles env var, config, and JSON formats. FPR-safe.
+
+### Added — JWT Near-Expiry Detection
+- Parser-based: decodes JWT payload, extracts exp claim
+- Expired/near-expiry tokens upgraded to critical severity
+- Normal tokens stay high. Unparseable tokens fall back gracefully.
+
+### Testing
+- 14 new tests, 550 total, all passing (5 consecutive runs)
+- No external dependencies added
+
+### Version Bumps
+- manifest.json, VERSION, README badges updated
+
+---
+
+
 ## [0.5.0] — 2026-10-14 - Moat Deepening: Rampart Bridge, IOC Pull
 
 > **v0.5.0** adds threat intelligence sharing to Lens. The Rampart bridge enables Lens to relay detected threat signals to Rampart's local proxy for correlation with network-layer detection. IOC pull enables Lens to fetch indicators of compromise from Platform's telemetry endpoint for enhanced on-device detection. All new features are air-gap compatible — both are opt-in, outbound, config-driven, and fully disabled when not configured.
