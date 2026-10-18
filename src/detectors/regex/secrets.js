@@ -114,6 +114,20 @@
       severity: 'medium',
       re: /\barn:aws:[a-z0-9-]+:[a-z0-9-]*:(?:aws)?:?(\d{12}):/g
     },
+    // AWS STS temporary session token — context-aware heuristic (v0.5.0)
+    // STS session tokens are 400+ char base64 strings. We require an explicit
+    // variable name context to keep false positives low. Handles env var,
+    // config, and JSON formats.
+    secret_aws_sts_session_token: {
+      severity: 'critical',
+      re: /(?:aws_session_token|aws_security_token|session_token|SessionToken|SecurityToken)\s*["']?\s*[:=]\s*["']?[A-Za-z0-9/+=_-]{400,}["']?/gi
+    },
+    // AWS STS temporary secret access key — paired with ASIA-prefixed key IDs
+    // These don't have a distinctive prefix, so we require context.
+    secret_aws_sts_secret_key: {
+      severity: 'critical',
+      re: /(?:aws_secret_access_key|secret_access_key|SecretAccessKey)\s*[:=]\s*["']?[A-Za-z0-9/+=]{40}["']?/gi
+    },
     secret_github_actions_token: {
       severity: 'critical',
       re: /\bgh[osur]_[A-Za-z0-9]{30,}\b/g
@@ -258,6 +272,39 @@
       return match;
     }
     if (category === 'secret_supabase') {
+      return match;
+    }
+    // JWT near-expiry detection (v0.5.0) — parser-based approach
+    // Decodes the JWT payload and checks the exp claim.
+    // - Expired (exp in the past): upgrade to critical
+    // - Near-expiry (exp within 5 min): upgrade to critical
+    if (category === 'secret_jwt') {
+      try {
+        var parts = match.value.split('.');
+        if (parts.length === 3) {
+          // Base64url decode the payload (middle segment)
+          var payloadB64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+          // Pad to multiple of 4
+          while (payloadB64.length % 4) payloadB64 += '=';
+          var payloadJson = atob(payloadB64);
+          var claims = JSON.parse(payloadJson);
+          if (claims && claims.exp) {
+            var nowSec = Math.floor(Date.now() / 1000);
+            var secondsUntilExpiry = claims.exp - nowSec;
+            if (secondsUntilExpiry < 0) {
+              // Token is expired — critical
+              match.severity = 'critical';
+              match.description = 'JWT expired ' + Math.abs(secondsUntilExpiry) + 's ago (exp: ' + new Date(claims.exp * 1000).toISOString() + ')';
+            } else if (secondsUntilExpiry < 300) {
+              // Token expires within 5 minutes — critical (near-expiry)
+              match.severity = 'critical';
+              match.description = 'JWT expires in ' + secondsUntilExpiry + 's (exp: ' + new Date(claims.exp * 1000).toISOString() + ')';
+            }
+          }
+        }
+      } catch (e) {
+        // If JWT can't be parsed, return as-is (high severity from regex)
+      }
       return match;
     }
     return match;
