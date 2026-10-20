@@ -61,6 +61,15 @@ jobs:
         with:
           go-version: '1.25'
 
+      - name: Download ML model weights from release
+        run: |
+          mkdir -p models
+          gh release download v0.5.1 --pattern "threat_cnn_bilstm_weights.bin.json" --dir models/ || {
+            echo "WARNING: Could not download model weights, ML tests will use fallback"
+          }
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Install Chromium dependencies
         run: |
           which chromium-browser || which chromium || which google-chrome
@@ -186,6 +195,15 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Download ML model weights from release
+        run: |
+          mkdir -p models
+          gh release download v0.5.1 --pattern "threat_cnn_bilstm_weights.bin.json" --dir models/ || {
+            echo "WARNING: Could not download model weights, ML tests will use fallback"
+          }
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Run evasion suite (CI mode)
         run: |
           CI=1 node test/unit/ml-evasion-suite.test.mjs 2>&1 | tee evasion-results.txt
@@ -223,6 +241,15 @@ jobs:
         uses: actions/setup-node@v7.1.0
         with:
           node-version: '22'
+
+      - name: Download ML model weights from release
+        run: |
+          mkdir -p models
+          gh release download v0.5.1 --pattern "threat_cnn_bilstm_weights.bin.json" --dir models/ || {
+            echo "WARNING: Could not download model weights, ML tests will use fallback"
+          }
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run evasion suite (FULL — 4,050 tests)
         run: |
