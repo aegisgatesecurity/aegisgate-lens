@@ -45,7 +45,10 @@ venv/
 *.bundle
 *.tflite
 models/*
-!models/threat_cnn_bilstm_weights.bin.json
+# REMOVED: !models/threat_cnn_bilstm_weights.bin.json
+# Model weights are proprietary IP — must never be tracked.
+# The dist/ bundles for Chrome extension are built locally and uploaded
+# to the Chrome Web Store, not tracked in git.
 lens_ml_build/
 corpora/
 
