@@ -82,7 +82,7 @@
   // C-1 fix: SHA-256 hash of the expected model weights file.
   // Computed at build time; verifies the weights haven't been tampered with.
   // To regenerate: sha256sum models/threat_cnn_bilstm_weights.bin.json
-  var EXPECTED_MODEL_HASH = '3ff1d00f200b4ca189c20e56a3b65060c790fd404e1035e066890d179084296c';
+  var EXPECTED_MODEL_HASH = '03792717405a1875d068a6304b69d3aeb019643778af30677b0f7257dbfbabab';
 
   // Async load: fetch weight package, decompress, reconstruct tensors
   async function loadModel() {
