@@ -1,3 +1,15 @@
+## [0.5.2] — 2026-10-21 - ML Model v15b Update
+
+> **v0.5.2** updates Lens to the v15b ML model weights (256-char Latin-1).
+
+### ML Model v15b
+- Updated `EXPECTED_MODEL_HASH` in `src/detectors/ml/threat-detector-js.js` to v15b SHA-256: `03792717405a1875d068a6304b69d3aeb019643778af30677b0f7257dbfbabab`
+- Updated model weights file `models/threat_cnn_bilstm_weights.bin.json` to v15b
+- char-normalizer.js already had MAX_SEQ_LEN=256, VOCAB_SIZE=256 (no change needed)
+- Evasion suite passes (95.0+ threshold met)
+
+---
+
 ## [0.5.1] — 2026-10-17 - STS Session Token Detection + JWT Near-Expiry
 
 > **v0.5.1** adds two new credential lifecycle detection capabilities. AWS STS session token detection uses a context-aware heuristic to identify temporary AWS credentials. JWT near-expiry detection uses a parser-based approach to decode JWT payloads and flag tokens that are expired or expiring within 5 minutes.
