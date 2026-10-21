@@ -45,7 +45,7 @@ jobs:
   smoke:
     name: "v0.1.3 headless smoke + Node tests + lint"
     runs-on: ubuntu-latest
-    timeout-minutes: 15  # unit tests (551) ~6min + linter + Go build + Go tests + Chrome smoke
+    timeout-minutes: 25  # unit tests (~6min) + linter + Go build + Go tests + Chrome smoke + buffer
 
     steps:
       - name: Checkout
@@ -59,12 +59,12 @@ jobs:
       - name: Setup Go (for the smoke binary)
         uses: actions/setup-go@v7.0.0
         with:
-          go-version: '1.25'
+          go-version: '1.27.3'
 
       - name: Download ML model weights from release
         run: |
           mkdir -p models
-          gh release download v0.5.1 --pattern "threat_cnn_bilstm_weights.bin.json" --dir models/ || {
+          gh release download v0.5.2 --pattern "threat_cnn_bilstm_weights.bin.json" --dir models/ || {
             echo "WARNING: Could not download model weights, ML tests will use fallback"
           }
         env:
@@ -101,11 +101,12 @@ jobs:
         # 497 + 20 = 517 total tests, ~2s. No network, no browser, no deps.
         # Must pass before the smoke runs.
         run: |
+          set -o pipefail
           node --test test/unit/*.test.mjs test/e2e/*.test.mjs 2>&1 | tee unit-test-output.log
-          # Fail the build if any test failed
-          grep -E "ℹ fail [1-9]" unit-test-output.log && exit 1 || true
-          # Alternative: check exit code from the node command
-          node --test test/unit/*.test.mjs test/e2e/*.test.mjs > /dev/null 2>&1 || (echo "Unit+e2e tests failed"; exit 1)
+          if [ ${PIPESTATUS[0]} -ne 0 ]; then
+            echo "Unit+e2e tests failed"
+            exit 1
+          fi
 
       - name: Run linter
         # v0.1.4 polish: the 12-check shell linter catches the most
@@ -198,7 +199,7 @@ jobs:
       - name: Download ML model weights from release
         run: |
           mkdir -p models
-          gh release download v0.5.1 --pattern "threat_cnn_bilstm_weights.bin.json" --dir models/ || {
+          gh release download v0.5.2 --pattern "threat_cnn_bilstm_weights.bin.json" --dir models/ || {
             echo "WARNING: Could not download model weights, ML tests will use fallback"
           }
         env:
@@ -245,7 +246,7 @@ jobs:
       - name: Download ML model weights from release
         run: |
           mkdir -p models
-          gh release download v0.5.1 --pattern "threat_cnn_bilstm_weights.bin.json" --dir models/ || {
+          gh release download v0.5.2 --pattern "threat_cnn_bilstm_weights.bin.json" --dir models/ || {
             echo "WARNING: Could not download model weights, ML tests will use fallback"
           }
         env:
@@ -289,12 +290,12 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v7.0.0
         with:
-          go-version: '1.25'
+          go-version: '1.27.3'
 
       - name: Download ML model weights from release
         run: |
           mkdir -p models
-          gh release download v0.5.1 --pattern "threat_cnn_bilstm_weights.bin.json" --dir models/ || {
+          gh release download v0.5.2 --pattern "threat_cnn_bilstm_weights.bin.json" --dir models/ || {
             echo "WARNING: Could not download model weights, ML tests will use fallback"
           }
         env:
