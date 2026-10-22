@@ -35,7 +35,7 @@
   var UNK_ID = 1;
   var THRESHOLD = 0.5;
   var INFERENCE_TIMEOUT_MS = 500;
-  var MODEL_VERSION = 'char-cnn-bilstm-v13-js';
+  var MODEL_VERSION = 'char-cnn-bilstm-v15b-js';
 
   // Temporal query FP mitigation: regex for common time/date queries
   // that are known to produce false positives in the neural model.
