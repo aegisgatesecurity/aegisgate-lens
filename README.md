@@ -8,6 +8,9 @@
 
 100% on-device · Zero data leaves your browser · Free · Forever
 
+[![GitHub stars](https://img.shields.io/github/stars/aegisgatesecurity/aegisgate-lens?style=flat&logo=github&label=Star&color=FFD700&labelColor=181717&logoColor=FFD700)](https://github.com/aegisgatesecurity/aegisgate-lens)
+**Found Lens useful? [Star the repo](https://github.com/aegisgatesecurity/aegisgate-lens) ⭐ and [tell a colleague](https://x.com/intent/tweet?text=Protecting%20my%20privacy%20in%20AI%20chats%20with%20AegisGate%20Lens%20%E2%80%94%20100%25%20on-device%2C%20zero%20data%20leaves%20browser%3A%20https%3A%2F%2Fgithub.com%2Faegisgatesecurity%2Faegisgate-lens) — it helps others discover privacy-first AI tooling.**
+
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Install on Chrome Web Store](https://img.shields.io/badge/Install-CWS%20v0.5.2-4285F4?logo=google-chrome&logoColor=white)](https://chromewebstore.google.com/detail/aegisgate-lens/lkioinepjpjfdhiggaomoafnhagfcjip)
 [![Firefox Add-on](https://img.shields.io/badge/Install-AMO%20v0.5.2-FF7139?logo=firefox&logoColor=white)](https://addons.mozilla.org/en-US/firefox/addon/aegisgate-lens/)
@@ -28,7 +31,7 @@
 
 [Install](#installation) · [How It Works](#how-it-works) · [ML Detector](#ml-threat-detector) · [Detection](#what-it-detects) · [Privacy](./docs/SECURITY.md) · [Architecture](./docs/ARCHITECTURE-v0.1.3.md) · [Releases](https://github.com/aegisgatesecurity/aegisgate-lens/releases)
 
-[![GitHub stars](https://img.shields.io/github/stars/aegisgatesecurity/aegisgate-lens?style=social)](https://github.com/aegisgatesecurity/aegisgate-lens) — **If Lens helps you protect your privacy in AI conversations, please consider ⭐ starring this repo. It helps others discover it.**
+
 
 </div>
 
