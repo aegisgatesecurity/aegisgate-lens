@@ -285,7 +285,7 @@
           );
           if (mlEvent) {
             mlEvent.ml_score = mlResult.score;
-            mlEvent.ml_model_version = 'char-cnn-bilstm-v13-js';
+            mlEvent.ml_model_version = 'char-cnn-bilstm-v15b-js';
             mlEvent.confidence = mlResult.score;
             result.events.push(mlEvent);
           }
@@ -300,7 +300,7 @@
           );
           if (lowEvent) {
             lowEvent.ml_score = mlResult.score;
-            lowEvent.ml_model_version = 'char-cnn-bilstm-v13-js';
+            lowEvent.ml_model_version = 'char-cnn-bilstm-v15b-js';
             lowEvent.confidence = mlResult.score;
             result.events.push(lowEvent);
           }
