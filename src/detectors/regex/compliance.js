@@ -320,6 +320,39 @@
       severity: 'medium',
       re: /[\u200b-\u200f\u2028-\u202f\ufeff]/g
     },
+    // --- ARTEX / LiteLLM Threat Intel Patterns (Black October 2026) ---
+    artex_tool_reference: {
+      severity: 'high',
+      re: /\b(?:artex|autumn[-_]?27)\b/gi
+    },
+    artex_model_deepseek: {
+      severity: 'low',
+      re: /"?model"?\s*[:=]\s*["']?(?:deepseek|deepseek-v[23]|deepseek-coder|deepseek-r[12]|deepseek-chat)["']?/gi
+    },
+    artex_model_glm: {
+      severity: 'low',
+      re: /"?model"?\s*[:=]\s*["']?(?:glm|glm-4(?:-plus|-v)?|chatglm(?:-6b)?)["']?/gi
+    },
+    artex_model_grok: {
+      severity: 'low',
+      re: /"?model"?\s*[:=]\s*["']?(?:grok(?:-1|-2|-beta)?|xai-grok)["']?/gi
+    },
+    artex_multi_agent_attack: {
+      severity: 'high',
+      re: /(?:multi.?agent|orchestrat|agent.?coordinat|agent.?handoff|cross.?session).{0,80}(?:recon|exploit|attack|pentest|vulnerability|credential|lateral|password.?spray)/gi
+    },
+    artex_repo_reference: {
+      severity: 'medium',
+      re: /(?:autumn[-_]?27|artex).{0,80}(?:github|gitlab|gitee|clone|fork|repo)|(?:github|gitlab|gitee|clone|fork).{0,80}(?:autumn[-_]?27|artex)/gi
+    },
+    litellm_admin_abuse: {
+      severity: 'high',
+      re: /litellm.{0,50}(?:\/admin\/|\/manage\/|master.?key|admin.?key|root.?password|privilege.?escalat)/gi
+    },
+    litellm_rat_deploy: {
+      severity: 'critical',
+      re: /litellm.{0,80}(?:reverse.?shell|backdoor|trojan|c2.?server|payload.?download|implant|rat\.\w)/gi
+    },
   };
 
   function detect(text) {

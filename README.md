@@ -12,9 +12,9 @@
 **Found Lens useful? [Star the repo](https://github.com/aegisgatesecurity/aegisgate-lens) ⭐ and [tell a colleague](https://x.com/intent/tweet?text=Protecting%20my%20privacy%20in%20AI%20chats%20with%20AegisGate%20Lens%20%E2%80%94%20100%25%20on-device%2C%20zero%20data%20leaves%20browser%3A%20https%3A%2F%2Fgithub.com%2Faegisgatesecurity%2Faegisgate-lens) — it helps others discover privacy-first AI tooling.**
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Install on Chrome Web Store](https://img.shields.io/badge/Install-CWS%20v0.5.2-4285F4?logo=google-chrome&logoColor=white)](https://chromewebstore.google.com/detail/aegisgate-lens/lkioinepjpjfdhiggaomoafnhagfcjip)
-[![Firefox Add-on](https://img.shields.io/badge/Install-AMO%20v0.5.2-FF7139?logo=firefox&logoColor=white)](https://addons.mozilla.org/en-US/firefox/addon/aegisgate-lens/)
-[![Version](https://img.shields.io/badge/version-v0.5.2-brightgreen.svg)](https://github.com/aegisgatesecurity/aegisgate-lens/releases/tag/v0.5.2)
+[![Install on Chrome Web Store](https://img.shields.io/badge/Install-CWS%20v0.5.3-4285F4?logo=google-chrome&logoColor=white)](https://chromewebstore.google.com/detail/aegisgate-lens/lkioinepjpjfdhiggaomoafnhagfcjip)
+[![Firefox Add-on](https://img.shields.io/badge/Install-AMO%20v0.5.3-FF7139?logo=firefox&logoColor=white)](https://addons.mozilla.org/en-US/firefox/addon/aegisgate-lens/)
+[![Version](https://img.shields.io/badge/version-v0.5.3-brightgreen.svg)](https://github.com/aegisgatesecurity/aegisgate-lens/releases/tag/v0.5.3)
 [![Tests](https://img.shields.io/badge/tests-550%20passing-brightgreen.svg)](#test-coverage)
 [![ML](https://img.shields.io/badge/ML-pure%20JS%20(CharCNN--BiLSTM)-9cf.svg)](#ml-threat-detector)
 [![Perf](https://img.shields.io/badge/ML%20inference-~5--50ms%20(Chrome%20est.)-blue.svg)](#performance)
@@ -40,7 +40,7 @@
 
 ---
 
-> **🛡️ Using AegisGate at work?** [AegisGate Platform](https://github.com/aegisgatesecurity/aegisgate-platform) is our server-side gateway — 276 canonical detection patterns, MCP/A2A/ACP protection, 30+ compliance frameworks, and cryptographic attestation. For the 95% of users without enterprise protections, Lens is here. [Explore Platform →](https://github.com/aegisgatesecurity/aegisgate-platform)
+> **🛡️ Using AegisGate at work?** [AegisGate Platform](https://github.com/aegisgatesecurity/aegisgate-platform) is our server-side gateway — 297 canonical detection patterns, MCP/A2A/ACP protection, 30+ compliance frameworks, and cryptographic attestation. For the 95% of users without enterprise protections, Lens is here. [Explore Platform →](https://github.com/aegisgatesecurity/aegisgate-platform)
 
 ---
 

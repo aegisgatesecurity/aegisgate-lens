@@ -1,3 +1,23 @@
+## [0.5.3] — 2026-10-22 - ARTEX / LiteLLM Compliance Detection Patterns
+
+> **v0.5.3** adds 8 new compliance-category regex detection patterns for the ARTEX autonomous pentesting framework and LiteLLM supply chain compromise, based on Black October 2026 threat intelligence. Subset parity with Platform v4.8.0 / Rampart v0.9.2 (54 → 62 compliance patterns).
+
+### ARTEX / LiteLLM Compliance Patterns (8 new)
+
+- `artex_tool_reference` — ARTEX / Autumn-27 tool name references
+- `artex_model_deepseek` — DeepSeek model configuration
+- `artex_model_glm` — GLM / Zhipu model configuration
+- `artex_model_grok` — Grok model configuration
+- `artex_multi_agent_attack` — Multi-agent orchestration + attack context
+- `artex_repo_reference` — ARTEX repository clone / fork references
+- `litellm_admin_abuse` — LiteLLM admin endpoint privilege escalation
+- `litellm_rat_deploy` — LiteLLM RAT / malware deployment
+
+- Compliance pattern count: 54 → 62 (subset of Platform / Rampart)
+- Detection parity check: PASS
+
+---
+
 ## [0.5.2] — 2026-10-21 - ML Model v15b Update
 
 > **v0.5.2** updates Lens to the v15b ML model weights (256-char Latin-1).
