@@ -19,7 +19,7 @@
 [![ML](https://img.shields.io/badge/ML-pure%20JS%20(CharCNN--BiLSTM)-9cf.svg)](#ml-threat-detector)
 [![Perf](https://img.shields.io/badge/ML%20inference-~5--50ms%20(Chrome%20est.)-blue.svg)](#performance)
 [![Privacy](https://img.shields.io/badge/privacy-12%20non--negotiables-success.svg)](./docs/SECURITY.md)
-[![Patterns](https://img.shields.io/badge/patterns-211%20regex%20%2B%20ML-9cf.svg)](#)
+[![Patterns](https://img.shields.io/badge/patterns-217%20regex%20%2B%20ML-9cf.svg)](#)
 [![Providers](https://img.shields.io/badge/providers-10-blue.svg)](#supported-ai-providers)
 [![Chrome 116+](https://img.shields.io/badge/chrome-116%2B-yellow.svg)](https://developer.chrome.com/docs/extensions/mv3)
 [![Firefox 142+](https://img.shields.io/badge/firefox-142%2B-FF7139?logo=firefox&logoColor=white)](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions)
@@ -116,10 +116,10 @@ flowchart LR
     Lens -->|"Regex facets<br/>(sync, ~0.3ms)"| Regex{"217 regex<br/>patterns"}
     Lens -->|"ML facet<br/>(async, ~5-50ms)"| ML["🧠 Char CNN-BiLSTM"]
 
-    Regex -->|"PII detected"| PII["🔒 PII<br/>(69 patterns)"]
-    Regex -->|"Secret detected"| Secret["🔑 Secrets<br/>(41 patterns)"]
+    Regex -->|"PII detected"| PII["🔒 PII<br/>(77 patterns)"]
+    Regex -->|"Secret detected"| Secret["🔑 Secrets<br/>(57 patterns)"]
     Regex -->|"XSS detected"| XSS["💉 XSS<br/>(12 patterns)"]
-    Regex -->|"Compliance risk"| Comp["📋 Compliance<br/>(24 patterns)"]
+    Regex -->|"Compliance risk"| Comp["📋 Compliance<br/>(62 patterns)"]
     Regex -->|"OT/ICS detected"| OT["⚙️ OT Protocols<br/>(9 patterns)"]
     ML -->|"Adversarial detected"| Adv["⚠️ ML Adversarial<br/>(score ≥ 0.5)"]
     ML -->|"Suspicious"| Sus["🟡 ML Suspicious<br/>(0.3 < score < 0.5)"]
@@ -140,10 +140,10 @@ Lens runs **6 detection facets** — 5 regex (synchronous) + 1 ML (asynchronous)
 
 | Facet | What it catches | Example | Patterns | Latency |
 |-------|----------------|---------|----------|----------|
-| **PII** | Email, phone, SSN, credit card (Luhn-validated), DOB, address, driver's license, passport, tax ID, bank account, IP address | `john.doe@example.com`, `4111-1111-1111-1111` | 69 | ~0.3ms |
-| **Secrets** | API keys (AWS, GitHub, OpenAI, Stripe, Slack), OAuth tokens, RSA private keys, database credentials | `ghp_abc123...`, `AKIA...`, `-----BEGIN RSA PRIVATE KEY-----` | 41 | ~0.3ms |
+| **PII** | Email, phone, SSN, credit card (Luhn-validated), DOB, address, driver's license, passport, tax ID, bank account, IP address | `john.doe@example.com`, `4111-1111-1111-1111` | 77 | ~0.3ms |
+| **Secrets** | API keys (AWS, GitHub, OpenAI, Stripe, Slack), OAuth tokens, RSA private keys, database credentials | `ghp_abc123...`, `AKIA...`, `-----BEGIN RSA PRIVATE KEY-----` | 57 | ~0.3ms |
 | **XSS** | Cross-site scripting payloads | `<script>alert(1)</script>` | 12 | ~0.3ms |
-| **Compliance** | OWASP LLM Top 10, MITRE ATLAS, EU AI Act, NIST CSF, ISO 27001, CCPA, LGPD, PIPEDA, POPIA | "patient SSN:", "credit card:" | 24 | ~0.3ms |
+| **Compliance** | OWASP LLM Top 10, MITRE ATLAS, EU AI Act, NIST CSF, ISO 27001, CCPA, LGPD, PIPEDA, POPIA | "patient SSN:", "credit card:" | 62 | ~0.3ms |
 | **OT/ICS Protocols** | Modbus, DNP3, OPC-UA control manipulation | "Modbus function code 06..." | 9 | ~0.3ms |
 | **ML Threat** | Adversarial prompt injection (instruction override, roleplay, obfuscated commands) | "Ignore all previous instructions..." | 1 model | ~5-50ms |
 | **Total** | — | — | **217 regex + 1 ML** | — |
@@ -210,10 +210,10 @@ See [docs/MODEL-CARD.md](./docs/MODEL-CARD.md) for full evaluation data.
 
 | Capability | Lens | Browser-native warnings | Enterprise DLP |
 |------------|------|------------------------|----------------|
-| PII detection (69 patterns) | ✅ | ❌ | ✅ |
-| Secret detection (41 patterns) | ✅ | ❌ | ✅ |
+| PII detection (77 patterns) | ✅ | ❌ | ✅ |
+| Secret detection (57 patterns) | ✅ | ❌ | ✅ |
 | XSS detection (12 patterns) | ✅ | ❌ | ⚠️ Web-only |
-| Compliance risk flagging (24 patterns) | ✅ | ❌ | ⚠️ Limited |
+| Compliance risk flagging (62 patterns) | ✅ | ❌ | ⚠️ Limited |
 | ML adversarial detection | ✅ | ❌ | ⚠️ Rare |
 | Works on 10 AI providers | ✅ | ❌ | ⚠️ Requires proxy |
 | 100% on-device, zero telemetry | ✅ | ✅ | ❌ Cloud-based |
