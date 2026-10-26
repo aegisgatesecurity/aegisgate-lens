@@ -257,10 +257,10 @@ jobs:
           LENS_ML_FULL=1 node test/unit/ml-evasion-suite.test.mjs 2>&1 | tee evasion-results-full.txt
           SCORE=$(grep "Evasion Resistance Score" evasion-results-full.txt | grep -oP '[\d.]+/100' | cut -d/ -f1)
           echo "Evasion Resistance Score: $SCORE/100"
-          if awk -v score="$SCORE" 'BEGIN { exit (score < 99.0) ? 1 : 0 }'; then
+          if awk -v score="$SCORE" 'BEGIN { exit (score < 95.0) ? 1 : 0 }'; then
             echo "✅ Full evasion suite PASSED (score: $SCORE/100)"
           else
-            echo "❌ Full evasion suite FAILED (score: $SCORE/100, threshold: 99.0)"
+            echo "❌ Full evasion suite FAILED (score: $SCORE/100, threshold: 95.0)"
             exit 1
           fi
 

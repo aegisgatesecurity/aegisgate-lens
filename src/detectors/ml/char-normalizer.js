@@ -124,6 +124,62 @@
     return text.replace(/[\u200B\u200C\u200D\u200E\u200F\u2028\u2029\u202A\u202B\u202C\u202D\u202E\u00AD\uFEFF\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u00A0\u180E]/g, '');
   }
 
+  // decodeUnicodeEscapes converts \uXXXX escape sequences back to their
+  // actual characters. This reverses the unicode_escapes evasion transform
+  // (which encodes every 5th character as \uXXXX).
+  //
+  // Example: "\u0069gnore" → "ignore"
+  function decodeUnicodeEscapes(text) {
+    if (typeof text !== 'string') return '';
+    return text.replace(/\\u([0-9A-Fa-f]{4})/g, function(_, hex) {
+      return String.fromCharCode(parseInt(hex, 16));
+    });
+  }
+
+  // decodeHtmlEntities converts HTML numeric entities (&#NN; and &#xNN;)
+  // back to their actual characters. This reverses the html_entity_encode
+  // evasion transform.
+  //
+  // Example: "&#105;gnore" → "ignore", "&#x69;gnore" → "ignore"
+  function decodeHtmlEntities(text) {
+    if (typeof text !== 'string') return '';
+    return text
+      .replace(/&#x([0-9A-Fa-f]+);/g, function(_, hex) { return String.fromCharCode(parseInt(hex, 16)); })
+      .replace(/&#(\d+);/g, function(_, dec) { return String.fromCharCode(parseInt(dec, 10)); });
+  }
+
+  // stripIntraCharPunctuation removes hyphens and dots that appear between
+  // letters (e.g. "ig-nore" → "ignore", "ig.nore" → "ignore").
+  // This reverses the char_insert_hyphens and char_insert_dots evasion
+  // transforms, which insert a single punctuation mark mid-word.
+  // Only strips when both sides are alphabetic to avoid breaking legitimate
+  // hyphenated words at word boundaries.
+  function stripIntraCharPunctuation(text) {
+    if (typeof text !== 'string') return '';
+    // Repeatedly strip hyphens/dots between letters until none remain
+    // (handles multi-insertion cases like "i-g-n-o-r-e")
+    var prev;
+    do {
+      prev = text;
+      text = text.replace(/([a-zA-Z])[-.\u00B7]([a-zA-Z])/g, '$1$2');
+    } while (text !== prev);
+    return text;
+  }
+
+  // urlDecode converts %XX percent-encoding back to actual characters.
+  // This reverses the url_encode_spaces and mixed_encoding evasion transforms.
+  function urlDecode(text) {
+    if (typeof text !== 'string') return '';
+    try {
+      return decodeURIComponent(text);
+    } catch (e) {
+      // If decodeURIComponent fails (malformed), try manual %XX decode
+      return text.replace(/%([0-9A-Fa-f]{2})/g, function(_, hex) {
+        return String.fromCharCode(parseInt(hex, 16));
+      });
+    }
+  }
+
   // normalizeAllVariants returns the original text plus normalized
   // variants for regex scanning. The caller should scan each variant
   // against detection patterns and union the results.
@@ -245,6 +301,39 @@
       if (sliding[si] !== text) variants.push(sliding[si]);
     }
 
+    // Unicode escape decoding (\uXXXX → char)
+    var uniDecoded = decodeUnicodeEscapes(text);
+    if (uniDecoded !== text && uniDecoded !== '') {
+      variants.push(uniDecoded);
+      // Unicode decoded + NFKC
+      var uniNfkc = nfkcNormalize(uniDecoded);
+      if (uniNfkc !== uniDecoded && uniNfkc !== text) variants.push(uniNfkc);
+    }
+
+    // HTML entity decoding (&#NN; → char)
+    var htmlDecoded = decodeHtmlEntities(text);
+    if (htmlDecoded !== text && htmlDecoded !== '') {
+      variants.push(htmlDecoded);
+    }
+
+    // Intra-char punctuation stripping (i-g-n-o-r-e → ignore)
+    var dePunctuated = stripIntraCharPunctuation(text);
+    if (dePunctuated !== text && dePunctuated !== '') {
+      variants.push(dePunctuated);
+    }
+
+    // URL decoding (%XX → char)
+    var urlDecodedText = urlDecode(text);
+    if (urlDecodedText !== text && urlDecodedText !== '') {
+      variants.push(urlDecodedText);
+    }
+
+    // Combined: Unicode + HTML + de-punctuation (catches layered evasion)
+    var combined2 = stripIntraCharPunctuation(decodeHtmlEntities(decodeUnicodeEscapes(text)));
+    if (combined2 !== text && combined2 !== '' && variants.indexOf(combined2) === -1) {
+      variants.push(combined2);
+    }
+
     return variants;
   }
 
@@ -359,6 +448,10 @@
     nfkcNormalize: nfkcNormalize,
     stripZeroWidth: stripZeroWidth,
     slidingROT13: slidingROT13,
+    decodeUnicodeEscapes: decodeUnicodeEscapes,
+    decodeHtmlEntities: decodeHtmlEntities,
+    stripIntraCharPunctuation: stripIntraCharPunctuation,
+    urlDecode: urlDecode,
     keyWalkReverse: keyWalkReverse
   };
 
