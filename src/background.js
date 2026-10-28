@@ -28,6 +28,24 @@
   };
 
   log.info('background.js loaded; service worker ready');
+
+  // --- Load IOC Pull and Rampart Bridge modules ---
+  // Firefox loads these via manifest "scripts" array. Chrome MV3
+  // service worker needs importScripts(). The guard prevents
+  // double-loading in Firefox (where scripts are already loaded).
+  if (typeof importScripts === 'function' &&
+      typeof self.__aegisgateIOCPull === 'undefined') {
+    try {
+      importScripts('src/ioc-pull.js', 'src/rampart-bridge.js');
+      log.info('IOC Pull and Rampart Bridge loaded via importScripts');
+    } catch (e) {
+      log.warn('importScripts failed (modules may already be loaded): ' + e);
+    }
+  }
+
+  var IOC_PULL = (typeof self !== 'undefined' && self.__aegisgateIOCPull) || null;
+  var RAMPART_BRIDGE = (typeof self !== 'undefined' && self.__aegisgateRampartBridge) || null;
+
   // Constants from src/util/constants.js (loaded via globalThis)
   var C = (typeof self !== 'undefined' && self.__lensConstants) ||
            (typeof globalThis !== 'undefined' && globalThis.__lensConstants) ||
@@ -575,6 +593,93 @@
 
   // --- Lifecycle ---
 
+  // --- Enterprise managed storage (GPO/MDM) ---
+  // chrome.storage.managed is populated by IT admin policy (Chrome GPO,
+  // Firefox policies.json, Intune, JAMF). Managed values override user
+  // preferences. If no policy is set, managed storage is empty and this
+  // is a no-op — the extension functions as a standalone user tool.
+
+  function getManagedConfig() {
+    return new Promise(function (resolve) {
+      if (!chrome.storage || !chrome.storage.managed) {
+        resolve({});
+        return;
+      }
+      chrome.storage.managed.get(null, function (items) {
+        if (chrome.runtime.lastError) {
+          log.info('managed storage not available: ' + chrome.runtime.lastError.message);
+          resolve({});
+          return;
+        }
+        resolve(items || {});
+      });
+    });
+  }
+
+  // --- Sensor module initialization (IOC Pull + Rampart Bridge) ---
+  // Reads opt-in flags from chrome.storage.local AND managed policy
+  // (GPO/MDM). Managed values take precedence. Both are OFF by
+  // default (air-gap).
+
+  function initSensorModules() {
+    getManagedConfig().then(function (managed) {
+      // Managed config overrides local storage
+      var iocEnabled = managed.iocPullEnabled === true;
+      var rampartEnabled = managed.rampartCorrelationEnabled === true;
+      var rampartUrl = managed.rampartBaseUrl || null;
+
+      // If managed policy doesn't set these, fall back to local user prefs
+      var iocKey = 'aegisgate_lens_ioc_pull_enabled';
+      var rampartKey = 'aegisgate_lens_rampart_correlation_enabled';
+
+      storageGet(iocKey).then(function (localIoc) {
+        storageGet(rampartKey).then(function (localRampart) {
+          // Managed policy takes precedence over local user pref
+          if (managed.iocPullEnabled === undefined) {
+            iocEnabled = localIoc === true;
+          }
+          if (managed.rampartCorrelationEnabled === undefined) {
+            rampartEnabled = localRampart === true;
+          }
+
+          // Set Rampart base URL if managed
+          if (rampartUrl && RAMPART_BRIDGE) {
+            RAMPART_BRIDGE.setBaseUrl(rampartUrl);
+          }
+
+          // Initialize IOC Pull
+          if (IOC_PULL) {
+            getBackend().then(function (backendUrl) {
+              getBearerToken().then(function (apiKey) {
+                IOC_PULL.init({
+                  enabled: iocEnabled,
+                  platformUrl: backendUrl,
+                  apiKey: apiKey
+                });
+                log.info('IOC Pull initialized (enabled=' + iocEnabled + ', managed=' + (managed.iocPullEnabled !== undefined) + ')');
+              });
+            });
+          } else {
+            log.warn('IOC Pull module not available');
+          }
+
+          // Initialize Rampart Bridge
+          if (RAMPART_BRIDGE) {
+            if (rampartEnabled) {
+              RAMPART_BRIDGE.checkAvailability(function (available) {
+                log.info('Rampart Bridge initialized (available=' + available + ', managed=' + (managed.rampartCorrelationEnabled !== undefined) + ')');
+              });
+            } else {
+              log.info('Rampart Bridge initialized (disabled, managed=' + (managed.rampartCorrelationEnabled !== undefined) + ')');
+            }
+          } else {
+            log.warn('Rampart Bridge module not available');
+          }
+        });
+      });
+    });
+  }
+
   // On install: open the welcome page (3a behavior)
   chrome.runtime.onInstalled.addListener(function (details) {
     try {
@@ -587,6 +692,8 @@
     }
     // Try to drain the FP queue on every install/startup
     drainQueue().catch(function (err) { log.warn('startup drain failed', err); });
+    // Initialize sensor modules
+    initSensorModules();
   });
 
   // On tab update: dynamically inject content script for providers
@@ -706,6 +813,8 @@
     try {
       log.info('startup');
       drainQueue().catch(function (err) { log.warn('startup drain failed', err); });
+      // Initialize sensor modules on SW reactivation
+      initSensorModules();
     } catch (e) {
       log.error('onStartup handler threw', e);
     }

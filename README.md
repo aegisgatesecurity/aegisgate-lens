@@ -19,7 +19,7 @@
 [![ML](https://img.shields.io/badge/ML-pure%20JS%20(CharCNN--BiLSTM)-9cf.svg)](#ml-threat-detector)
 [![Perf](https://img.shields.io/badge/ML%20inference-~5--50ms%20(Chrome%20est.)-blue.svg)](#performance)
 [![Privacy](https://img.shields.io/badge/privacy-12%20non--negotiables-success.svg)](./docs/SECURITY.md)
-[![Patterns](https://img.shields.io/badge/patterns-218%20regex%20%2B%20ML-9cf.svg)](#)
+[![Patterns](https://img.shields.io/badge/patterns-217%20regex%20%2B%20ML-9cf.svg)](#)
 [![Providers](https://img.shields.io/badge/providers-10-blue.svg)](#supported-ai-providers)
 [![Chrome 116+](https://img.shields.io/badge/chrome-116%2B-yellow.svg)](https://developer.chrome.com/docs/extensions/mv3)
 [![Firefox 142+](https://img.shields.io/badge/firefox-142%2B-FF7139?logo=firefox&logoColor=white)](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions)
@@ -53,7 +53,7 @@ Lens is the browser extension that catches it **before you hit send**.
 Think of it like a spellchecker for privacy — but instead of catching typos, it catches your Social Security number, credit card number, passwords, API keys, and other things you really don't want going to an AI company.
 
 - **100% on-device.** No prompt text, no URLs, no page content ever leaves your browser. Zero telemetry by default.
-- **218 regex patterns + ML.** Sub-millisecond regex detection plus ~5-50ms ML inference for adversarial prompt injection.
+- **217 regex patterns + ML.** Sub-millisecond regex detection plus ~5-50ms ML inference for adversarial prompt injection.
 - **10 AI providers.** ChatGPT, Claude, Gemini, Copilot, DuckDuckGo, Perplexity, Mistral, Grok, DeepSeek, Meta AI.
 - **Fail-visible.** Every detection is shown to you — you decide to cancel, edit, or proceed.
 - **Free. Forever.** Apache 2.0, no account required, no upsell gate.
@@ -113,7 +113,7 @@ The banner is **non-blocking** — it doesn't prevent you from sending. It just 
 ```mermaid
 flowchart LR
     User["👤 You type a prompt"] -->|"Keystroke<br/>(debounced 250ms)"| Lens["🛡️ Lens<br/>Content Script"]
-    Lens -->|"Regex facets<br/>(sync, ~0.3ms)"| Regex{"218 regex<br/>patterns"}
+    Lens -->|"Regex facets<br/>(sync, ~0.3ms)"| Regex{"217 regex<br/>patterns"}
     Lens -->|"ML facet<br/>(async, ~5-50ms)"| ML["🧠 Char CNN-BiLSTM"]
 
     Regex -->|"PII detected"| PII["🔒 PII<br/>(77 patterns)"]
@@ -141,12 +141,12 @@ Lens runs **6 detection facets** — 5 regex (synchronous) + 1 ML (asynchronous)
 | Facet | What it catches | Example | Patterns | Latency |
 |-------|----------------|---------|----------|----------|
 | **PII** | Email, phone, SSN, credit card (Luhn-validated), DOB, address, driver's license, passport, tax ID, bank account, IP address | `john.doe@example.com`, `4111-1111-1111-1111` | 77 | ~0.3ms |
-| **Secrets** | API keys (AWS, GitHub, OpenAI, Stripe, Slack), OAuth tokens, RSA private keys, database credentials | `ghp_abc123...`, `AKIA...`, `-----BEGIN RSA PRIVATE KEY-----` | 59 | ~0.3ms |
+| **Secrets** | API keys (AWS, GitHub, OpenAI, Stripe, Slack), OAuth tokens, RSA private keys, database credentials | `ghp_abc123...`, `AKIA...`, `-----BEGIN RSA PRIVATE KEY-----` | 57 | ~0.3ms |
 | **XSS** | Cross-site scripting payloads | `<script>alert(1)</script>` | 12 | ~0.3ms |
-| **Compliance** | OWASP LLM Top 10, MITRE ATLAS, EU AI Act, NIST CSF, ISO 27001, CCPA, LGPD, PIPEDA, POPIA | "patient SSN:", "credit card:" | 61 | ~0.3ms |
+| **Compliance** | OWASP LLM Top 10, MITRE ATLAS, EU AI Act, NIST CSF, ISO 27001, CCPA, LGPD, PIPEDA, POPIA | "patient SSN:", "credit card:" | 62 | ~0.3ms |
 | **OT/ICS Protocols** | Modbus, DNP3, OPC-UA control manipulation | "Modbus function code 06..." | 9 | ~0.3ms |
 | **ML Threat** | Adversarial prompt injection (instruction override, roleplay, obfuscated commands) | "Ignore all previous instructions..." | 1 model | ~5-50ms |
-| **Total** | — | — | **218 regex + 1 ML** | — |
+| **Total** | — | — | **217 regex + 1 ML** | — |
 
 ## Security Posture
 
@@ -162,22 +162,26 @@ Lens runs **6 detection facets** — 5 regex (synchronous) + 1 ML (asynchronous)
 
 ## Performance
 
-| Metric | v0.3.0 | v0.2.0 |
-|--------|--------|--------|
-| Regex detection (p99) | **<1ms** | <1ms |
-| ML inference (p50, Chrome est.) | **~5-50ms** | n/a |
-| ML inference (p50, Node.js) | **~420ms** | n/a |
-| Model load time | **~120ms** | n/a |
-| Extension size | **4.2MB** | ~2MB |
-| FPR (regex, WildChat) | **2.31%** | 2.31% |
-| ML adversarial detection | **100%** (10/10) | n/a |
-| ML benign pass-through | **81.8%** (9/11) | n/a |
+| Metric | v0.5.3 | v0.3.0 | v0.2.0 |
+|--------|--------|--------|--------|
+| Regex detection (p99) | **<1ms** | <1ms | <1ms |
+| ML inference (p50, Chrome est.) | **~5-50ms** | ~5-50ms | n/a |
+| ML inference (p50, Node.js) | **~420ms** | ~420ms | n/a |
+| Model load time | **~120ms** | ~120ms | n/a |
+| Extension size | **4.2MB** | 4.2MB | ~2MB |
+| Regex patterns | **217** | 151 | 86 |
+| PII detection (in-scope) | **100%** (30/30) | n/a | n/a |
+| XSS detection (in-scope) | **75%** (9/12) | n/a | n/a |
+| Secrets detection (in-scope) | **48.6%** (18/37) | n/a | n/a |
+| FPR (regex, WildChat) | **2.31%** | 2.31% | 2.31% |
+| ML adversarial detection | **100%** (10/10) | 100% (10/10) | n/a |
+| ML benign pass-through | **81.8%** (9/11) | 81.8% (9/11) | n/a |
 
 **Source**: [docs/MODEL-CARD.md](./docs/MODEL-CARD.md) — detection metrics and evaluation data
 
 ## ML Threat Detector
 
-v0.3.0 adds a **Char CNN-BiLSTM with Attention** model that detects adversarial prompt injections — the kind of attacks that regex can't catch (paraphrased instructions, roleplay injection, obfuscated commands).
+v0.5.3 includes a **Char CNN-BiLSTM with Attention** model that detects adversarial prompt injections — the kind of attacks that regex can't catch (paraphrased instructions, roleplay injection, obfuscated commands).
 
 | Property | Value |
 |----------|-------|
@@ -240,7 +244,7 @@ See [docs/MODEL-CARD.md](./docs/MODEL-CARD.md) for full evaluation data.
 
 1. **Content script** is injected into each supported AI provider page (per the MV3 manifest)
 2. **On every keystroke** (debounced 250ms), the prompt value is read from the textarea
-3. **5 regex facets** run synchronously: PII (77), Secrets (59), XSS (12), Compliance (61), OT/ICS (9) = 218 patterns
+3. **5 regex facets** run synchronously: PII (77), Secrets (57), XSS (12), Compliance (62), OT/ICS (9) = 217 patterns
 4. **1 ML facet** runs asynchronously: Char CNN-BiLSTM detects adversarial prompt injection
 5. **PostProcess** filters false positives: Luhn validation for credit cards, 4-4-4 CC pattern rejection, ID-label context check
 6. **Banner shows** with severity color (critical = red, high = orange, medium = yellow, low = blue)
@@ -292,6 +296,17 @@ See [docs/SECURITY.md](./docs/SECURITY.md) for the full privacy policy and secur
 See [docs/SECURITY.md](./docs/SECURITY.md) for the full security model and [docs/NO-EXTERNAL-DEPS.md](./docs/NO-EXTERNAL-DEPS.md) for the dependency policy.
 
 <details>
+<summary><strong>📦 What's New in v0.5.3</strong></summary>
+
+- **33 new PII patterns** — international IDs (Brazil CPF, India Aadhaar, UK NHS, Canada SIN, Germany/Spain/France/Italy/Japan national IDs), crypto wallets (BTC, ETH, BNB, LTC, SOL), digital payment IDs (PayPal, Stripe, Venmo, Cash App), international passports and residence permits.
+- **16 new secrets patterns** — GitLab, Bitbucket, Linode, DigitalOcean, Rackspace, Salesforce, Shopify, Travis CI, Jenkins, CircleCI, WordPress, npm, PyPI, Supabase, Azure DevOps, Gitea.
+- **8 OT/ICS protocol patterns** — Modbus function codes (5), DNP3 control relay operations, OPC-UA method calls and write value (critical infrastructure protection).
+- **10 AI providers supported** — ChatGPT, Claude, Gemini, DeepSeek, Meta AI, Perplexity, Grok, Copilot, Mistral, HuggingChat.
+- **Welcome page updated** — accurate pattern counts, OT/ICS facet card, v0.5.3 changelog.
+
+</details>
+
+<details>
 <summary><strong>📦 What's New in v0.3.2</strong></summary>
 
 - **🔒 23 New SOC Detection Patterns** — SWIFT/BIC banking codes (3), CPT/HCPCS medical billing codes (11), and OT/ICS protocol patterns (9: Modbus, DNP3, OPC-UA). Parity with Platform v4.1.0 and Rampart v0.6.1.
@@ -324,8 +339,8 @@ AegisGate Lens is the consumer-facing layer. The same team builds [AegisGate Pla
 
 ## Roadmap
 
-- **v0.4.0**: Public benchmark dataset
-- **v0.5.0**: Third-party security audit (Cure53 / Trail of Bits / NCC Group)
+- **v0.6.0**: Public benchmark dataset, expanded in-scope efficacy testing
+- **v0.7.0**: Third-party security audit (Cure53 / Trail of Bits / NCC Group)
 
 ## Community & Support
 

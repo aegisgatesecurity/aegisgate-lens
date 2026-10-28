@@ -59,26 +59,20 @@
 
       var self = this;
       try {
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', this.healthEndpoint, true);
-        xhr.timeout = 2000; // 2 second timeout
-        xhr.onload = function () {
-          if (xhr.status === 200) {
-            self.rampartAvailable = true;
-          } else {
+        var controller = new AbortController();
+        var timeoutId = setTimeout(function () { controller.abort(); }, 2000);
+
+        fetch(this.healthEndpoint, { method: 'GET', signal: controller.signal })
+          .then(function (response) {
+            clearTimeout(timeoutId);
+            self.rampartAvailable = (response.status === 200);
+            if (callback) callback(self.rampartAvailable);
+          })
+          .catch(function () {
+            clearTimeout(timeoutId);
             self.rampartAvailable = false;
-          }
-          if (callback) callback(self.rampartAvailable);
-        };
-        xhr.onerror = function () {
-          self.rampartAvailable = false;
-          if (callback) callback(false);
-        };
-        xhr.ontimeout = function () {
-          self.rampartAvailable = false;
-          if (callback) callback(false);
-        };
-        xhr.send();
+            if (callback) callback(false);
+          });
       } catch (e) {
         self.rampartAvailable = false;
         if (callback) callback(false);
@@ -121,44 +115,41 @@
 
       var self = this;
       try {
-        var xhr = new XMLHttpRequest();
-        xhr.open('POST', this.signalEndpoint, true);
-        xhr.setRequestHeader('Content-Type', 'application/json');
-        xhr.timeout = 3000; // 3 second timeout
+        var controller = new AbortController();
+        var timeoutId = setTimeout(function () { controller.abort(); }, 3000);
 
-        xhr.onload = function () {
-          if (xhr.status === 200) {
-            self.stats.signalsSent++;
-            try {
-              var result = JSON.parse(xhr.responseText);
-              if (result.escalated) {
-                self.stats.escalations++;
-              }
-              if (result.recommend_block) {
-                self.stats.blocksRecommended++;
-              }
-              if (callback) callback(result);
-            } catch (e) {
-              if (callback) callback(null);
+        fetch(this.signalEndpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(signal),
+          signal: controller.signal
+        })
+          .then(function (response) {
+            clearTimeout(timeoutId);
+            if (response.status === 200) {
+              self.stats.signalsSent++;
+              return response.json();
             }
-          } else {
             self.stats.signalsFailed++;
             if (callback) callback(null);
-          }
-        };
-
-        xhr.onerror = function () {
-          self.stats.signalsFailed++;
-          self.rampartAvailable = false; // Rampart may have stopped
-          if (callback) callback(null);
-        };
-
-        xhr.ontimeout = function () {
-          self.stats.signalsFailed++;
-          if (callback) callback(null);
-        };
-
-        xhr.send(JSON.stringify(signal));
+            return null;
+          })
+          .then(function (result) {
+            if (!result) return;
+            if (result.escalated) {
+              self.stats.escalations++;
+            }
+            if (result.recommend_block) {
+              self.stats.blocksRecommended++;
+            }
+            if (callback) callback(result);
+          })
+          .catch(function () {
+            clearTimeout(timeoutId);
+            self.stats.signalsFailed++;
+            self.rampartAvailable = false; // Rampart may have stopped
+            if (callback) callback(null);
+          });
       } catch (e) {
         self.stats.signalsFailed++;
         if (callback) callback(null);

@@ -22,7 +22,11 @@
   },
   "background": {
     "service_worker": "src/background.js",
-    "scripts": ["src/background.js"]
+    "scripts": [
+      "src/ioc-pull.js",
+      "src/rampart-bridge.js",
+      "src/background.js"
+    ]
   },
   "content_scripts": [
     {
@@ -85,6 +89,9 @@
     "scripting",
     "unlimitedStorage"
   ],
+  "storage": {
+    "managed_schema": "managed_schema.json"
+  },
   "host_permissions": [
     "https://lens.aegisgatesecurity.io/*"
   ],

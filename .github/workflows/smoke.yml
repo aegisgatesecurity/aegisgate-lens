@@ -98,13 +98,20 @@ jobs:
 
       - name: Run unit tests + e2e tests
         # v0.1.4 polish: include test/e2e/ (F-7 manifest validation, 20 tests).
-        # 497 + 20 = 517 total tests, ~2s. No network, no browser, no deps.
+        # v0.5.3: include test/integration/ (Phase D full-mesh: IOC pull,
+        #   Rampart bridge, cross-product contracts — 44 tests using mock
+        #   HTTP servers, no external dependencies).
         # Must pass before the smoke runs.
         run: |
           set -o pipefail
-          node --test test/unit/*.test.mjs test/e2e/*.test.mjs 2>&1 | tee unit-test-output.log
+          node --test --test-force-exit test/unit/*.test.mjs test/e2e/*.test.mjs 2>&1 | tee unit-test-output.log
           if [ ${PIPESTATUS[0]} -ne 0 ]; then
             echo "Unit+e2e tests failed"
+            exit 1
+          fi
+          node --test --test-force-exit test/integration/*.test.mjs 2>&1 | tee integration-test-output.log
+          if [ ${PIPESTATUS[0]} -ne 0 ]; then
+            echo "Integration tests failed"
             exit 1
           fi
 
@@ -119,6 +126,12 @@ jobs:
           bash tools/lint.sh 2>&1 | tee lint-output.log
           # The linter exits 1 if any FAIL check fails; 0 otherwise.
           # Warnings don't fail the lint.
+
+      - name: Verify welcome page pattern counts
+        # CI gate: ensures the welcome page pattern counts match the
+        # actual detector source files. Fails if counts are stale.
+        run: |
+          python3 tools/ci/check-welcome-patterns.py
 
       - name: Build the v0.1.3 smoke binary
         # The Go binary is built from tools/headless-smoke/flow/.

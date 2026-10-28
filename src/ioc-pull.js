@@ -87,61 +87,55 @@
       var self = this;
 
       try {
-        var xhr = new XMLHttpRequest();
         var url = endpoint;
         if (this.lastUpdated) {
           url += '?since=' + encodeURIComponent(this.lastUpdated);
         }
 
-        xhr.open('GET', url, true);
-        xhr.timeout = 10000; // 10 second timeout
-        xhr.setRequestHeader('Content-Type', 'application/json');
-
+        var headers = { 'Content-Type': 'application/json' };
         if (this._apiKey && this.platformEndpoint) {
-          xhr.setRequestHeader('Authorization', 'Bearer ' + this._apiKey);
+          headers['Authorization'] = 'Bearer ' + this._apiKey;
         }
 
-        xhr.onload = function () {
-          if (xhr.status === 200) {
-            try {
-              var data = JSON.parse(xhr.responseText);
-              if (data.iocs && Array.isArray(data.iocs)) {
-                self._mergeIOCs(data.iocs);
-                self.lastUpdated = data.updated_at || new Date().toISOString();
-                self.stats.pullsSuccessful++;
-                self.stats.iocsLoaded = self.iocs.length;
-                self.stats.lastPullTime = new Date().toISOString();
-                self._saveToStorage();
-                if (callback) callback(true, data.iocs.length);
-              } else {
-                self.stats.pullsFailed++;
-                if (callback) callback(false, 0);
-              }
-            } catch (e) {
+        var controller = new AbortController();
+        var timeoutId = setTimeout(function () { controller.abort(); }, 10000);
+
+        fetch(url, { method: 'GET', headers: headers, signal: controller.signal })
+          .then(function (response) {
+            clearTimeout(timeoutId);
+            if (response.status === 304) {
+              // Not modified — use cached IOCs
+              self.stats.pullsSuccessful++;
+              if (callback) callback(true, 0);
+              return null;
+            }
+            if (response.status === 200) {
+              return response.json();
+            }
+            self.stats.pullsFailed++;
+            if (callback) callback(false, 0);
+            return null;
+          })
+          .then(function (data) {
+            if (!data) return;
+            if (data.iocs && Array.isArray(data.iocs)) {
+              self._mergeIOCs(data.iocs);
+              self.lastUpdated = data.updated_at || new Date().toISOString();
+              self.stats.pullsSuccessful++;
+              self.stats.iocsLoaded = self.iocs.length;
+              self.stats.lastPullTime = new Date().toISOString();
+              self._saveToStorage();
+              if (callback) callback(true, data.iocs.length);
+            } else {
               self.stats.pullsFailed++;
               if (callback) callback(false, 0);
             }
-          } else if (xhr.status === 304) {
-            // Not modified — use cached IOCs
-            self.stats.pullsSuccessful++;
-            if (callback) callback(true, 0);
-          } else {
+          })
+          .catch(function (e) {
+            clearTimeout(timeoutId);
             self.stats.pullsFailed++;
             if (callback) callback(false, 0);
-          }
-        };
-
-        xhr.onerror = function () {
-          self.stats.pullsFailed++;
-          if (callback) callback(false, 0);
-        };
-
-        xhr.ontimeout = function () {
-          self.stats.pullsFailed++;
-          if (callback) callback(false, 0);
-        };
-
-        xhr.send();
+          });
       } catch (e) {
         self.stats.pullsFailed++;
         if (callback) callback(false, 0);

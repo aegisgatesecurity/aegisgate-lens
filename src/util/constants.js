@@ -69,7 +69,15 @@
     // pause is global across all domains/categories; dismiss is
     // per-domain per-category. Used by security researchers and
     // developers testing prompts.
-    PAUSE_UNTIL: 'aegisgate_lens_pause_until'
+    PAUSE_UNTIL: 'aegisgate_lens_pause_until',
+    // v0.5.3: Sensor module opt-in flags (OFF by default = air-gap).
+    // IOC Pull fetches threat intel fingerprints from Platform or the
+    // community Cloudflare Worker endpoint. Rampart Correlation sends
+    // detection signals to the local Rampart MITM proxy for cross-layer
+    // correlation. Both are opt-in and send only metadata (no PII,
+    // no prompt text).
+    IOC_PULL_ENABLED: 'aegisgate_lens_ioc_pull_enabled',
+    RAMPART_CORRELATION_ENABLED: 'aegisgate_lens_rampart_correlation_enabled'
   });
 
   // === Telemetry / dismissal ===

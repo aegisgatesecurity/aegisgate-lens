@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "backendUrl": {
+      "type": "string",
+      "description": "AegisGate Platform URL for telemetry and IOC pull. Empty = air-gap mode (community Cloudflare Worker used for FP reports only)."
+    },
+    "bearerToken": {
+      "type": "string",
+      "description": "API key for Platform authentication. Required when backendUrl is set."
+    },
+    "iocPullEnabled": {
+      "type": "boolean",
+      "description": "Enable IOC fingerprint pull from Platform or community endpoint. Default false (air-gap).",
+      "default": false
+    },
+    "iocPullInterval": {
+      "type": "integer",
+      "description": "IOC pull interval in milliseconds. Default 300000 (5 minutes).",
+      "default": 300000,
+      "minimum": 60000
+    },
+    "rampartCorrelationEnabled": {
+      "type": "boolean",
+      "description": "Enable detection signal correlation with local Rampart MITM proxy. Default false.",
+      "default": false
+    },
+    "rampartBaseUrl": {
+      "type": "string",
+      "description": "Rampart base URL for localhost signal correlation. Default http://127.0.0.1:8443.",
+      "default": "http://127.0.0.1:8443"
+    },
+    "optInRequired": {
+      "type": "boolean",
+      "description": "Whether user must explicitly opt in to telemetry. Set false for silent enterprise deployment. Default true.",
+      "default": true
+    },
+    "facetsEnabled": {
+      "type": "object",
+      "description": "Per-facet enable/disable. Omitted facets use built-in defaults (all enabled).",
+      "properties": {
+        "pii": { "type": "boolean", "default": true },
+        "secrets": { "type": "boolean", "default": true },
+        "xss": { "type": "boolean", "default": true },
+        "compliance": { "type": "boolean", "default": true },
+        "ot": { "type": "boolean", "default": true }
+      }
+    }
+  }
+}
