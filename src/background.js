@@ -28,6 +28,24 @@
   };
 
   log.info('background.js loaded; service worker ready');
+
+  // --- Load IOC Pull and Rampart Bridge modules ---
+  // Firefox loads these via manifest "scripts" array. Chrome MV3
+  // service worker needs importScripts(). The guard prevents
+  // double-loading in Firefox (where scripts are already loaded).
+  if (typeof importScripts === 'function' &&
+      typeof self.__aegisgateIOCPull === 'undefined') {
+    try {
+      importScripts('src/ioc-pull.js', 'src/rampart-bridge.js');
+      log.info('IOC Pull and Rampart Bridge loaded via importScripts');
+    } catch (e) {
+      log.warn('importScripts failed (modules may already be loaded): ' + e);
+    }
+  }
+
+  var IOC_PULL = (typeof self !== 'undefined' && self.__aegisgateIOCPull) || null;
+  var RAMPART_BRIDGE = (typeof self !== 'undefined' && self.__aegisgateRampartBridge) || null;
+
   // Constants from src/util/constants.js (loaded via globalThis)
   var C = (typeof self !== 'undefined' && self.__lensConstants) ||
            (typeof globalThis !== 'undefined' && globalThis.__lensConstants) ||
@@ -575,6 +593,53 @@
 
   // --- Lifecycle ---
 
+  // --- Sensor module initialization (IOC Pull + Rampart Bridge) ---
+  // Reads opt-in flags from chrome.storage.local and initializes
+  // the sensor modules if enabled. Both are OFF by default (air-gap).
+
+  function initSensorModules() {
+    // Read opt-in flags and backend config from storage
+    var keys = [
+      'aegisgate_lens_ioc_pull_enabled',
+      'aegisgate_lens_rampart_correlation_enabled',
+      'aegisgate_lens_backend_url',
+      'aegisgate_lens_bearer_token'
+    ];
+
+    storageGet('aegisgate_lens_ioc_pull_enabled').then(function (iocEnabled) {
+      storageGet('aegisgate_lens_rampart_correlation_enabled').then(function (rampartEnabled) {
+        // Initialize IOC Pull
+        if (IOC_PULL) {
+          getBackend().then(function (backendUrl) {
+            getBearerToken().then(function (apiKey) {
+              IOC_PULL.init({
+                enabled: iocEnabled === true,
+                platformUrl: backendUrl,
+                apiKey: apiKey
+              });
+              log.info('IOC Pull initialized (enabled=' + (iocEnabled === true) + ')');
+            });
+          });
+        } else {
+          log.warn('IOC Pull module not available');
+        }
+
+        // Initialize Rampart Bridge
+        if (RAMPART_BRIDGE) {
+          if (rampartEnabled === true) {
+            RAMPART_BRIDGE.checkAvailability(function (available) {
+              log.info('Rampart Bridge initialized (available=' + available + ')');
+            });
+          } else {
+            log.info('Rampart Bridge initialized (disabled by user)');
+          }
+        } else {
+          log.warn('Rampart Bridge module not available');
+        }
+      });
+    });
+  }
+
   // On install: open the welcome page (3a behavior)
   chrome.runtime.onInstalled.addListener(function (details) {
     try {
@@ -587,6 +652,8 @@
     }
     // Try to drain the FP queue on every install/startup
     drainQueue().catch(function (err) { log.warn('startup drain failed', err); });
+    // Initialize sensor modules
+    initSensorModules();
   });
 
   // On tab update: dynamically inject content script for providers
@@ -706,6 +773,8 @@
     try {
       log.info('startup');
       drainQueue().catch(function (err) { log.warn('startup drain failed', err); });
+      // Initialize sensor modules on SW reactivation
+      initSensorModules();
     } catch (e) {
       log.error('onStartup handler threw', e);
     }
