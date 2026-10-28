@@ -1,0 +1,30 @@
+{
+  "policies": {
+    "Extensions": {
+      "Install": [
+        "https://addons.mozilla.org/firefox/downloads/file/aegisgate-lens/latest"
+      ],
+      "Locked": [
+        "lens@aegisgate.security"
+      ]
+    },
+    "3rdparty": {
+      "Extensions": {
+        "lens@aegisgate.security": {
+          "backendUrl": "https://platform.company.com",
+          "bearerToken": "<company-api-key>",
+          "iocPullEnabled": true,
+          "rampartCorrelationEnabled": false,
+          "optInRequired": false,
+          "facetsEnabled": {
+            "pii": true,
+            "secrets": true,
+            "xss": true,
+            "compliance": true,
+            "ot": true
+          }
+        }
+      }
+    }
+  }
+}

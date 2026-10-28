@@ -593,49 +593,89 @@
 
   // --- Lifecycle ---
 
+  // --- Enterprise managed storage (GPO/MDM) ---
+  // chrome.storage.managed is populated by IT admin policy (Chrome GPO,
+  // Firefox policies.json, Intune, JAMF). Managed values override user
+  // preferences. If no policy is set, managed storage is empty and this
+  // is a no-op — the extension functions as a standalone user tool.
+
+  function getManagedConfig() {
+    return new Promise(function (resolve) {
+      if (!chrome.storage || !chrome.storage.managed) {
+        resolve({});
+        return;
+      }
+      chrome.storage.managed.get(null, function (items) {
+        if (chrome.runtime.lastError) {
+          log.info('managed storage not available: ' + chrome.runtime.lastError.message);
+          resolve({});
+          return;
+        }
+        resolve(items || {});
+      });
+    });
+  }
+
   // --- Sensor module initialization (IOC Pull + Rampart Bridge) ---
-  // Reads opt-in flags from chrome.storage.local and initializes
-  // the sensor modules if enabled. Both are OFF by default (air-gap).
+  // Reads opt-in flags from chrome.storage.local AND managed policy
+  // (GPO/MDM). Managed values take precedence. Both are OFF by
+  // default (air-gap).
 
   function initSensorModules() {
-    // Read opt-in flags and backend config from storage
-    var keys = [
-      'aegisgate_lens_ioc_pull_enabled',
-      'aegisgate_lens_rampart_correlation_enabled',
-      'aegisgate_lens_backend_url',
-      'aegisgate_lens_bearer_token'
-    ];
+    getManagedConfig().then(function (managed) {
+      // Managed config overrides local storage
+      var iocEnabled = managed.iocPullEnabled === true;
+      var rampartEnabled = managed.rampartCorrelationEnabled === true;
+      var rampartUrl = managed.rampartBaseUrl || null;
 
-    storageGet('aegisgate_lens_ioc_pull_enabled').then(function (iocEnabled) {
-      storageGet('aegisgate_lens_rampart_correlation_enabled').then(function (rampartEnabled) {
-        // Initialize IOC Pull
-        if (IOC_PULL) {
-          getBackend().then(function (backendUrl) {
-            getBearerToken().then(function (apiKey) {
-              IOC_PULL.init({
-                enabled: iocEnabled === true,
-                platformUrl: backendUrl,
-                apiKey: apiKey
+      // If managed policy doesn't set these, fall back to local user prefs
+      var iocKey = 'aegisgate_lens_ioc_pull_enabled';
+      var rampartKey = 'aegisgate_lens_rampart_correlation_enabled';
+
+      storageGet(iocKey).then(function (localIoc) {
+        storageGet(rampartKey).then(function (localRampart) {
+          // Managed policy takes precedence over local user pref
+          if (managed.iocPullEnabled === undefined) {
+            iocEnabled = localIoc === true;
+          }
+          if (managed.rampartCorrelationEnabled === undefined) {
+            rampartEnabled = localRampart === true;
+          }
+
+          // Set Rampart base URL if managed
+          if (rampartUrl && RAMPART_BRIDGE) {
+            RAMPART_BRIDGE.setBaseUrl(rampartUrl);
+          }
+
+          // Initialize IOC Pull
+          if (IOC_PULL) {
+            getBackend().then(function (backendUrl) {
+              getBearerToken().then(function (apiKey) {
+                IOC_PULL.init({
+                  enabled: iocEnabled,
+                  platformUrl: backendUrl,
+                  apiKey: apiKey
+                });
+                log.info('IOC Pull initialized (enabled=' + iocEnabled + ', managed=' + (managed.iocPullEnabled !== undefined) + ')');
               });
-              log.info('IOC Pull initialized (enabled=' + (iocEnabled === true) + ')');
-            });
-          });
-        } else {
-          log.warn('IOC Pull module not available');
-        }
-
-        // Initialize Rampart Bridge
-        if (RAMPART_BRIDGE) {
-          if (rampartEnabled === true) {
-            RAMPART_BRIDGE.checkAvailability(function (available) {
-              log.info('Rampart Bridge initialized (available=' + available + ')');
             });
           } else {
-            log.info('Rampart Bridge initialized (disabled by user)');
+            log.warn('IOC Pull module not available');
           }
-        } else {
-          log.warn('Rampart Bridge module not available');
-        }
+
+          // Initialize Rampart Bridge
+          if (RAMPART_BRIDGE) {
+            if (rampartEnabled) {
+              RAMPART_BRIDGE.checkAvailability(function (available) {
+                log.info('Rampart Bridge initialized (available=' + available + ', managed=' + (managed.rampartCorrelationEnabled !== undefined) + ')');
+              });
+            } else {
+              log.info('Rampart Bridge initialized (disabled, managed=' + (managed.rampartCorrelationEnabled !== undefined) + ')');
+            }
+          } else {
+            log.warn('Rampart Bridge module not available');
+          }
+        });
       });
     });
   }

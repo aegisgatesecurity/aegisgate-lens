@@ -89,6 +89,9 @@
     "scripting",
     "unlimitedStorage"
   ],
+  "storage": {
+    "managed_schema": "managed_schema.json"
+  },
   "host_permissions": [
     "https://lens.aegisgatesecurity.io/*"
   ],
