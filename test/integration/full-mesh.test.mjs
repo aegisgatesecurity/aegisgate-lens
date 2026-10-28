@@ -62,10 +62,10 @@ function startMockPlatform() {
         try {
           const parsed = JSON.parse(body);
           telemetryReceived.push({ body: parsed, rawBody: body });
-          res.writeHead(202, { 'Content-Type': 'application/json' });
+          res.writeHead(202, { 'Content-Type': 'application/json', 'Connection': 'close' });
           res.end(JSON.stringify({ status: 'received' }));
         } catch (e) {
-          res.writeHead(400);
+          res.writeHead(400, { 'Connection': 'close' });
           res.end(JSON.stringify({ error: 'invalid json' }));
         }
       });
@@ -75,7 +75,7 @@ function startMockPlatform() {
     // IOC endpoint
     if (req.url.includes('/ioc/latest') && req.method === 'GET') {
       iocPullCount.value++;
-      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Connection': 'close' });
       res.end(JSON.stringify({
         api_version: 'v1',
         iocs: iocs,
@@ -86,12 +86,12 @@ function startMockPlatform() {
 
     // Healthz
     if (req.url.includes('/healthz')) {
-      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Connection': 'close' });
       res.end(JSON.stringify({ status: 'ok' }));
       return;
     }
 
-    res.writeHead(404);
+    res.writeHead(404, { 'Connection': 'close' });
     res.end(JSON.stringify({ error: 'not found' }));
   });
 
@@ -103,7 +103,7 @@ function startMockPlatform() {
         telemetryReceived,
         iocPullCount,
         url: `http://127.0.0.1:${port}`,
-        close: () => server.close(),
+        close: () => { server.closeAllConnections?.(); server.close(); },
       });
     });
   });
@@ -122,13 +122,13 @@ function startMockRampart() {
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
     if (req.method === 'OPTIONS') {
-      res.writeHead(204);
+      res.writeHead(204, { 'Connection': 'close' });
       res.end();
       return;
     }
 
     if (req.url.includes('/healthz')) {
-      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Connection': 'close' });
       res.end(JSON.stringify({ status: 'ok', signal_count: 0, detection_count: 0 }));
       return;
     }
@@ -141,7 +141,7 @@ function startMockRampart() {
           const parsed = JSON.parse(body);
           signalsReceived.push({ body: parsed, rawBody: body });
           // Simulate Rampart having a matching detection
-          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.writeHead(200, { 'Content-Type': 'application/json', 'Connection': 'close' });
           res.end(JSON.stringify({
             escalated: true,
             recommend_block: false,
@@ -150,14 +150,14 @@ function startMockRampart() {
             reason: 'cross-layer correlation: both Lens and Rampart detected on same domain',
           }));
         } catch (e) {
-          res.writeHead(400);
+          res.writeHead(400, { 'Connection': 'close' });
           res.end(JSON.stringify({ error: 'invalid json' }));
         }
       });
       return;
     }
 
-    res.writeHead(404);
+    res.writeHead(404, { 'Connection': 'close' });
     res.end();
   });
 
@@ -168,7 +168,7 @@ function startMockRampart() {
         server,
         signalsReceived,
         url: `http://127.0.0.1:${port}`,
-        close: () => server.close(),
+        close: () => { server.closeAllConnections?.(); server.close(); },
       });
     });
   });

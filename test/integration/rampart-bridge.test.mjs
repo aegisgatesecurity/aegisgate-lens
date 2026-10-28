@@ -47,14 +47,14 @@ function startMockRampart({ healthStatus = 200, signalResponse = null } = {}) {
 
     // Handle preflight
     if (req.method === 'OPTIONS') {
-      res.writeHead(204);
+      res.writeHead(204, { 'Connection': 'close' });
       res.end();
       return;
     }
 
     // Health check endpoint
     if (req.url.includes('/healthz')) {
-      res.writeHead(healthStatus, { 'Content-Type': 'application/json' });
+      res.writeHead(healthStatus, { 'Content-Type': 'application/json', 'Connection': 'close' });
       res.end(JSON.stringify({
         status: 'ok',
         signal_count: 0,
@@ -82,17 +82,17 @@ function startMockRampart({ healthStatus = 200, signalResponse = null } = {}) {
             recommend_block: false,
             reason: 'no matching Rampart detections in correlation window',
           };
-          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.writeHead(200, { 'Content-Type': 'application/json', 'Connection': 'close' });
           res.end(JSON.stringify(response));
         } catch (e) {
-          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.writeHead(400, { 'Content-Type': 'application/json', 'Connection': 'close' });
           res.end(JSON.stringify({ error: 'invalid JSON' }));
         }
       });
       return;
     }
 
-    res.writeHead(404, { 'Content-Type': 'application/json' });
+    res.writeHead(404, { 'Content-Type': 'application/json', 'Connection': 'close' });
     res.end(JSON.stringify({ error: 'not found' }));
   });
 
@@ -103,7 +103,7 @@ function startMockRampart({ healthStatus = 200, signalResponse = null } = {}) {
         server,
         received,
         url: `http://127.0.0.1:${port}`,
-        close: () => server.close(),
+        close: () => { server.closeAllConnections?.(); server.close(); },
       });
     });
   });

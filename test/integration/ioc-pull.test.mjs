@@ -51,7 +51,7 @@ function startMockIOCPlatform({ requireAuth = false, statusOverride = null } = {
       if (requireAuth) {
         const auth = req.headers['authorization'];
         if (!auth || !auth.startsWith('Bearer ')) {
-          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.writeHead(401, { 'Content-Type': 'application/json', 'Connection': 'close' });
           res.end(JSON.stringify({ error: 'unauthorized' }));
           return;
         }
@@ -59,7 +59,7 @@ function startMockIOCPlatform({ requireAuth = false, statusOverride = null } = {
 
       // Handle status override (for error testing)
       if (statusOverride) {
-        res.writeHead(statusOverride, { 'Content-Type': 'application/json' });
+        res.writeHead(statusOverride, { 'Content-Type': 'application/json', 'Connection': 'close' });
         res.end(JSON.stringify({ error: 'test error' }));
         return;
       }
@@ -90,12 +90,12 @@ function startMockIOCPlatform({ requireAuth = false, statusOverride = null } = {
         updated_at: '2026-10-14T15:30:00Z',
       };
 
-      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Connection': 'close' });
       res.end(JSON.stringify(iocResponse));
       return;
     }
 
-    res.writeHead(404, { 'Content-Type': 'application/json' });
+    res.writeHead(404, { 'Content-Type': 'application/json', 'Connection': 'close' });
     res.end(JSON.stringify({ error: 'not found' }));
   });
 
@@ -106,7 +106,7 @@ function startMockIOCPlatform({ requireAuth = false, statusOverride = null } = {
         server,
         received,
         url: `http://127.0.0.1:${port}`,
-        close: () => server.close(),
+        close: () => { server.closeAllConnections?.(); server.close(); },
       });
     });
   });
@@ -232,7 +232,7 @@ test('IOCPull: pull() handles 304 Not Modified', async (t) => {
   mock.server.removeAllListeners('request');
   mock.server.on('request', (req, res) => {
     if (req.url.includes('/api/v1/ioc/latest')) {
-      res.writeHead(304);
+      res.writeHead(304, { 'Connection': 'close' });
       res.end();
       return;
     }
