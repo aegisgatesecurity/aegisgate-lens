@@ -162,22 +162,26 @@ Lens runs **6 detection facets** — 5 regex (synchronous) + 1 ML (asynchronous)
 
 ## Performance
 
-| Metric | v0.3.0 | v0.2.0 |
-|--------|--------|--------|
-| Regex detection (p99) | **<1ms** | <1ms |
-| ML inference (p50, Chrome est.) | **~5-50ms** | n/a |
-| ML inference (p50, Node.js) | **~420ms** | n/a |
-| Model load time | **~120ms** | n/a |
-| Extension size | **4.2MB** | ~2MB |
-| FPR (regex, WildChat) | **2.31%** | 2.31% |
-| ML adversarial detection | **100%** (10/10) | n/a |
-| ML benign pass-through | **81.8%** (9/11) | n/a |
+| Metric | v0.5.3 | v0.3.0 | v0.2.0 |
+|--------|--------|--------|--------|
+| Regex detection (p99) | **<1ms** | <1ms | <1ms |
+| ML inference (p50, Chrome est.) | **~5-50ms** | ~5-50ms | n/a |
+| ML inference (p50, Node.js) | **~420ms** | ~420ms | n/a |
+| Model load time | **~120ms** | ~120ms | n/a |
+| Extension size | **4.2MB** | 4.2MB | ~2MB |
+| Regex patterns | **217** | 151 | 86 |
+| PII detection (in-scope) | **100%** (30/30) | n/a | n/a |
+| XSS detection (in-scope) | **75%** (9/12) | n/a | n/a |
+| Secrets detection (in-scope) | **48.6%** (18/37) | n/a | n/a |
+| FPR (regex, WildChat) | **2.31%** | 2.31% | 2.31% |
+| ML adversarial detection | **100%** (10/10) | 100% (10/10) | n/a |
+| ML benign pass-through | **81.8%** (9/11) | 81.8% (9/11) | n/a |
 
 **Source**: [docs/MODEL-CARD.md](./docs/MODEL-CARD.md) — detection metrics and evaluation data
 
 ## ML Threat Detector
 
-v0.3.0 adds a **Char CNN-BiLSTM with Attention** model that detects adversarial prompt injections — the kind of attacks that regex can't catch (paraphrased instructions, roleplay injection, obfuscated commands).
+v0.5.3 includes a **Char CNN-BiLSTM with Attention** model that detects adversarial prompt injections — the kind of attacks that regex can't catch (paraphrased instructions, roleplay injection, obfuscated commands).
 
 | Property | Value |
 |----------|-------|
@@ -292,6 +296,17 @@ See [docs/SECURITY.md](./docs/SECURITY.md) for the full privacy policy and secur
 See [docs/SECURITY.md](./docs/SECURITY.md) for the full security model and [docs/NO-EXTERNAL-DEPS.md](./docs/NO-EXTERNAL-DEPS.md) for the dependency policy.
 
 <details>
+<summary><strong>📦 What's New in v0.5.3</strong></summary>
+
+- **33 new PII patterns** — international IDs (Brazil CPF, India Aadhaar, UK NHS, Canada SIN, Germany/Spain/France/Italy/Japan national IDs), crypto wallets (BTC, ETH, BNB, LTC, SOL), digital payment IDs (PayPal, Stripe, Venmo, Cash App), international passports and residence permits.
+- **16 new secrets patterns** — GitLab, Bitbucket, Linode, DigitalOcean, Rackspace, Salesforce, Shopify, Travis CI, Jenkins, CircleCI, WordPress, npm, PyPI, Supabase, Azure DevOps, Gitea.
+- **8 OT/ICS protocol patterns** — Modbus function codes (5), DNP3 control relay operations, OPC-UA method calls and write value (critical infrastructure protection).
+- **10 AI providers supported** — ChatGPT, Claude, Gemini, DeepSeek, Meta AI, Perplexity, Grok, Copilot, Mistral, HuggingChat.
+- **Welcome page updated** — accurate pattern counts, OT/ICS facet card, v0.5.3 changelog.
+
+</details>
+
+<details>
 <summary><strong>📦 What's New in v0.3.2</strong></summary>
 
 - **🔒 23 New SOC Detection Patterns** — SWIFT/BIC banking codes (3), CPT/HCPCS medical billing codes (11), and OT/ICS protocol patterns (9: Modbus, DNP3, OPC-UA). Parity with Platform v4.1.0 and Rampart v0.6.1.
@@ -324,8 +339,8 @@ AegisGate Lens is the consumer-facing layer. The same team builds [AegisGate Pla
 
 ## Roadmap
 
-- **v0.4.0**: Public benchmark dataset
-- **v0.5.0**: Third-party security audit (Cure53 / Trail of Bits / NCC Group)
+- **v0.6.0**: Public benchmark dataset, expanded in-scope efficacy testing
+- **v0.7.0**: Third-party security audit (Cure53 / Trail of Bits / NCC Group)
 
 ## Community & Support
 

@@ -120,6 +120,12 @@ jobs:
           # The linter exits 1 if any FAIL check fails; 0 otherwise.
           # Warnings don't fail the lint.
 
+      - name: Verify welcome page pattern counts
+        # CI gate: ensures the welcome page pattern counts match the
+        # actual detector source files. Fails if counts are stale.
+        run: |
+          python3 tools/ci/check-welcome-patterns.py
+
       - name: Build the v0.1.3 smoke binary
         # The Go binary is built from tools/headless-smoke/flow/.
         # The output is the test/headless-smoke/headless-smoke-bin

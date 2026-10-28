@@ -59,7 +59,8 @@
       // when a new marketing version ships.
       var SEMVER_TO_MARKETING = {
         '0.1.0': 'v0.1.4',
-        '0.3.0': 'v0.3.0'
+        '0.3.0': 'v0.3.0',
+        '0.5.3': 'v0.5.3'
       };
       return SEMVER_TO_MARKETING[semver] || ('v' + semver);
     } catch (e) {
