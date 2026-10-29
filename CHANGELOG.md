@@ -189,7 +189,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Audit Report
 
-Full audit report: `.plans/SECURITY-AUDIT-2026-08-29.md`
+Full audit report available in internal documentation.
 
 ---
 
