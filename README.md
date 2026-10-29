@@ -222,7 +222,7 @@ See [docs/MODEL-CARD.md](./docs/MODEL-CARD.md) for full evaluation data.
 | Works on 10 AI providers | ✅ | ❌ | ⚠️ Requires proxy |
 | 100% on-device, zero telemetry | ✅ | ✅ | ❌ Cloud-based |
 | Zero dependencies, no WASM | ✅ | ✅ | ❌ Requires agent |
-| Free (Apache 2.0) | ✅ | ✅ | ❌ Paid license |
+| Free (Apache 2.0) | ✅ | ✅ | ❌ Proprietary |
 | Fail-visible (user sees every detection) | ✅ | ✅ | ❌ Silent block |
 
 ## Supported AI Providers
@@ -334,8 +334,8 @@ AegisGate Lens is the consumer-facing layer. The same team builds [AegisGate Pla
 | Use case | Recommendation |
 |----------|----------------|
 | Individual developers, security researchers, journalists, privacy-conscious users | **Lens alone** (free) |
-| Teams of 2–10 who need a shared detection policy | **Lens + Platform Starter** ($29/mo) |
-| Enterprises needing SIEM, compliance modules, central policy | **Platform Professional or Enterprise** (custom) |
+| Teams of 2–10 who need a shared detection policy | **Lens + Platform** (self-hosted, free) |
+| Enterprises needing SIEM, compliance modules, central policy | **Platform + Enterprise support** (contact us) |
 
 ## Roadmap
 
@@ -352,7 +352,7 @@ AegisGate Lens is the consumer-facing layer. The same team builds [AegisGate Pla
 
 ## License
 
-Apache 2.0 for source code — see [LICENSE](./LICENSE) for the full text. The trained ML model weights are separately licensed under the [AegisGate Model Weight License](WEIGHTS-LICENSE.md). Non-commercial use is permitted; commercial use requires a commercial license.
+Apache 2.0 for source code — see [LICENSE](./LICENSE) for the full text. The trained ML model weights are separately licensed under the [AegisGate Model Weight License](WEIGHTS-LICENSE.md). Non-commercial use is permitted; commercial use is permitted under Apache 2.0 for the source code.
 
 ## Contributing
 
