@@ -156,10 +156,53 @@ export class MockTabs {
 // ============================================================
 export class MockChrome {
   constructor() {
-    this.storage = { local: new MockStorage() };
+    this.storage = { local: new MockStorage(), managed: new MockManagedStorage() };
     this.runtime = new MockRuntime();
     this.tabs = new MockTabs();
   }
+}
+
+// ============================================================
+// MockManagedStorage: chrome.storage.managed in-memory shim
+// Simulates IT admin policy (GPO/MDM). Can be set to "unavailable"
+// to test the fallback path (no managed storage = standalone mode).
+// ============================================================
+export class MockManagedStorage {
+  constructor() {
+    this._data = {};
+    this._available = true;
+    this._lastError = null;
+  }
+  setAvailable(v) { this._available = v; }
+  setLastError(err) { this._lastError = err; }
+  get(keys, cb) {
+    if (!this._available) {
+      // Simulate chrome.storage.managed being undefined
+      if (cb) setTimeout(function () { cb({}); }, 0);
+      return;
+    }
+    var result = {};
+    if (keys === null) {
+      // get(null) returns all items
+      Object.assign(result, this._data);
+    } else if (Array.isArray(keys)) {
+      for (var i = 0; i < keys.length; i++) {
+        if (this._data[keys[i]] !== undefined) result[keys[i]] = this._data[keys[i]];
+      }
+    } else if (typeof keys === 'string') {
+      if (this._data[keys] !== undefined) result[keys] = this._data[keys];
+    } else {
+      Object.assign(result, this._data);
+    }
+    // Set lastError to simulate read failure
+    if (this._lastError && globalThis.chrome && globalThis.chrome.runtime) {
+      globalThis.chrome.runtime.lastError = this._lastError;
+    }
+    if (cb) setTimeout(function () { cb(result); }, 0);
+    return Promise.resolve(result);
+  }
+  set(obj) { Object.assign(this._data, obj); }
+  clear() { this._data = {}; this._available = true; this._lastError = null; }
 }
 
 // ============================================================
