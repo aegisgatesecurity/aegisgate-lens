@@ -23,7 +23,7 @@
   // The 4 regex facets are fully implemented in v0.1.0-beta. The
   // 2 ML facets (toxicity, prompt_injection) are reserved for
   // Step 3h.
-  var VALID_FACETS = ['pii', 'secrets', 'xss', 'compliance', 'toxicity', 'prompt_injection'];
+  var VALID_FACETS = ['pii', 'secrets', 'xss', 'compliance', 'toxicity', 'prompt_injection', 'ml_threat'];
 
   // The category enum. 65 categories across the 6 facets.
   // Source: the v0.2 architecture doc Appendix B and the v0.2 schema
@@ -99,6 +99,8 @@
       'prompt_injection_ssti', 'prompt_injection_eval_atob',
       'owasp_llm10_model_theft_query', 'owasp_llm06_system_prompt_extraction_variant',
       'atlas_safety_protocol_bypass', 'atlas_data_exfiltration_query',
+      'prompt_injection_command', 'prompt_injection_leakage',
+      'owasp_llm06_sensitive_info_disclosure_system_prompt',
     ],
     toxicity: [
       'toxicity_hate', 'toxicity_insult', 'toxicity_obscene',
@@ -110,6 +112,10 @@
       'pi_indirect_injection',
       'pi_jailbreak',
       'pi_role_play_attack'
+    ],
+    ml_threat: [
+      'ml_adversarial_prompt',
+      'ml_suspicious_prompt'
     ]
   };
 

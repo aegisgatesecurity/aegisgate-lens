@@ -388,6 +388,11 @@
     // Set banner content. Use a detached element to avoid AMO
     // security warnings about innerHTML on connected elements.
     // buildBannerHTML returns HTML with all dynamic content escaped via escapeHtml().
+    // Clear existing children first — onInput calls show() twice (sync regex, then
+    // async regex+ML), and each call should replace, not accumulate, banner content.
+    while (state.el.firstChild) {
+      state.el.removeChild(state.el.firstChild);
+    }
     var wrapper = document.createElement('div');
     wrapper.innerHTML = html.buildBannerHTML(events, renderOpts);
     while (wrapper.firstChild) {
