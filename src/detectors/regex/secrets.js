@@ -98,6 +98,10 @@
       severity: 'high',
       re: /\bxox[abprs]-[A-Za-z0-9-]{10,}\b/g
     },
+    secret_slack_webhook: {
+      severity: 'high',
+      re: /https:\/\/hooks\.slack\.com\/services\/T[A-Za-z0-9]+\/B[A-Za-z0-9]+\/[A-Za-z0-9]+/g
+    },
     secret_github_finegrained: {
       severity: 'critical',
       re: /\bgithub_pat_[A-Za-z0-9_]{60,}\b/g

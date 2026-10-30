@@ -58,7 +58,7 @@
       'secret_jwt', 'secret_api_key_generic', 'secret_db_connection_string',
       'secret_slack_token', 'secret_stripe_key', 'secret_twilio_key',
       'secret_sendgrid_key', 'secret_mailgun_key', 'secret_openai_key',
-      'secret_anthropic_key', 'secret_heroku_key', 'secret_azure_devops', 'secret_gitea_token', 'secret_heroku_token_legacy', 'secret_slack_legacy',
+      'secret_anthropic_key', 'secret_heroku_key', 'secret_azure_devops', 'secret_gitea_token', 'secret_heroku_token_legacy', 'secret_slack_legacy', 'secret_slack_webhook',
       'secret_aws_account_id', 'secret_github_actions_token',
       'secret_github_finegrained', 'secret_gitlab_token', 'secret_gitlab_pat',
       'secret_linode_token', 'secret_digitalocean_token', 'secret_rackspace_token',
