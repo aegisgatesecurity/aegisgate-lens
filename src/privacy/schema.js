@@ -23,7 +23,7 @@
   // The 4 regex facets are fully implemented in v0.1.0-beta. The
   // 2 ML facets (toxicity, prompt_injection) are reserved for
   // Step 3h.
-  var VALID_FACETS = ['pii', 'secrets', 'xss', 'compliance', 'toxicity', 'prompt_injection', 'ml_threat'];
+  var VALID_FACETS = ['pii', 'secrets', 'xss', 'compliance', 'toxicity', 'prompt_injection', 'ml_threat', 'attack_patterns'];
 
   // The category enum. 65 categories across the 6 facets.
   // Source: the v0.2 architecture doc Appendix B and the v0.2 schema
@@ -116,6 +116,32 @@
     ml_threat: [
       'ml_adversarial_prompt',
       'ml_suspicious_prompt'
+    ],
+    attack_patterns: [
+      'sqli_payload_request', 'sqli_waf_bypass', 'sqli_drop_table',
+      'sqli_data_extraction', 'sqli_union_select', 'sqli_boolean_based',
+      'sqli_time_based', 'sqli_stacked_queries', 'sqli_comment_evasion',
+      'sqli_generic_request', 'sqli_union_select_tuned',
+      'xss_payload_request', 'xss_exploit_request', 'xss_dom_based',
+      'xss_innerhtml', 'xss_stored_reflected', 'xss_csp_bypass',
+      'malware_reverse_shell', 'malware_payload_download', 'malware_ransomware',
+      'malware_backdoor', 'malware_botnet_c2', 'malware_generic_request',
+      'malware_av_evasion', 'malware_keylogger', 'malware_cred_harvest',
+      'malware_privesc',
+      'evasion_log_purge', 'evasion_disable_monitor', 'evasion_hide_process',
+      'evasion_lolbin', 'evasion_process_hollowing', 'evasion_memory_scan',
+      'evasion_dll_sideloading', 'evasion_ads', 'evasion_network_evasion',
+      'evasion_rootkit_stealth', 'evasion_uac_bypass', 'evasion_sandbox',
+      'exfil_sensitive_file_read', 'exfil_ssh_key', 'exfil_env_var',
+      'exfil_cloud_creds', 'exfil_config_secrets', 'exfil_external_transfer',
+      'exfil_bulk_access', 'exfil_staging', 'exfil_out_of_scope',
+      'exfil_cred_sharing',
+      'insider_source_code_theft', 'insider_data_leak', 'insider_unauthorized_use',
+      'insider_download_unauth', 'insider_screenshot_exfil',
+      'socialeng_phishing_gen', 'socialeng_vishing_smishing', 'socialeng_bec',
+      'socialeng_pretexting', 'socialeng_whaling', 'socialeng_baiting',
+      'socialeng_tailgating', 'socialeng_impersonation', 'socialeng_landing_page',
+      'socialeng_pig_butchering', 'socialeng_physical_access'
     ]
   };
 

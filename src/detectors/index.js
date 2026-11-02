@@ -73,6 +73,12 @@
       facets.push({ id: 'ot_protocols', module: globalThis.__lensOT_protocols });
     }
 
+    if (typeof self !== 'undefined' && self.__lensAttackPatterns) {
+      facets.push({ id: 'attack_patterns', module: self.__lensAttackPatterns });
+    } else if (typeof globalThis !== 'undefined' && globalThis.__lensAttackPatterns) {
+      facets.push({ id: 'attack_patterns', module: globalThis.__lensAttackPatterns });
+    }
+
     return facets;
   }
 
@@ -347,7 +353,7 @@
   }
 
   // For testing: list the expected facets (so the test can assert)
-  var EXPECTED_FACETS = ['pii', 'secrets', 'xss', 'compliance', 'ot_protocols'];
+  var EXPECTED_FACETS = ['pii', 'secrets', 'xss', 'compliance', 'ot_protocols', 'attack_patterns'];
 
   var module = {
     detect: detect,
