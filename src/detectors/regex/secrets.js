@@ -1,6 +1,6 @@
 // AegisGate Lens — detectors/regex/secrets.js
 // Facet 2: Secrets detection. Regex-based, no Luhn.
-// Per schema.js VALID_CATEGORIES[2], 42 secret types are detected (expanded from 17).
+// Per schema.js VALID_CATEGORIES[2], 67 secret types are detected (expanded from 17).
 // Each pattern is provider-specific (where possible) to keep FP low.
 //
 // Apache 2.0. Copyright 2026 AegisGate Security, LLC.
@@ -268,6 +268,43 @@
     secret_uuid_token: {
       severity: 'high',
       re: /(?:consul|vault|nomad)\s+(?:acl\s+)?token\s*(?:is\s+(?:the\s+)?|is\s*[:=]|[:=])?\s*['"]?\b([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\b['"]?/gi
+    },
+    // --- Patterns ported from Rampart for parity (v0.5.4) ---
+    secret_bearer_token: {
+      severity: 'medium',
+      re: /\bBearer\s+[a-zA-Z0-9_\-.]+/gi
+    },
+    secret_discord_webhook: {
+      severity: 'high',
+      re: /discord\s+webhook.{0,30}https:\/\/discord(?:app)?\.com\/api\/webhooks\/\d+\/[A-Za-z0-9_-]+|https:\/\/discord(?:app)?\.com\/api\/webhooks\/\d+\/[A-Za-z0-9_-]+/gi
+    },
+    secret_jwt_prefix: {
+      severity: 'medium',
+      re: /\beyJhbGci[A-Za-z0-9_-]*/g
+    },
+    secret_k8s_token_context: {
+      severity: 'high',
+      re: /kubernetes\s+(?:service\s+account\s+)?token\s*[:=]\s*[A-Za-z0-9+\/=._-]{8,}/gi
+    },
+    secret_paypal_token: {
+      severity: 'high',
+      re: /access_token\$production\$[A-Za-z0-9]+/gi
+    },
+    secret_sendgrid_context: {
+      severity: 'medium',
+      re: /sendgrid\s+(?:api\s+)?key\s*[:=]\s*SG\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/gi
+    },
+    secret_slack_webhook_url: {
+      severity: 'high',
+      re: /https:\/\/hooks\.slack\.com\/services\/[A-Za-z0-9\/]+/gi
+    },
+    secret_square_token: {
+      severity: 'high',
+      re: /\bsq0atp-[A-Za-z0-9_-]{20,}\b|\bsq0csp-[A-Za-z0-9_-]{40,}\b/gi
+    },
+    secret_twilio_sid_context: {
+      severity: 'medium',
+      re: /twilio\s+(?:account\s+)?SID\s+(?:is|:)\s*AC[A-Za-z0-9]{10,}/gi
     },
   };
 
