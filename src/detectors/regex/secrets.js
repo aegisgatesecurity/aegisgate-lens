@@ -272,7 +272,7 @@
     // --- Patterns ported from Rampart for parity (v0.5.4) ---
     secret_bearer_token: {
       severity: 'medium',
-      re: /\bBearer\s+[a-zA-Z0-9_\-.]+/gi
+      re: /\bBearer\s+[a-zA-Z0-9_\-.]{20,}/gi
     },
     secret_discord_webhook: {
       severity: 'high',
