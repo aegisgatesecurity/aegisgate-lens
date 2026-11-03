@@ -67,7 +67,7 @@
     eu_ai_act_high_risk: {
       severity: 'high',
       // High-risk use cases per Annex III
-      re: /(?:credit\s+scoring|loan\s+(?:approval|decision)|insurance\s+(?:risk|pricing))|(?:employment|hiring|firing|promotion|recruitment)\s+(?:decision|assessment|screening)|(?:law\s+enforcement|predictive\s+policing|criminal\s+justice)|(?:biometric|facial)\s+(?:identification|recognition|verification)|(?:medical|clinical)\s+diagnosis|emotion\s+recognition\s+system/gi
+      re: /(?:credit\s+scoring|loan\s+(?:approval|decision)|insurance\s+(?:risk|pricing))|(?:employment|hiring|firing|promotion|recruitment)\s+(?:decision|assessment|screening)|(?:law\s+enforcement|predictive\s+policing|criminal\s+justice)|(?:(?:biometric|facial)\s+(?:identification|recognition|verification))|(?:biometric\s+(?:verification|categorization)\s+(?:system|in\s+(?:public|law\s+enforcement|border\s+control)))|(?:medical|clinical)\s+diagnosis|emotion\s+recognition\s+system/gi
     },
     eu_ai_act_transparency: {
       severity: 'medium',
@@ -94,7 +94,7 @@
     anp_special_category: {
       severity: 'high',
       // Article 9 special categories (sensitive data)
-      re: /(?:racial|ethnic)\s+(?:origin|discrimination)|(?:religious|political)\s+(?:beliefs?|opinions?|affiliation)|trade[- ]union\s+membership|(?:genetic|biometric)\s+data\s+for\s+(?:identification|profiling)|(?:health|medical)\s+data\s+(?:about|of)|(?:sex\s+life|sexual\s+orientation)/gi
+      re: /(?:(?:collect|process|store|share|disclose|transfer|handle|analyze)\s+(?:racial|ethnic)\s+(?:origin|data|discrimination))|(?:racial|ethnic)\s+(?:origin|data|discrimination)\s+(?:of|about|from|belonging\s+to)|(?:(?:collect|process|store|share|disclose)\s+(?:political|religious)\s+(?:beliefs?|opinions?|affiliation))|(?:political|religious)\s+(?:beliefs?|opinions?|affiliation)\s+(?:of|about|from)|trade[- ]union\s+membership|(?:genetic|biometric)\s+data\s+(?:of|about|from|belonging\s+to|for\s+(?:identification|profiling))|(?:health|medical)\s+data\s+(?:about|of)|(?:sex\s+life|sexual\s+orientation)\s+(?:of|about|from)/gi
     },
 
     // --- CU (Consumer protection) ---
@@ -143,7 +143,7 @@
       // ("LGPD", "Lei Geral de Protecao de Dados", "dados pessoais",
       // "controlador", "operador", "ANPD").
       severity: 'medium',
-      re: /\b(?:LGPD|Lei\s+Geral\s+de\s+Protec[ãa]o\s+de\s+Dados|Art\.\s*\d+(?:[\s,ºo]+(?:I|II|III|IV|V|VI|VII|VIII|IX|X))*|dados\s+pessoais|controlador|operador|ANPD)\b/gi
+      re: /\b(?:LGPD|Lei\s+Geral\s+de\s+Protec[ça]ção\s+de\s+Dados|Art\.\s*\d+(?:[\s,º°]+(?:I|II|III|IV|V|VI|VII|VIII|IX|X))*|dados\s+pessoais|controlador|operador|ANPD)\b/gi
     },
     pipeda_reference: {
       // Canadian Personal Information Protection and Electronic
@@ -260,7 +260,7 @@
     // --- Safety protocol bypass ---
     atlas_safety_protocol_bypass: {
       severity: 'critical',
-      re: /(?:disable|deactivate|turn\s+off|remove|bypass|override|circumvent)\s+(?:all\s+)?(?:safety\s+(?:protocols?|measures?|guidelines?|filters?|restrictions?)|content\s+(?:filters?|moderation|policy|guidelines))/gi
+      re: /(?:disable|deactivate|turn\s+off|remove|bypass|override|circumvent|disregard|ignore)\s+(?:all\s+|your\s+)?(?:safety\s+(?:protocols?|measures?|guidelines?|filters?|restrictions?|instructions?)|content\s+(?:filters?|moderation|policy|guidelines))/gi
     },
     // --- Direct data exfiltration queries ---
     atlas_data_exfiltration_query: {
@@ -290,7 +290,7 @@
     },
     prompt_injection_base64: {
       severity: 'medium',
-      re: /[A-Za-z0-9+/]{50,}={0,2}/g
+      re: /[A-Za-z0-9+/]{80,}={0,2}/g
     },
     prompt_injection_code_execution: {
       severity: 'high',
