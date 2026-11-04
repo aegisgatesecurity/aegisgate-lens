@@ -312,9 +312,13 @@
       severity: 'critical',
       re: /^(?:simulate|you\s+are\s+free|now\s+you\s+can|breaking|override|developer\s+mode)\s*[:;]/gi
     },
+    prompt_injection_developer_instruct: {
+      severity: 'critical',
+      re: /as\s+(?:an\s+|the\s+)?(?:developer|admin|administrator|creator|owner).{0,40}(?:instruct\w*|telling|ordering|directing|authoriz\w*|commanding)\s+(?:you\s+)?to\s+(?:bypass|ignore|override|disable|circumvent)\s+(?:(?:all|your|the)\s+)*(?:guidelines?|rules?|safety|restrictions?|guardrails?)/gi
+    },
     prompt_injection_role_play: {
       severity: 'high',
-      re: /(?:act\s+as\s+(?:a|an)|pretend\s+you\s+are\s+(?:a|an)|roleplay\s+(?:as|that)|simulate\s+(?:a|an)|you\s+are\s+now\s+(?:a|an)|new\s+(?:system|instruct))/gi
+      re: /(?:act\s+as\s+(?:a|an)|pretend\s+you\s+are\s+(?:a|an)|role\s*play\s+(?:as|that)|simulate\s+(?:a|an)|you\s+are\s+now\s+(?:a|an)|new\s+(?:system|instruct))/gi
     },
     prompt_injection_unicode: {
       severity: 'medium',

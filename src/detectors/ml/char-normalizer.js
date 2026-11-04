@@ -255,6 +255,43 @@
     return variants;
   }
 
+  // NormalizeDespaced — collapses character-level spacing evasion.
+  // "I g n o r e   a l l" → "Ignore all"
+  // Detects single-space-separated characters within words (char spacing evasion)
+  // and reconstructs words by removing intra-word single spaces.
+  // Double+ spaces are treated as word boundaries and preserved.
+  function normalizeDespaced(input) {
+    if (typeof input !== 'string' || input.length < 5) return input;
+    // Count single-char-space-single-char patterns
+    var singleCharSpaced = 0;
+    var totalChars = 0;
+    for (var i = 0; i < input.length - 2; i++) {
+      if (input[i] !== ' ' && input[i + 1] === ' ' && input[i + 2] !== ' ') {
+        // Check if both neighbors are non-space letters
+        if (/[a-zA-Z]/.test(input[i]) && /[a-zA-Z]/.test(input[i + 2])) {
+          singleCharSpaced++;
+        }
+      }
+      if (input[i] !== ' ') totalChars++;
+    }
+    if (totalChars === 0) return input;
+    // Only apply if >40% of chars are single-char-spaced
+    if (singleCharSpaced / totalChars < 0.4) return input;
+
+    // Split on 2+ spaces (word boundaries), then remove single spaces within each chunk
+    var chunks = input.split(/\s{2,}/);
+    if (chunks.length <= 1) {
+      // No double-space boundaries — remove all single spaces
+      return input.replace(/ /g, '');
+    }
+    var result = [];
+    for (var c = 0; c < chunks.length; c++) {
+      // Remove single spaces within each chunk (char-level spacing)
+      result.push(chunks[c].replace(/ /g, ''));
+    }
+    return result.join(' ');
+  }
+
   function normalizeAllVariants(text) {
     if (typeof text !== 'string') return [text];
     var variants = [text];
@@ -332,6 +369,12 @@
     var combined2 = stripIntraCharPunctuation(decodeHtmlEntities(decodeUnicodeEscapes(text)));
     if (combined2 !== text && combined2 !== '' && variants.indexOf(combined2) === -1) {
       variants.push(combined2);
+    }
+
+    // Despaced (char-level spacing evasion: "I g n o r e   a l l" → "Ignore all")
+    var despaced = normalizeDespaced(text);
+    if (despaced !== text && despaced !== '' && variants.indexOf(despaced) === -1) {
+      variants.push(despaced);
     }
 
     return variants;
