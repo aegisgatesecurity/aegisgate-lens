@@ -35,7 +35,7 @@
   var UNK_ID = 1;
   var THRESHOLD = 0.5;
   var INFERENCE_TIMEOUT_MS = 500;
-  var MODEL_VERSION = 'char-cnn-bilstm-v15b-js';
+  var MODEL_VERSION = 'char-cnn-bilstm-v16b-js';
 
   // Temporal query FP mitigation: regex for common time/date queries
   // that are known to produce false positives in the neural model.
@@ -82,7 +82,7 @@
   // C-1 fix: SHA-256 hash of the expected model weights file.
   // Computed at build time; verifies the weights haven't been tampered with.
   // To regenerate: sha256sum models/threat_cnn_bilstm_weights.bin.json
-  var EXPECTED_MODEL_HASH = '03792717405a1875d068a6304b69d3aeb019643778af30677b0f7257dbfbabab';
+  var EXPECTED_MODEL_HASH = '10e9f8fc3cefc7b3663f60677a78b3448fc044896a302e69dec11c4b137e24f8';
 
   // Async load: fetch weight package, decompress, reconstruct tensors
   async function loadModel() {
