@@ -260,7 +260,7 @@
     // --- Safety protocol bypass ---
     atlas_safety_protocol_bypass: {
       severity: 'critical',
-      re: /(?:disable|deactivate|turn\s+off|remove|bypass|override|circumvent|disregard|ignore)\s+(?:all\s+|your\s+)?(?:safety\s+(?:protocols?|measures?|guidelines?|filters?|restrictions?|instructions?)|content\s+(?:filters?|moderation|policy|guidelines))/gi
+      re: /(?:disable|deactivate|turn\s+off|remove|bypass|override|circumvent|disregard|ignore)\s+(?:all\s+|your\s+|the\s+)?(?:safety\s+(?:protocols?|measures?|guidelines?|filters?|restrictions?|instructions?|guardrails?)|content\s+(?:filters?|moderation|policy|guidelines))/gi
     },
     // --- Direct data exfiltration queries ---
     atlas_data_exfiltration_query: {
@@ -356,6 +356,91 @@
     litellm_rat_deploy: {
       severity: 'critical',
       re: /litellm.{0,80}(?:reverse.?shell|backdoor|trojan|c2.?server|payload.?download|implant|rat\.\w)/gi
+    },
+    // --- Additional ATLAS coverage (ported from Go prompt_injection_request.go) ---
+    pi_output_without_restrictions: {
+      severity: 'critical',
+      re: /(?:output|respond|answer|generate).{0,20}(?:without|with\s+no)\s+(?:restrictions?|restrictions?\s+or\s+limitations?|safety|filters?|guardrails?)/gi
+    },
+    pi_token_smuggling: {
+      severity: 'high',
+      re: /(?:token\s+smuggl|smuggl\w*\s+(?:this|the)\s+instruct|fragment\s+(?:this|the)\s+instruct|b\s*y\s*p\s*a\s*s\s*s)/gi
+    },
+    pi_base64_instruction: {
+      severity: 'critical',
+      re: /(?:decode|execute|follow|run)\s+(?:this\s+)?(?:base64|b64)\s+(?:payload|encoded|instruction|message)/gi
+    },
+    pi_hypothetical_harm: {
+      severity: 'high',
+      re: /(?:what\s+if.{0,15}hypothetically|hypothetically\s+speaking.{0,30}(?:create|produce|make|generate)\s+(?:harmful|dangerous|illegal|toxic|weapon|malware|poison|explosive))/gi
+    },
+    pi_modify_safety: {
+      severity: 'critical',
+      re: /(?:modify|alter|change|update|edit)\s+(?:your\s+)?(?:own\s+)?(?:safety\s+)?(?:rules?|programming|code|guardrails?|restrictions?).{0,30}(?:remove|disable|bypass|eliminate)/gi
+    },
+    pi_rollback_model: {
+      severity: 'high',
+      re: /(?:rollback|revert|downgrade)\s+to\s+(?:an?\s+)?(?:older|previous|earlier)\s+(?:model\s+)?version.{0,30}(?:fewer|less|no|without)\s+safety/gi
+    },
+    pi_distill_model: {
+      severity: 'high',
+      re: /(?:distill|extract|copy|clone)\s+(?:your\s+)?(?:behavior\s+)?model.{0,30}(?:train|clone|reproduce)/gi
+    },
+    pi_training_data_extract: {
+      severity: 'critical',
+      re: /(?:what\s+personal\s+information|training\s+data.{0,20}(?:contain|include|personal)|membership\s+inference\s+attack|reconstruct\s+training\s+data|complete.{0,20}(?:secret\s+password|private\s+key|api\s+key))/gi
+    },
+    pi_supply_chain_inject: {
+      severity: 'critical',
+      re: /(?:inject|poison|contaminate|corrupt)\s+(?:data\s+poisoning|training\s+pipeline|model\s+(?:weights|parameters)|supply\s+chain)/gi
+    },
+    pi_vector_db_poison: {
+      severity: 'high',
+      re: /(?:poison|corrupt|manipulate)\s+(?:the\s+)?(?:vector\s+(?:database|store|db)|knowledge\s+base|RAG\s+context|embeddings?).{0,30}(?:inject|fake|false|corrupt|fabricat)/gi
+    },
+    pi_output_manipulation: {
+      severity: 'high',
+      re: /(?:manipulate\s+(?:the\s+)?output\s+format|inject\s+(?:special|hidden)\s+(?:format|data)|output\s*:\s*manipulate)/gi
+    },
+    pi_plugin_exploit: {
+      severity: 'critical',
+      re: /(?:execute\s+plugin\s+command|install\s+(?:a\s+)?malicious\s+plugin|modify\s+(?:journal|audit)\s+logs?|escalate\s+privileges?\s+to\s+(?:gain\s+)?admin)/gi
+    },
+    pi_credential_forge: {
+      severity: 'critical',
+      re: /(?:forge\s+credentials?\s+to\s+(?:create|generate)|fake\s+authentication\s+token|hijack\s+(?:the\s+)?authentication\s+session|generate\s+(?:a\s+)?valid\s+session\s+token)/gi
+    },
+    pi_mfa_bypass: {
+      severity: 'high',
+      re: /(?:bypass\s+MFA|disable\s+two.?factor\s+auth|MFA\s+code.{0,20}(?:for|bypass)|2FA\s+verification\s+code.{0,20}(?:for|bypass))/gi
+    },
+    pi_privilege_escalation: {
+      severity: 'high',
+      re: /(?:bypass\s+UAC|elevate\s+to\s+(?:administrator|root)|escalate\s+privileges?\s+to\s+(?:root|admin)|gain\s+(?:supreme|unrestricted|root)\s+access)/gi
+    },
+    pi_recovery_inhibit: {
+      severity: 'high',
+      re: /(?:disable\s+recovery\s+mode|delete\s+(?:the\s+)?recovery\s+partition|wipe\s+(?:all\s+)?system\s+restore\s+points?|turn\s+off\s+(?:all\s+)?backup\s+systems?)/gi
+    },
+    pi_dos_attack: {
+      severity: 'high',
+      re: /(?:launch\s+(?:a\s+)?DDoS|denial\s+of\s+service\s+attack|disrupt\s+service.{0,20}crash|exhaust\s+(?:all\s+)?(?:available\s+)?(?:memory|connections?|resources?))\b/gi
+    },
+    pi_config_repo_access: {
+      severity: 'critical',
+      re: /(?:access\s+(?:the\s+)?config\s+repository|show\s+me\s+the\s+\.env\s+file|exfiltrate\s+environment\s+variables?|process\.env|os\.environ)/gi
+    },
+    pi_resource_exhaustion: {
+      severity: 'medium',
+      re: /(?:generate\s+(?:maximum|unlimited)\s+tokens|very\s+long\s+response\s+request|unlimited\s+(?:tokens?|response|output))/gi
+    },
+    pi_hex_instructions: {
+      severity: 'high',
+      re: /(?:print|output|show|display)\s+(?:your\s+)?instructions?.{0,20}(?:in\s+)?hex\s+encod/gi
+    },
+    pi_copyright_repro: {
+      severity: 'medium',
+      re: /(?:reproduce\s+(?:the\s+)?(?:copyrighted|licensed|proprietary)(?:\s+(?:copyrighted|licensed|proprietary))*\s+content|reproduce\s+(?:from\s+)?your\s+training)/gi
     },
   };
 
