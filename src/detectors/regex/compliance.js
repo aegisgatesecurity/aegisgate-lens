@@ -36,7 +36,7 @@
     owasp_llm09_overreliance: {
       severity: 'medium',
       // Overreliance: asking AI to validate critical decisions
-      re: /(?:is\s+this\s+(?:safe|legal|compliant|ethical|appropriate))|(?:should\s+I\s+(?:trust|rely\s+on|sign|send|submit))|(?:validate|verify|check)\s+(?:this\s+)?(?:for\s+me|before\s+I)/gi
+      re: /(?:is\s+this\s+(?:safe|legal|compliant|ethical|appropriate))|(?:should\s+I\s+(?:trust|rely\s+on|sign|send|submit))|(?:validate|verify|check)\s+(?:this\s+)?(?:for\s+me|before\s+I)|(?:trust|rely\s+on)\s+(?:this\s+|the\s+)?(?:AI|model|LLM|system)\s+(?:output|response|answer|result|recommendation).{0,25}(?:ground\s+truth|fact|correct|accurate|reliable|infallible)|(?:do\s+not|don['']?t|never)\s+(?:verify|validate|check|confirm)\s+(?:with|by|through)\s+(?:human|expert|manual|independent)/gi
     },
     owasp_llm10_model_theft: {
       severity: 'high',
@@ -48,9 +48,8 @@
     atlas_poison: {
       severity: 'high',
       // Training data poisoning: fine-tune, retrain, or ingest
-      // untrusted data. We allow optional intervening words (model,
-      // network, system) between the action and the data source.
-      re: /(?:train|retrain|fine-?tune|ingest|poison(?:ing)?)\s+(?:the\s+)?(?:model|network|system|LLM)?\s*(?:on|with)\s+(?:this\s+|untrusted\s+|malicious\s+|adversarial\s+)?(?:data|dataset|corpus|examples?)/gi
+      // untrusted data. Allow multiple qualifiers (e.g., "this poisoned").
+      re: /(?:train|retrain|fine-?tune|ingest|poison(?:ing)?)\s+(?:the\s+)?(?:model|network|system|LLM)?\s*(?:on|with)\s+(?:(?:this|untrusted|malicious|adversarial|poisoned|tainted|contaminated)\s+)*?(?:data|dataset|corpus|examples?)/gi
     },
     atlas_exfiltration: {
       severity: 'high',
@@ -81,8 +80,9 @@
     },
     eu_ai_act_robustness: {
       severity: 'low',
-      // Robustness/accuracy (Article 15)
-      re: /(?:adversarial|adversarially[- ]crafted)\s+(?:input|example|perturbation|attack)/gi
+      // Robustness/accuracy (Article 15). Only flag when adversarial
+      // testing is being SKIPPED, not when it's being discussed.
+      re: /(?:adversarial|adversarially[- ]crafted)\s+(?:input|example|perturbation|attack)|(?:no|without|skip(?:ping)?|lack\s+of)\s+(?:adversarial\s+)?(?:testing|evaluation|red[\s-]?team(?:ing)?)/gi
     },
 
     // --- ANP (GDPR data protection) ---
@@ -99,8 +99,10 @@
 
     // --- CU (Consumer protection) ---
     cu_consumer_rights: {
+      // Match only when a violation verb is present — "ignore/deny/refuse
+      // the consumer right to..." Benign "honor the right to" won't match.
       severity: 'medium',
-      re: /(?:consumer|user)\s+rights?\s+(?:to|of)\s+(?:explanation|erasure|rectification|deletion|portability)|right\s+to\s+(?:explanation|be\s+forgotten|erasure)/gi
+      re: /(?:ignore|deny|refuse|violate|override|bypass|disregard|infringe)\s+(?:the\s+)?(?:consumer|user|data\s+subject)\s+rights?\s+(?:to|of)\s+(?:explanation|erasure|rectification|deletion|portability|delete|access|opt[\s-]?out)|(?:ignore|deny|refuse|violate|override|bypass|disregard)\s+(?:the\s+)?right\s+to\s+(?:explanation|be\s+forgotten|erasure|delete|opt[\s-]?out|access)/gi
     },
     cu_minor_protection: {
       severity: 'high',
@@ -125,39 +127,45 @@
       // ISO/IEC 27001 control references. The format is Annex A
       // control IDs (A.5.1, A.6.1, A.8.2, etc.) or clause
       // references (6.1.2, 8.2.1, 10.1.1). The A.x.y format is
-      // the most common.
+      // the most common. Also catches "skip Annex A" violations.
       severity: 'medium',
-      re: /\b(?:A\.\d{1,2}\.\d{1,2}(?:\.\d+)?|clause\s+\d{1,2}\.\d{1,2}(?:\.\d+)?)\b/g
+      re: /\b(?:A\.\d{1,2}\.\d{1,2}(?:\.\d+)?|clause\s+\d{1,2}\.\d{1,2}(?:\.\d+)?)\b/gi
+    },
+    iso_27001_violation: {
+      // Catching "skip/bypass Annex A" style violations
+      severity: 'medium',
+      re: /(?:skip|bypass|ignore|disregard|omit|neglect)\s+(?:the\s+)?(?:ISO\s+27001\s+)?Annex\s+A\b/gi
     },
     ccpa_reference: {
-      // California Consumer Privacy Act (CCPA). Section numbers
-      // (1798.100, 1798.105, etc.) or keywords like "CCPA",
-      // "California Consumer Privacy", "right to know", "right to
-      // delete", "right to opt out", "sale of personal information".
+      // California Consumer Privacy Act (CCPA). Match only section
+      // numbers and full act name — NOT standalone "CCPA" or consumer
+      // rights phrases, which appear in benign compliance questions.
+      // Actual violations (selling data, ignoring rights) are caught
+      // by privacy_sell_data and cu_consumer_rights patterns.
       severity: 'medium',
-      re: /\b(?:CCPA|California\s+Consumer\s+Privacy\s+Act|Civil\s+Code\s+§\s*1798(?:\.\d+)?|right\s+to\s+(?:know|delete|opt[\s-]?out|correct)|sale\s+of\s+personal\s+information|Shine\s+the\s+Light|Do\s+Not\s+Sell)\b/gi
+      re: /\b(?:California\s+Consumer\s+Privacy\s+Act|Civil\s+Code\s+§\s*1798(?:\.\d+)?|Shine\s+the\s+Light)\b/gi
     },
     lgpd_reference: {
-      // Brazilian Lei Geral de Protecao de Dados (LGPD). Article
-      // references (Art. 7, Art. 18, Art. 46) or keywords
-      // ("LGPD", "Lei Geral de Protecao de Dados", "dados pessoais",
-      // "controlador", "operador", "ANPD").
+      // Brazilian LGPD. Match Portuguese terms and ANPD references —
+      // NOT standalone "LGPD" or "Art. X" which appear in benign
+      // compliance questions. Actual violations caught by
+      // privacy_no_consent and privacy_pii_marketing patterns.
       severity: 'medium',
-      re: /\b(?:LGPD|Lei\s+Geral\s+de\s+Protec[ça]ção\s+de\s+Dados|Art\.\s*\d+(?:[\s,º°]+(?:I|II|III|IV|V|VI|VII|VIII|IX|X))*|dados\s+pessoais|controlador|operador|ANPD)\b/gi
+      re: /\b(?:Lei\s+Geral\s+de\s+Protec[ça]ção\s+de\s+Dados|dados\s+pessoais|controlador|operador|ANPD)\b/gi
     },
     pipeda_reference: {
-      // Canadian Personal Information Protection and Electronic
-      // Documents Act (PIPEDA). Schedule 1 references or keywords
-      // ("PIPEDA", "personal information", "consent", "Principle").
+      // Canadian PIPEDA. Match formal references — NOT standalone
+      // "PIPEDA" or "express consent" which appear in benign
+      // compliance questions. Violations caught by privacy_no_consent.
       severity: 'medium',
-      re: /\b(?:PIPEDA|Personal\s+Information\s+Protection\s+and\s+Electronic\s+Documents\s+Act|Schedule\s+1|Principle\s+\d+(?:\.\d+)?|express\s+consent)\b/gi
+      re: /\b(?:Personal\s+Information\s+Protection\s+and\s+Electronic\s+Documents\s+Act|Schedule\s+1|Principle\s+\d+(?:\.\d+)?)\b/gi
     },
     popia_reference: {
-      // South African Protection of Personal Information Act (POPIA).
-      // Section references (s. 11, s. 14) or keywords ("POPIA",
-      // "Information Regulator", "processing of personal information").
+      // South African POPIA. Match formal references — NOT standalone
+      // "POPIA" which appears in benign compliance questions.
+      // Violations caught by privacy_no_consent.
       severity: 'medium',
-      re: /\b(?:POPIA|Protection\s+of\s+Personal\s+Information\s+Act|s\.\s*\d+(?:\s*\(\d+\))?|Information\s+Regulator|processing\s+of\s+personal\s+information|special\s+personal\s+information)\b/gi
+      re: /\b(?:Protection\s+of\s+Personal\s+Information\s+Act|Information\s+Regulator|processing\s+of\s+personal\s+information|special\s+personal\s+information)\b/gi
     },
 
     // --- Behavioral compliance violations (plain English) ---
@@ -412,11 +420,11 @@
     },
     pi_distill_model: {
       severity: 'high',
-      re: /(?:distill|extract|copy|clone)\s+(?:your\s+)?(?:behavior\s+)?model.{0,30}(?:train|clone|reproduce)/gi
+      re: /(?:distill|extract|copy|clone)\s+(?:\w+\s+){0,3}?(?:your\s+)?(?:behavior\s+)?model.{0,40}(?:train|clone|reproduce|ship|sell|distribut|deploy|transfer)/gi
     },
     pi_training_data_extract: {
       severity: 'critical',
-      re: /(?:what\s+personal\s+information|training\s+data.{0,20}(?:contain|include|personal)|membership\s+inference\s+attack|reconstruct\s+training\s+data|complete.{0,20}(?:secret\s+password|private\s+key|api\s+key))/gi
+      re: /(?:what\s+personal\s+information|training\s+data.{0,20}(?:contain|include|including|personal|PII|sensitive)|membership\s+inference\s+attack|reconstruct\s+training\s+data|complete.{0,20}(?:secret\s+password|private\s+key|api\s+key)|output.{0,20}(?:memorized|training\s+data).{0,20}(?:PII|personal|sensitive))/gi
     },
     pi_supply_chain_inject: {
       severity: 'critical',

@@ -73,10 +73,9 @@
         pii_driver_license: {
           severity: 'high',
           // US DL formats vary by state. We match a label + alphanumeric.
-          // The label makes the FP rate low; the value can be any 5-15
-          // uppercase alnum. The label/value separator may be :, #, No.,
-          // or whitespace.
-          re: /\b(?:DL|D\.L\.|Driver(?:'s)?\s+License|License)\s*[:\#]?\s*(?:No\.?|Number)?\s*[:\#]?\s*[A-Z0-9]{5,15}\b/gi
+          // Require "Driver" or "DL" prefix — standalone "License" is
+          // too broad (matches "license attribution", "software license", etc.)
+          re: /\b(?:DL|D\.L\.|Driver(?:'s)?\s+Licen[cs]e)\s*[:\#]?\s*(?:No\.?|Number)?\s*[:\#]?\s*[A-Z0-9]{5,15}\b/gi
         },
         pii_passport: {
           severity: 'critical',
