@@ -18,7 +18,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // ================================================================
 // Load SXC corpus
 // ================================================================
-const CORPUS_PATH = join(LENS_ROOT, 'test/benchmarks/corpus/sxc/v0.1.1-sxc-corpus.jsonl');
+const CORPUS_PATH = join(LENS_ROOT, 'test/benchmarks/corpus/sxc/v0.5.3-sxc-corpus.jsonl');
 const corpus = readFileSync(CORPUS_PATH, 'utf-8')
   .trim()
   .split('\n')
@@ -332,7 +332,7 @@ async function run() {
     by_facet: byFacet,
     per_record: results,
   };
-  const reportPath = join(reportDir, 'v0.5.3-sxc-benchmark-results.json');
+  const reportPath = join(reportDir, 'v0.5.3b-sxc-benchmark-results.json');
   writeFileSync(reportPath, JSON.stringify(report, null, 2));
   console.log(`\n  Report saved to ${reportPath}`);
 }
