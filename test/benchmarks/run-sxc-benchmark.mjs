@@ -176,19 +176,16 @@ async function run() {
     const detectedCats = regexDetectCategories(text);
     const regexHit = detectedCats.length > 0;
 
-    // ML detection across all normalization variants
+    // ML detection — real extension calls classify(text) on RAW text only
+    // (not on normalization variants). Regex runs on all variants, but
+    // ML does not. See src/detectors/index.js detectAsync().
     let mlHit = false;
     let mlScore = 0;
-    const mlVariants = normalizeAllVariants ? normalizeAllVariants(text) : [text];
-    for (const v of mlVariants) {
-      const result = await det.classify(v);
-      if (result.isAdversarial) {
-        mlHit = true;
-        mlScore = result.score || 0;
-        break;
-      }
-      mlScore = Math.max(mlScore, result.score || 0);
+    const result = await det.classify(text);
+    if (result.isAdversarial) {
+      mlHit = true;
     }
+    mlScore = result.score || 0;
 
     const fired = regexHit || mlHit;
     const isPositive = expected === 1;
@@ -332,7 +329,7 @@ async function run() {
     by_facet: byFacet,
     per_record: results,
   };
-  const reportPath = join(reportDir, 'v0.5.3b-sxc-benchmark-results.json');
+  const reportPath = join(reportDir, 'v0.5.3e-sxc-benchmark-results.json');
   writeFileSync(reportPath, JSON.stringify(report, null, 2));
   console.log(`\n  Report saved to ${reportPath}`);
 }
