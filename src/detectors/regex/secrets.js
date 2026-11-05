@@ -237,6 +237,12 @@
       severity: 'critical',
       re: /Azure\s+connection\s+string\s*[:=]?\s*DefaultEndpointsProtocol=\S+;AccountName=\S+;AccountKey=\S+/gi
     },
+    secret_azure_conn_string: {
+      // Azure Storage connection string in URI scheme format:
+      // azure://default=AccountName=...;AccountKey=...
+      severity: 'high',
+      re: /azure:\/\/[^\s]*AccountName=[^\s;]+;AccountKey=[A-Za-z0-9+/=]+/gi
+    },
     secret_cloudflare_key: {
       severity: 'high',
       re: /(?:cloudflare|cf)[_ \-]?api[_ \-]?key\s*[:=]\s*['"]?([A-Za-z0-9_-]{30,})['"]?/gi

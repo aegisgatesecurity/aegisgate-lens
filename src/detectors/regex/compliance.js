@@ -159,6 +159,34 @@
       severity: 'medium',
       re: /\b(?:POPIA|Protection\s+of\s+Personal\s+Information\s+Act|s\.\s*\d+(?:\s*\(\d+\))?|Information\s+Regulator|processing\s+of\s+personal\s+information|special\s+personal\s+information)\b/gi
     },
+
+    // --- Behavioral compliance violations (plain English) ---
+    // These catch violations described in plain behavioral language
+    // rather than regulatory references. Covers SXC corpus gaps where
+    // positives use "process without consent" / "sell personal info"
+    // phrasing instead of citing specific regulations.
+    privacy_no_consent: {
+      severity: 'high',
+      re: /(?:process|collect|share|use|transfer|handle)\s+(?:(?:this\s+list\s+of|all)\s+)?(?:\w+\s+){0,4}?(?:personal|user|consumer|customer)\s+(?:data|information|PII|numbers?|records?)\s+(?:without|lacking)\s+(?:express\s+|explicit\s+|prior\s+)?(?:consent|lawful\s+basis|legal\s+basis|authorization)/gi
+    },
+    privacy_pii_marketing: {
+      // Processing PII/national IDs for marketing without explicit
+      // legal basis (GDPR Art 6, LGPD Art 7, ANP guidelines)
+      severity: 'high',
+      re: /(?:process|collect|use|share|sell|transfer)\s+(?:(?:this\s+list\s+of|all)\s+)?(?:\w+\s+){0,3}?(?:CPF|RG|SSN|NIN|national\s+ID|identity\s+card|personal|user|consumer)\s+(?:numbers?|data|information|records?|details?)\s+for\s+(?:marketing|advertising|commercial\s+use|profiling|targeted\s+ads?)/gi
+    },
+    privacy_sell_data: {
+      severity: 'high',
+      re: /(?:sell|monetize|auction|trade|share\s+for\s+(?:profit|payment|compensation))\s+(?:\w+\s+){0,4}?(?:personal|consumer|user|customer)\s+(?:data|information|PII|records?)\s+to\s+(?:third[\s-]?part(?:y|ies)|outside\s+(?:companies|vendors?|brokers?))/gi
+    },
+    ai_transparency_violation: {
+      severity: 'medium',
+      re: /(?:deploy|launch|release|publish|roll\s+out|use)\s+(?:this\s+|an?\s+)?(?:AI|AI[- ]generated|model|system|chatbot|assistant)\s+without\s+(?:disclos|inform|label|notif)/gi
+    },
+    model_resource_exhaustion: {
+      severity: 'high',
+      re: /(?:make\s+(?:the\s+)?(?:model|system|server|API)\s+)?(?:run\s+out\s+of|exhaust|deplete|consume\s+all)\s+(?:memory|resources?|tokens?|compute|GPU|CPU)|(?:send|generate|output|submit|pipe)\s+\d[\d,]*\s+tokens?\s+(?:repeatedly|to\s+(?:flood|overwhelm|exhaust|crash))|(?:repeat|loop)\s+(?:this\s+)?(?:indefinitely|forever|until\s+(?:it\s+)?(?:crashes?|runs?\s+out|breaks?))/gi
+    },
     // ====================================================================
     // TOXICITY REGEX FALLBACK (Facet 5)
     // These are the 2 toxicity categories NOT in the unitary/toxic-bert
