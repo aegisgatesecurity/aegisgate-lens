@@ -292,6 +292,47 @@
     return result.join(' ');
   }
 
+  // l33tMap maps common l33t-speak substitutions back to their letter
+  // equivalents. Ported from Platform scanner/normalize.go l33tMap.
+  // Used by deL33t() for context-aware l33t reversal in word context only.
+  var l33tMap = {
+    '@': 'a', '4': 'a', '3': 'e', '1': 'i', '!': 'i', '0': 'o',
+    '5': 's', '$': 's', '7': 't', '+': 't', '8': 'b', '9': 'g', '6': 'g',
+  };
+
+  // l33tMapAlt uses alternate mappings where ambiguous (1→l instead of 1→i).
+  // Some l33t chars have multiple valid interpretations.
+  var l33tMapAlt = {
+    '@': 'a', '4': 'a', '3': 'e', '1': 'l', '|': 'l', '0': 'o',
+    '5': 's', '$': 's', '7': 't', '+': 't', '8': 'b', '9': 'g', '6': 'g',
+  };
+
+  // deL33t reverses l33t-speak substitutions in word context only.
+  // A l33t char is only replaced if it has a letter on at least one side,
+  // preventing corruption of standalone numbers (e.g., phone numbers, IDs).
+  // Ported from Platform's deobfuscateL33t (context-aware version).
+  function deL33t(text, map) {
+    if (typeof text !== 'string' || text.length < 2) return text;
+    var m = map || l33tMap;
+    var result = '';
+    for (var i = 0; i < text.length; i++) {
+      var c = text[i];
+      if (m[c]) {
+        // Only replace if adjacent to a letter (word context)
+        var hasLetterBefore = i > 0 && /[a-zA-Z]/.test(text[i - 1]);
+        var hasLetterAfter = i < text.length - 1 && /[a-zA-Z]/.test(text[i + 1]);
+        if (hasLetterBefore || hasLetterAfter) {
+          result += m[c];
+        } else {
+          result += c;
+        }
+      } else {
+        result += c;
+      }
+    }
+    return result;
+  }
+
   function normalizeAllVariants(text) {
     if (typeof text !== 'string') return [text];
     var variants = [text];
@@ -375,6 +416,19 @@
     var despaced = normalizeDespaced(text);
     if (despaced !== text && despaced !== '' && variants.indexOf(despaced) === -1) {
       variants.push(despaced);
+    }
+
+    // L33t speak deobfuscation (context-aware — only replaces in word context)
+    // Catches "@ct @s @n @dm!n" → "act as an admin" etc.
+    var deL33ted = deL33t(text);
+    if (deL33ted !== text && deL33ted !== '' && variants.indexOf(deL33ted) === -1) {
+      variants.push(deL33ted);
+    }
+    // L33t alternate mapping (1→l instead of 1→i)
+    var deL33tedAlt = deL33t(text, l33tMapAlt);
+    if (deL33tedAlt !== text && deL33tedAlt !== '' && deL33tedAlt !== deL33ted &&
+        variants.indexOf(deL33tedAlt) === -1) {
+      variants.push(deL33tedAlt);
     }
 
     return variants;
