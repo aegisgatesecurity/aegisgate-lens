@@ -40,6 +40,7 @@ const COMPLIANCE_FILE = join(LENS_ROOT, 'src/detectors/regex/compliance.js');
 const PII_FILE = join(LENS_ROOT, 'src/detectors/regex/pii.js');
 const SECRETS_FILE = join(LENS_ROOT, 'src/detectors/regex/secrets.js');
 const XSS_FILE = join(LENS_ROOT, 'src/detectors/regex/source_xss.js');
+const ATTACK_FILE = join(LENS_ROOT, 'src/detectors/regex/attack_patterns.js');
 
 // Load normalizer for NormalizeAllVariants (parity with Rampart/Platform)
 let normalizeAllVariants = null;
@@ -64,7 +65,8 @@ try {
   const pii = loadModule('src/detectors/regex/pii.js', '__lensPII');
   const secrets = loadModule('src/detectors/regex/secrets.js', '__lensSecrets');
   const xss = loadModule('src/detectors/regex/source_xss.js', '__lensXSS');
-  regexFacets = [compliance, pii, secrets, xss].filter(f => f && typeof f.detect === 'function');
+  const attack = loadModule('src/detectors/regex/attack_patterns.js', '__lensAttackPatterns');
+  regexFacets = [compliance, pii, secrets, xss, attack].filter(f => f && typeof f.detect === 'function');
 } catch (e) {
   // Regex facets not available — ML-only fallback
   console.error('Regex facet load error:', e.message);
