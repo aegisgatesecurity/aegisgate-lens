@@ -478,6 +478,31 @@
       severity: 'medium',
       re: /(?:reproduce\s+(?:the\s+)?(?:copyrighted|licensed|proprietary)(?:\s+(?:copyrighted|licensed|proprietary))*\s+content|reproduce\s+(?:from\s+)?your\s+training)/gi
     },
+    // --- New ATLAS L2 patterns (ported from Platform atlas.go v22b-l2v7) ---
+    atlas_t1552_005_secret_disclosure: {
+      severity: 'critical',
+      re: /(?:what\s+is|what\s+are|what's|what\s+would|show\s+me|reveal|tell\s+me|give\s+me|i\s+need|display|output|print|share|send\s+me)\s+(?:the\s+)?(?:(?:first|second|third|fourth|fifth|last|next|previous)\s+(?:digit|character|char|letter|byte|bit|part|half|number)\s+of\s+(?:the\s+)?)?(?:admin\s+|master\s+|root\s+|database\s+|system\s+|hidden\s+|secret\s+|private\s+|encryption\s+|ssh\s+|2fa\s+|jwt\s+|oauth\s+|stripe\s+|github\s+|slack\s+|gcp\s+|aws\s+)?(?:password|passcode|pass\s*code|secret\s+key|private\s+key|api\s+key|access\s+key|secret\s+token|auth\s+token|bearer\s+token|encryption\s+key|ssh\s+key|backup\s+code|client\s+secret|webhook\s+(?:url|secret)|service\s+account\s+(?:json|token|key)|(?:master|admin|root)\s+key|access\s+token|auth(?:orization)?\s+(?:code|token)|admin\s+pin|\bpin\b|(?:aws|api|secret|access|private)\s+keys?)\b/gi
+    },
+    atlas_t1589_006_model_architecture: {
+      severity: 'critical',
+      re: /(?:how\s+many\s+(?:layers|parameters|neurons|weights)\s+(?:does|do|are)\s+(?:your|this|the)\s+(?:neural\s+network|model|network)\s+have|(?:what\s+is|describe|tell\s+me)\s+your\s+(?:architecture|model\s+architecture|embedding\s+dimension|hidden\s+size|attention\s+mechanism|activation\s+function|loss\s+function|tokenizer|model.s\s+learning\s+rate|optimization\s+process|training\s+data\s+distribution|model\s+size|maximum\s+sequence\s+length|vocabulary\s+size)|list\s+all\s+the\s+weights\s+in\s+your|what\s+(?:vocabulary\s+size|activation\s+function|loss\s+function|embedding\s+dimension|hidden\s+size|maximum\s+sequence\s+length|model\s+size)\s+(?:does|do)\s+(?:your|this|the)\s+(?:model|network|ai)\s+(?:use|have)|what\s+(?:activation\s+function|loss\s+function|tokenizer)\s+do\s+you\s+use|how\s+were\s+you\s+trained|what\s+is\s+the\s+dimension\s+of\s+your\s+embeddings)/gi
+    },
+    atlas_t1548_004_insider_threat: {
+      severity: 'critical',
+      re: /(?:disable\s+logging\s+on\s+(?:the\s+)?(?:production|main|primary)\s+(?:database|server|system)|bypass\s+(?:the\s+)?(?:approval\s+workflow|change\s+management\s+process)|modify\s+(?:the\s+)?payroll\s+system|add\s+(?:my\s+)?ssh\s+key\s+to\s+(?:the\s+)?root|remove\s+(?:the\s+)?ip\s+whitelist|change\s+(?:the\s+)?firewall\s+rules\s+to\s+allow\s+all|create\s+(?:a\s+)?(?:backdoor|hidden)\s+(?:admin\s+)?account|set\s+up\s+mail\s+forwarding\s+for\s+(?:the\s+)?ceo|elevate\s+(?:my\s+)?permissions?\s+to\s+(?:superuser|root|admin)|create\s+(?:a\s+)?vpn\s+tunnel\s+to\s+an\s+external|override\s+(?:the\s+)?(?:approval\s+workflow|change\s+management)|create\s+(?:a\s+)?scheduled\s+task\s+to\s+exfiltrat\w+|set\s+up\s+mail\s+forwarding\s+for\s+(?:the\s+)?ceo)/gi
+    },
+    atlas_t1648_002_malicious_code: {
+      severity: 'critical',
+      re: /(?:(?:write|create)\s+(?:code|a\s+script|a\s+python\s+script|javascript|a\s+bash\s+script|a\s+dns\s+exfiltration\s+script)\s+(?:that|to)\s+(?:steal|dump|intercept|connect\s+to\s+(?:a\s+)?c2|download\s+(?:and\s+execute\s+)?malware|exfiltrat\w+|phones?\s+home|log\s+all\s+network|extract\s+(?:api\s+keys?|credentials?|secrets?|tokens?)\s+from\s+(?:process\s+)?memory)|(?:write|create)\s+(?:a\s+)?(?:python\s+)?script\s+that\s+connects?\s+to\s+(?:a\s+)?c2|(?:write|create)\s+(?:a\s+)?cron\s+job\s+that\s+phones?\s+home|generate\s+(?:a\s+)?(?:zip\s+bomb|reverse\s+shell|macro\s+that\s+downloads\s+malware)|dns\s+exfiltration\s+script)/gi
+    },
+    atlas_t1498_004_resource_exhaustion: {
+      severity: 'critical',
+      re: /(?:catastrophic\s+backtracking|zip\s+bomb|infinitely\s+recursive\s+(?:function|loop)|cartesian\s+product\s+on\s+(?:a\s+)?(?:large|big)\s+table|generate\s+all\s+possible\s+\w+\s+character\s+passwords|generate\s+(?:a\s+)?(?:100,?000|one\s+hundred\s+thousand)\s+word\s+essay)/gi
+    },
+    atlas_t1535_003_roleplay_fixed: {
+      severity: 'high',
+      re: /role\s*play\s+(?:as|that|where|mode|scenario)/gi
+    },
   };
 
   function detect(text) {

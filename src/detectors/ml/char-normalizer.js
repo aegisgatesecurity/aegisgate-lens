@@ -18,7 +18,7 @@
 (function (global) {
   'use strict';
 
-  var MAX_SEQ_LEN = 256;
+  var MAX_SEQ_LEN = 512;
   var PAD_ID = 0;
   var UNK_ID = 1;
   var VOCAB_SIZE = 256;  // Latin-1 (0-255)
@@ -445,6 +445,32 @@
   // keyWalkReverse — the model learns to handle keyboard-walk
   // obfuscation through training data augmentation. The regex
   // scanner uses normalizeAllVariants() instead.
+  // mapRegionalIndicators converts Unicode Regional Indicator symbols
+  // (U+1F1E6–U+1F1FF, used in flag emoji) to ASCII letters A–Z.
+  // NFKC does not decompose these — they remain as non-Latin-1 characters
+  // and would be mapped to UNK_ID, losing flag-emoji-based evasion signals.
+  // Port of MapRegionalIndicators from Platform's threat_normalizer.go.
+  function mapRegionalIndicators(text) {
+    var result = '';
+    for (var i = 0; i < text.length; i++) {
+      var c = text.charCodeAt(i);
+      // Regional indicators are surrogate pairs: U+1F1E6–U+1F1FF
+      // In JS, these are represented as surrogate pairs (D83C DDE6–D83C DDFF)
+      if (i + 1 < text.length) {
+        var hi = text.charCodeAt(i);
+        var lo = text.charCodeAt(i + 1);
+        // High surrogate D83C, low surrogate DDE6..DDFF
+        if (hi === 0xD83C && lo >= 0xDDE6 && lo <= 0xDDFF) {
+          result += String.fromCharCode(65 + (lo - 0xDDE6)); // A=65
+          i++; // skip low surrogate
+          continue;
+        }
+      }
+      result += text[i];
+    }
+    return result;
+  }
+
   function normalize(text) {
     if (typeof text !== 'string') return '';
     // NFKC normalization — converts fullwidth Unicode (Ｉ→I), compatibility
@@ -456,13 +482,15 @@
     try {
       text = text.normalize('NFKC');
     } catch (e) { /* normalize not available — skip */ }
+    // Map Regional Indicator characters (flag emoji) to ASCII A-Z
+    text = mapRegionalIndicators(text);
     // Lowercase
     text = text.toLowerCase();
     // Strip leading/trailing whitespace
     text = text.trim();
     // Collapse multiple whitespace
     text = text.replace(/\s+/g, ' ');
-    // Truncate to MAX_SEQ_LEN (256) characters
+    // Truncate to MAX_SEQ_LEN (512) characters
     if (text.length > MAX_SEQ_LEN) {
       text = text.substring(0, MAX_SEQ_LEN);
     }

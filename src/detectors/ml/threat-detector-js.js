@@ -30,12 +30,12 @@
               error: function(m,e){ try { console.error('[AegisGate Lens ML] ' + m, e); } catch (e) {} } };
 
   // Constants
-  var MAX_SEQ_LEN = 256;
+  var MAX_SEQ_LEN = 512;
   var PAD_ID = 0;
   var UNK_ID = 1;
   var THRESHOLD = 0.5;
   var INFERENCE_TIMEOUT_MS = 500;
-  var MODEL_VERSION = 'char-cnn-bilstm-v16b-js';
+  var MODEL_VERSION = 'char-cnn-bilstm-v22b-js';
 
   // Temporal query FP mitigation: regex for common time/date queries
   // that are known to produce false positives in the neural model.
