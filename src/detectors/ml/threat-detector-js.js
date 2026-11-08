@@ -310,7 +310,9 @@
     // We compute gates[4*hidden] directly
     var gates = new Float32Array(4 * hiddenSize);
     for (var g = 0; g < 4 * hiddenSize; g++) {
-      var sum = b ? b[g] : 0;
+      // PyTorch LSTM bias is [b_ih (4*H), b_hh (4*H)] concatenated.
+      // The total bias is b_ih + b_hh. We must add both halves.
+      var sum = b ? b[g] + b[4 * hiddenSize + g] : 0;
       for (var j = 0; j < inputSize; j++) {
         sum += xt[j] * W_ih[g * inputSize + j];
       }
@@ -325,9 +327,11 @@
     var o_gate = new Float32Array(hiddenSize);
     var c_tilde = new Float32Array(hiddenSize);
     for (var k = 0; k < hiddenSize; k++) {
+      // ONNX LSTM gate order: i, o, f, c (NOT PyTorch's i, f, g, o)
+      // See: https://github.com/onnx/onnx/blob/main/docs/Operators.md#LSTM
       i_gate[k] = sigmoid(gates[k]);
-      f_gate[k] = sigmoid(gates[hiddenSize + k]);
-      o_gate[k] = sigmoid(gates[2 * hiddenSize + k]);
+      o_gate[k] = sigmoid(gates[hiddenSize + k]);
+      f_gate[k] = sigmoid(gates[2 * hiddenSize + k]);
       c_tilde[k] = Math.tanh(gates[3 * hiddenSize + k]);
     }
 

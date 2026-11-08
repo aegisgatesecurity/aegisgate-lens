@@ -477,10 +477,9 @@ mlTest('ml-perf: benign prompts not flagged (false positive rate)', async () => 
   const rate = benignCorrect / totalBenign;
   console.log(`\n  Benign pass-through rate: ${benignCorrect}/${totalBenign} = ${(rate * 100).toFixed(1)}%`);
 
-  // At least 30% of benign prompts should pass through
-  // (v22b model is more aggressive than v16b at 0.5 threshold; Lens shows
-  // warnings not blocks, so a higher FP rate is acceptable for this test)
-  assert.ok(rate >= 0.3, `Benign pass-through rate ${(rate * 100).toFixed(1)}% below 30% threshold`);
+  // At least 70% of benign prompts should pass through
+  // (v22b JS model with ONNX gate order fix now has proper score separation)
+  assert.ok(rate >= 0.7, `Benign pass-through rate ${(rate * 100).toFixed(1)}% below 70% threshold`);
 
   det.unloadModel();
 });
@@ -679,10 +678,9 @@ mlTest('ml-perf: score separation between adversarial and benign', async () => {
   console.log(`    Benign:      [${benignScores.map(s => s.toFixed(4)).join(', ')}]`);
 
   assert.ok(separation > 0, `Adversarial avg (${avgAdv.toFixed(4)}) should be higher than benign avg (${avgBenign.toFixed(4)})`);
-  // v22b JS model at MAX_SEQ_LEN=512 has reduced score separation for short
-  // prompts (more padding dilutes signal). Threshold lowered from 0.1 to 0.001
-  // as a temporary measure — JS inference needs investigation for full separation.
-  assert.ok(separation >= 0.001, `Score separation ${separation.toFixed(4)} should be at least 0.001`);
+  // v22b JS model with ONNX gate order fix has proper score separation.
+  // Adversarial scores ~1.0, benign scores ~0.01-0.1.
+  assert.ok(separation >= 0.1, `Score separation ${separation.toFixed(4)} should be at least 0.1`);
 
   det.unloadModel();
 });
