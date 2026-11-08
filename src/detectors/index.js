@@ -73,6 +73,12 @@
       facets.push({ id: 'ot_protocols', module: globalThis.__lensOT_protocols });
     }
 
+    if (typeof self !== 'undefined' && self.__lensAttackPatterns) {
+      facets.push({ id: 'attack_patterns', module: self.__lensAttackPatterns });
+    } else if (typeof globalThis !== 'undefined' && globalThis.__lensAttackPatterns) {
+      facets.push({ id: 'attack_patterns', module: globalThis.__lensAttackPatterns });
+    }
+
     return facets;
   }
 
@@ -285,7 +291,7 @@
           );
           if (mlEvent) {
             mlEvent.ml_score = mlResult.score;
-            mlEvent.ml_model_version = 'char-cnn-bilstm-v15b-js';
+            mlEvent.ml_model_version = 'char-cnn-bilstm-v16b-js';
             mlEvent.confidence = mlResult.score;
             result.events.push(mlEvent);
           }
@@ -300,7 +306,7 @@
           );
           if (lowEvent) {
             lowEvent.ml_score = mlResult.score;
-            lowEvent.ml_model_version = 'char-cnn-bilstm-v15b-js';
+            lowEvent.ml_model_version = 'char-cnn-bilstm-v16b-js';
             lowEvent.confidence = mlResult.score;
             result.events.push(lowEvent);
           }
@@ -347,7 +353,7 @@
   }
 
   // For testing: list the expected facets (so the test can assert)
-  var EXPECTED_FACETS = ['pii', 'secrets', 'xss', 'compliance', 'ot_protocols'];
+  var EXPECTED_FACETS = ['pii', 'secrets', 'xss', 'compliance', 'ot_protocols', 'attack_patterns'];
 
   var module = {
     detect: detect,

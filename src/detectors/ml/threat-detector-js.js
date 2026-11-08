@@ -30,18 +30,34 @@
               error: function(m,e){ try { console.error('[AegisGate Lens ML] ' + m, e); } catch (e) {} } };
 
   // Constants
-  var MAX_SEQ_LEN = 256;
+  var MAX_SEQ_LEN = 512;
   var PAD_ID = 0;
   var UNK_ID = 1;
   var THRESHOLD = 0.5;
   var INFERENCE_TIMEOUT_MS = 500;
-  var MODEL_VERSION = 'char-cnn-bilstm-v15b-js';
+  var MODEL_VERSION = 'char-cnn-bilstm-v22b-js';
 
   // Temporal query FP mitigation: regex for common time/date queries
   // that are known to produce false positives in the neural model.
   var TEMPORAL_QUERY_RE = /^(what|which|tell me|do you know)\s+(time|day|date|month|year|hour|minute|second|timezone|time zone)\b/i;
   function isTemporalQuery(text) {
     return TEMPORAL_QUERY_RE.test(text.trim());
+  }
+
+  // Benign security question FP mitigation: consumers often ask questions
+  // about security tools (Mailgun, SendGrid, Slack, OAuth, NIST) that the
+  // ML model scores as adversarial because they contain security terms.
+  // If the text is clearly a question (starts with question words), is
+  // short (consumer-style), and does NOT contain injection phrases,
+  // suppress the ML block (downgrade to advisory only).
+  var BENIGN_QUESTION_RE = /^(?:how\s+(?:do\s+i|to|should|can|does|would|could)|what(?:'s|s|\s+is|\s+are|\s+does|\s+do)|can\s+you\s+(?:explain|tell|describe)|could\s+you\s+(?:explain|tell|describe)|why\s+(?:do|does|is|are)|when\s+(?:should|do|does)|where\s+(?:can|do|should)|which\s+(?:is|are|do))\b/i;
+  var INJECTION_PHRASE_RE = /(?:ignore\s+(?:all\s+)?(?:previous|prior|above)\s+(?:instructions?|prompts?|messages?)|act\s+as\s+(?:a|an)\s+|you\s+are\s+now\s+|forget\s+(?:all\s+)?(?:previous|prior)|override\s+(?:your|the|all)\s+(?:safety|guidelines?|rules?)|bypass\s+(?:the|your|all)\s+(?:safety|filter|guardrail)|system\s+prompt|jailbreak|DAN\s+mode|developer\s+mode|ignore\s+(?:your|the)\s+(?:restrictions?|guardrails?|guidelines?))/i;
+  function isBenignQuestion(text) {
+    var t = text.trim();
+    if (t.length > 300) return false;  // Only suppress short consumer questions
+    if (!BENIGN_QUESTION_RE.test(t)) return false;
+    if (INJECTION_PHRASE_RE.test(t)) return false;  // Don't suppress if injection phrases present
+    return true;
   }
 
   // Model state
@@ -82,7 +98,7 @@
   // C-1 fix: SHA-256 hash of the expected model weights file.
   // Computed at build time; verifies the weights haven't been tampered with.
   // To regenerate: sha256sum models/threat_cnn_bilstm_weights.bin.json
-  var EXPECTED_MODEL_HASH = '03792717405a1875d068a6304b69d3aeb019643778af30677b0f7257dbfbabab';
+  var EXPECTED_MODEL_HASH = '3f57223e01b6c586363827d8bbf8cd8fd65a82147f876700e1e7d6c8b7da184e';
 
   // Async load: fetch weight package, decompress, reconstruct tensors
   async function loadModel() {
@@ -517,6 +533,12 @@
       var isAdversarial = score >= THRESHOLD;
       if (isAdversarial && isTemporalQuery(text)) {
         log.info('Temporal query FP mitigation: downgrading block to warn');
+        isAdversarial = false;
+      }
+      // Benign security question FP mitigation: consumers asking about
+      // security tools (Mailgun, OAuth, etc.) trigger false positives.
+      if (isAdversarial && isBenignQuestion(text)) {
+        log.info('Benign question FP mitigation: downgrading block to warn');
         isAdversarial = false;
       }
 

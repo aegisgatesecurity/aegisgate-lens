@@ -18,7 +18,7 @@
 (function (global) {
   'use strict';
 
-  var MAX_SEQ_LEN = 256;
+  var MAX_SEQ_LEN = 512;
   var PAD_ID = 0;
   var UNK_ID = 1;
   var VOCAB_SIZE = 256;  // Latin-1 (0-255)
@@ -255,6 +255,84 @@
     return variants;
   }
 
+  // NormalizeDespaced — collapses character-level spacing evasion.
+  // "I g n o r e   a l l" → "Ignore all"
+  // Detects single-space-separated characters within words (char spacing evasion)
+  // and reconstructs words by removing intra-word single spaces.
+  // Double+ spaces are treated as word boundaries and preserved.
+  function normalizeDespaced(input) {
+    if (typeof input !== 'string' || input.length < 5) return input;
+    // Count single-char-space-single-char patterns
+    var singleCharSpaced = 0;
+    var totalChars = 0;
+    for (var i = 0; i < input.length - 2; i++) {
+      if (input[i] !== ' ' && input[i + 1] === ' ' && input[i + 2] !== ' ') {
+        // Check if both neighbors are non-space letters
+        if (/[a-zA-Z]/.test(input[i]) && /[a-zA-Z]/.test(input[i + 2])) {
+          singleCharSpaced++;
+        }
+      }
+      if (input[i] !== ' ') totalChars++;
+    }
+    if (totalChars === 0) return input;
+    // Only apply if >40% of chars are single-char-spaced
+    if (singleCharSpaced / totalChars < 0.4) return input;
+
+    // Split on 2+ spaces (word boundaries), then remove single spaces within each chunk
+    var chunks = input.split(/\s{2,}/);
+    if (chunks.length <= 1) {
+      // No double-space boundaries — remove all single spaces
+      return input.replace(/ /g, '');
+    }
+    var result = [];
+    for (var c = 0; c < chunks.length; c++) {
+      // Remove single spaces within each chunk (char-level spacing)
+      result.push(chunks[c].replace(/ /g, ''));
+    }
+    return result.join(' ');
+  }
+
+  // l33tMap maps common l33t-speak substitutions back to their letter
+  // equivalents. Ported from Platform scanner/normalize.go l33tMap.
+  // Used by deL33t() for context-aware l33t reversal in word context only.
+  var l33tMap = {
+    '@': 'a', '4': 'a', '3': 'e', '1': 'i', '!': 'i', '0': 'o',
+    '5': 's', '$': 's', '7': 't', '+': 't', '8': 'b', '9': 'g', '6': 'g',
+  };
+
+  // l33tMapAlt uses alternate mappings where ambiguous (1→l instead of 1→i).
+  // Some l33t chars have multiple valid interpretations.
+  var l33tMapAlt = {
+    '@': 'a', '4': 'a', '3': 'e', '1': 'l', '|': 'l', '0': 'o',
+    '5': 's', '$': 's', '7': 't', '+': 't', '8': 'b', '9': 'g', '6': 'g',
+  };
+
+  // deL33t reverses l33t-speak substitutions in word context only.
+  // A l33t char is only replaced if it has a letter on at least one side,
+  // preventing corruption of standalone numbers (e.g., phone numbers, IDs).
+  // Ported from Platform's deobfuscateL33t (context-aware version).
+  function deL33t(text, map) {
+    if (typeof text !== 'string' || text.length < 2) return text;
+    var m = map || l33tMap;
+    var result = '';
+    for (var i = 0; i < text.length; i++) {
+      var c = text[i];
+      if (m[c]) {
+        // Only replace if adjacent to a letter (word context)
+        var hasLetterBefore = i > 0 && /[a-zA-Z]/.test(text[i - 1]);
+        var hasLetterAfter = i < text.length - 1 && /[a-zA-Z]/.test(text[i + 1]);
+        if (hasLetterBefore || hasLetterAfter) {
+          result += m[c];
+        } else {
+          result += c;
+        }
+      } else {
+        result += c;
+      }
+    }
+    return result;
+  }
+
   function normalizeAllVariants(text) {
     if (typeof text !== 'string') return [text];
     var variants = [text];
@@ -334,6 +412,25 @@
       variants.push(combined2);
     }
 
+    // Despaced (char-level spacing evasion: "I g n o r e   a l l" → "Ignore all")
+    var despaced = normalizeDespaced(text);
+    if (despaced !== text && despaced !== '' && variants.indexOf(despaced) === -1) {
+      variants.push(despaced);
+    }
+
+    // L33t speak deobfuscation (context-aware — only replaces in word context)
+    // Catches "@ct @s @n @dm!n" → "act as an admin" etc.
+    var deL33ted = deL33t(text);
+    if (deL33ted !== text && deL33ted !== '' && variants.indexOf(deL33ted) === -1) {
+      variants.push(deL33ted);
+    }
+    // L33t alternate mapping (1→l instead of 1→i)
+    var deL33tedAlt = deL33t(text, l33tMapAlt);
+    if (deL33tedAlt !== text && deL33tedAlt !== '' && deL33tedAlt !== deL33ted &&
+        variants.indexOf(deL33tedAlt) === -1) {
+      variants.push(deL33tedAlt);
+    }
+
     return variants;
   }
 
@@ -348,6 +445,32 @@
   // keyWalkReverse — the model learns to handle keyboard-walk
   // obfuscation through training data augmentation. The regex
   // scanner uses normalizeAllVariants() instead.
+  // mapRegionalIndicators converts Unicode Regional Indicator symbols
+  // (U+1F1E6–U+1F1FF, used in flag emoji) to ASCII letters A–Z.
+  // NFKC does not decompose these — they remain as non-Latin-1 characters
+  // and would be mapped to UNK_ID, losing flag-emoji-based evasion signals.
+  // Port of MapRegionalIndicators from Platform's threat_normalizer.go.
+  function mapRegionalIndicators(text) {
+    var result = '';
+    for (var i = 0; i < text.length; i++) {
+      var c = text.charCodeAt(i);
+      // Regional indicators are surrogate pairs: U+1F1E6–U+1F1FF
+      // In JS, these are represented as surrogate pairs (D83C DDE6–D83C DDFF)
+      if (i + 1 < text.length) {
+        var hi = text.charCodeAt(i);
+        var lo = text.charCodeAt(i + 1);
+        // High surrogate D83C, low surrogate DDE6..DDFF
+        if (hi === 0xD83C && lo >= 0xDDE6 && lo <= 0xDDFF) {
+          result += String.fromCharCode(65 + (lo - 0xDDE6)); // A=65
+          i++; // skip low surrogate
+          continue;
+        }
+      }
+      result += text[i];
+    }
+    return result;
+  }
+
   function normalize(text) {
     if (typeof text !== 'string') return '';
     // NFKC normalization — converts fullwidth Unicode (Ｉ→I), compatibility
@@ -359,13 +482,15 @@
     try {
       text = text.normalize('NFKC');
     } catch (e) { /* normalize not available — skip */ }
+    // Map Regional Indicator characters (flag emoji) to ASCII A-Z
+    text = mapRegionalIndicators(text);
     // Lowercase
     text = text.toLowerCase();
     // Strip leading/trailing whitespace
     text = text.trim();
     // Collapse multiple whitespace
     text = text.replace(/\s+/g, ' ');
-    // Truncate to MAX_SEQ_LEN (256) characters
+    // Truncate to MAX_SEQ_LEN (512) characters
     if (text.length > MAX_SEQ_LEN) {
       text = text.substring(0, MAX_SEQ_LEN);
     }

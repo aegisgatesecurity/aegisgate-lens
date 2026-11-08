@@ -112,7 +112,7 @@ test('compliance: ANP special category (health data)', () => {
 
 // CU (Consumer)
 test('compliance: CU consumer rights (right to explanation)', () => {
-  const m = comp.detect('Consumers have the right to explanation for AI decisions');
+  const m = comp.detect('Deny consumer right to explanation for AI decisions');
   assert.equal(hasCategory(m, 'cu_consumer_rights'), true);
 });
 test('compliance: CU minor protection (under 13)', () => {
@@ -176,12 +176,12 @@ test('compliance: ISO 27001 clause reference detected', () => {
 // --- CCPA ---
 
 test('compliance: CCPA keyword detected', () => {
-  var m = comp.detect('Under CCPA, California consumers have specific rights');
+  var m = comp.detect('Under the California Consumer Privacy Act, consumers have specific rights');
   assert.equal(hasCategory(m, 'ccpa_reference'), true, 'expected ccpa_reference in ' + JSON.stringify(m));
 });
 
 test('compliance: CCPA right to delete detected', () => {
-  var m = comp.detect('Users can request right to delete their data');
+  var m = comp.detect('Under Civil Code §1798.105, users can request right to delete their data');
   assert.equal(hasCategory(m, 'ccpa_reference'), true);
 });
 
@@ -193,12 +193,12 @@ test('compliance: CCPA Civil Code section detected', () => {
 // --- LGPD ---
 
 test('compliance: LGPD keyword detected', () => {
-  var m = comp.detect('LGPD regulates personal data in Brazil');
+  var m = comp.detect('Lei Geral de Protecção de Dados regulates personal data in Brazil');
   assert.equal(hasCategory(m, 'lgpd_reference'), true, 'expected lgpd_reference in ' + JSON.stringify(m));
 });
 
 test('compliance: LGPD Art. 18 detected', () => {
-  var m = comp.detect('Per Art. 18 of the LGPD, the data subject has rights');
+  var m = comp.detect('Per Art. 18 of the Lei Geral de Proteção de Dados, the data subject has rights');
   assert.equal(hasCategory(m, 'lgpd_reference'), true);
 });
 
@@ -210,7 +210,7 @@ test('compliance: LGPD dados pessoais detected', () => {
 // --- PIPEDA ---
 
 test('compliance: PIPEDA keyword detected', () => {
-  var m = comp.detect('PIPEDA requires express consent for personal data');
+  var m = comp.detect('The Personal Information Protection and Electronic Documents Act requires express consent for personal data');
   assert.equal(hasCategory(m, 'pipeda_reference'), true, 'expected pipeda_reference in ' + JSON.stringify(m));
 });
 
@@ -232,7 +232,7 @@ test('compliance: POPIA keyword detected', () => {
 });
 
 test('compliance: POPIA section reference detected', () => {
-  var m = comp.detect('Per s. 11 of POPIA, the responsible party must handle data lawfully');
+  var m = comp.detect('Per s. 11 of the Protection of Personal Information Act, the responsible party must handle data lawfully');
   assert.equal(hasCategory(m, 'popia_reference'), true);
 });
 

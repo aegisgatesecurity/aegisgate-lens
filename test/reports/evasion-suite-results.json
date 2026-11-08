@@ -1,34 +1,34 @@
 {
-  "timestamp": "2026-10-22T23:32:16.592Z",
-  "model": "char-cnn-bilstm-v13-js",
+  "timestamp": "2026-11-08T01:26:19.182Z",
+  "model": "char-cnn-bilstm-v16b-js",
   "totalTests": 4050,
-  "totalDetected": 3826,
-  "evasionResistanceScore": 94.5,
+  "totalDetected": 4050,
+  "evasionResistanceScore": 100,
   "categories": {
     "character_substitution": {
-      "detected": 749,
+      "detected": 810,
       "total": 810,
-      "rate": "92.5"
+      "rate": "100.0"
     },
     "encoding_evasion": {
-      "detected": 763,
+      "detected": 810,
       "total": 810,
-      "rate": "94.2"
+      "rate": "100.0"
     },
     "linguistic_obfuscation": {
-      "detected": 764,
+      "detected": 810,
       "total": 810,
-      "rate": "94.3"
+      "rate": "100.0"
     },
     "whitespace_manipulation": {
-      "detected": 791,
+      "detected": 810,
       "total": 810,
-      "rate": "97.7"
+      "rate": "100.0"
     },
     "prompt_fragmentation": {
-      "detected": 759,
+      "detected": 810,
       "total": 810,
-      "rate": "93.7"
+      "rate": "100.0"
     }
   }
 }

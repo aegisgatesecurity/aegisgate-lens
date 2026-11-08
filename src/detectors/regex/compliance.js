@@ -36,7 +36,7 @@
     owasp_llm09_overreliance: {
       severity: 'medium',
       // Overreliance: asking AI to validate critical decisions
-      re: /(?:is\s+this\s+(?:safe|legal|compliant|ethical|appropriate))|(?:should\s+I\s+(?:trust|rely\s+on|sign|send|submit))|(?:validate|verify|check)\s+(?:this\s+)?(?:for\s+me|before\s+I)/gi
+      re: /(?:is\s+this\s+(?:safe|legal|compliant|ethical|appropriate))|(?:should\s+I\s+(?:trust|rely\s+on|sign|send|submit))|(?:validate|verify|check)\s+(?:this\s+)?(?:for\s+me|before\s+I)|(?:trust|rely\s+on)\s+(?:this\s+|the\s+)?(?:AI|model|LLM|system)\s+(?:output|response|answer|result|recommendation).{0,25}(?:ground\s+truth|fact|correct|accurate|reliable|infallible)|(?:do\s+not|don['']?t|never)\s+(?:verify|validate|check|confirm)\s+(?:with|by|through)\s+(?:human|expert|manual|independent)/gi
     },
     owasp_llm10_model_theft: {
       severity: 'high',
@@ -48,9 +48,8 @@
     atlas_poison: {
       severity: 'high',
       // Training data poisoning: fine-tune, retrain, or ingest
-      // untrusted data. We allow optional intervening words (model,
-      // network, system) between the action and the data source.
-      re: /(?:train|retrain|fine-?tune|ingest|poison(?:ing)?)\s+(?:the\s+)?(?:model|network|system|LLM)?\s*(?:on|with)\s+(?:this\s+|untrusted\s+|malicious\s+|adversarial\s+)?(?:data|dataset|corpus|examples?)/gi
+      // untrusted data. Allow multiple qualifiers (e.g., "this poisoned").
+      re: /(?:train|retrain|fine-?tune|ingest|poison(?:ing)?)\s+(?:the\s+)?(?:model|network|system|LLM)?\s*(?:on|with)\s+(?:(?:this|untrusted|malicious|adversarial|poisoned|tainted|contaminated)\s+)*?(?:data|dataset|corpus|examples?)/gi
     },
     atlas_exfiltration: {
       severity: 'high',
@@ -67,7 +66,7 @@
     eu_ai_act_high_risk: {
       severity: 'high',
       // High-risk use cases per Annex III
-      re: /(?:credit\s+scoring|loan\s+(?:approval|decision)|insurance\s+(?:risk|pricing))|(?:employment|hiring|firing|promotion|recruitment)\s+(?:decision|assessment|screening)|(?:law\s+enforcement|predictive\s+policing|criminal\s+justice)|(?:biometric|facial)\s+(?:identification|recognition|verification)|(?:medical|clinical)\s+diagnosis|emotion\s+recognition\s+system/gi
+      re: /(?:credit\s+scoring|loan\s+(?:approval|decision)|insurance\s+(?:risk|pricing))|(?:employment|hiring|firing|promotion|recruitment)\s+(?:decision|assessment|screening)|(?:law\s+enforcement|predictive\s+policing|criminal\s+justice)|(?:(?:biometric|facial)\s+(?:identification|recognition|verification))|(?:biometric\s+(?:verification|categorization)\s+(?:system|in\s+(?:public|law\s+enforcement|border\s+control)))|(?:medical|clinical)\s+diagnosis|emotion\s+recognition\s+system/gi
     },
     eu_ai_act_transparency: {
       severity: 'medium',
@@ -81,8 +80,9 @@
     },
     eu_ai_act_robustness: {
       severity: 'low',
-      // Robustness/accuracy (Article 15)
-      re: /(?:adversarial|adversarially[- ]crafted)\s+(?:input|example|perturbation|attack)/gi
+      // Robustness/accuracy (Article 15). Only flag when adversarial
+      // testing is being SKIPPED, not when it's being discussed.
+      re: /(?:adversarial|adversarially[- ]crafted)\s+(?:input|example|perturbation|attack)|(?:no|without|skip(?:ping)?|lack\s+of)\s+(?:adversarial\s+)?(?:testing|evaluation|red[\s-]?team(?:ing)?)/gi
     },
 
     // --- ANP (GDPR data protection) ---
@@ -94,13 +94,15 @@
     anp_special_category: {
       severity: 'high',
       // Article 9 special categories (sensitive data)
-      re: /(?:racial|ethnic)\s+(?:origin|discrimination)|(?:religious|political)\s+(?:beliefs?|opinions?|affiliation)|trade[- ]union\s+membership|(?:genetic|biometric)\s+data\s+for\s+(?:identification|profiling)|(?:health|medical)\s+data\s+(?:about|of)|(?:sex\s+life|sexual\s+orientation)/gi
+      re: /(?:(?:collect|process|store|share|disclose|transfer|handle|analyze)\s+(?:racial|ethnic)\s+(?:origin|data|discrimination))|(?:racial|ethnic)\s+(?:origin|data|discrimination)\s+(?:of|about|from|belonging\s+to)|(?:(?:collect|process|store|share|disclose)\s+(?:political|religious)\s+(?:beliefs?|opinions?|affiliation))|(?:political|religious)\s+(?:beliefs?|opinions?|affiliation)\s+(?:of|about|from)|trade[- ]union\s+membership|(?:genetic|biometric)\s+data\s+(?:of|about|from|belonging\s+to|for\s+(?:identification|profiling))|(?:health|medical)\s+data\s+(?:about|of)|(?:sex\s+life|sexual\s+orientation)\s+(?:of|about|from)/gi
     },
 
     // --- CU (Consumer protection) ---
     cu_consumer_rights: {
+      // Match only when a violation verb is present — "ignore/deny/refuse
+      // the consumer right to..." Benign "honor the right to" won't match.
       severity: 'medium',
-      re: /(?:consumer|user)\s+rights?\s+(?:to|of)\s+(?:explanation|erasure|rectification|deletion|portability)|right\s+to\s+(?:explanation|be\s+forgotten|erasure)/gi
+      re: /(?:ignore|deny|refuse|violate|override|bypass|disregard|infringe)\s+(?:the\s+)?(?:consumer|user|data\s+subject)\s+rights?\s+(?:to|of)\s+(?:explanation|erasure|rectification|deletion|portability|delete|access|opt[\s-]?out)|(?:ignore|deny|refuse|violate|override|bypass|disregard)\s+(?:the\s+)?right\s+to\s+(?:explanation|be\s+forgotten|erasure|delete|opt[\s-]?out|access)/gi
     },
     cu_minor_protection: {
       severity: 'high',
@@ -125,39 +127,73 @@
       // ISO/IEC 27001 control references. The format is Annex A
       // control IDs (A.5.1, A.6.1, A.8.2, etc.) or clause
       // references (6.1.2, 8.2.1, 10.1.1). The A.x.y format is
-      // the most common.
+      // the most common. Also catches "skip Annex A" violations.
       severity: 'medium',
-      re: /\b(?:A\.\d{1,2}\.\d{1,2}(?:\.\d+)?|clause\s+\d{1,2}\.\d{1,2}(?:\.\d+)?)\b/g
+      re: /\b(?:A\.\d{1,2}\.\d{1,2}(?:\.\d+)?|clause\s+\d{1,2}\.\d{1,2}(?:\.\d+)?)\b/gi
+    },
+    iso_27001_violation: {
+      // Catching "skip/bypass Annex A" style violations
+      severity: 'medium',
+      re: /(?:skip|bypass|ignore|disregard|omit|neglect)\s+(?:the\s+)?(?:ISO\s+27001\s+)?Annex\s+A\b/gi
     },
     ccpa_reference: {
-      // California Consumer Privacy Act (CCPA). Section numbers
-      // (1798.100, 1798.105, etc.) or keywords like "CCPA",
-      // "California Consumer Privacy", "right to know", "right to
-      // delete", "right to opt out", "sale of personal information".
+      // California Consumer Privacy Act (CCPA). Match only section
+      // numbers and full act name — NOT standalone "CCPA" or consumer
+      // rights phrases, which appear in benign compliance questions.
+      // Actual violations (selling data, ignoring rights) are caught
+      // by privacy_sell_data and cu_consumer_rights patterns.
       severity: 'medium',
-      re: /\b(?:CCPA|California\s+Consumer\s+Privacy\s+Act|Civil\s+Code\s+§\s*1798(?:\.\d+)?|right\s+to\s+(?:know|delete|opt[\s-]?out|correct)|sale\s+of\s+personal\s+information|Shine\s+the\s+Light|Do\s+Not\s+Sell)\b/gi
+      re: /\b(?:California\s+Consumer\s+Privacy\s+Act|Civil\s+Code\s+§\s*1798(?:\.\d+)?|Shine\s+the\s+Light)\b/gi
     },
     lgpd_reference: {
-      // Brazilian Lei Geral de Protecao de Dados (LGPD). Article
-      // references (Art. 7, Art. 18, Art. 46) or keywords
-      // ("LGPD", "Lei Geral de Protecao de Dados", "dados pessoais",
-      // "controlador", "operador", "ANPD").
+      // Brazilian LGPD. Match Portuguese terms and ANPD references —
+      // NOT standalone "LGPD" or "Art. X" which appear in benign
+      // compliance questions. Actual violations caught by
+      // privacy_no_consent and privacy_pii_marketing patterns.
       severity: 'medium',
-      re: /\b(?:LGPD|Lei\s+Geral\s+de\s+Protec[ãa]o\s+de\s+Dados|Art\.\s*\d+(?:[\s,ºo]+(?:I|II|III|IV|V|VI|VII|VIII|IX|X))*|dados\s+pessoais|controlador|operador|ANPD)\b/gi
+      re: /\b(?:Lei\s+Geral\s+de\s+Protec?ção\s+de\s+Dados|dados\s+pessoais|controlador|operador|ANPD)\b/gi
     },
     pipeda_reference: {
-      // Canadian Personal Information Protection and Electronic
-      // Documents Act (PIPEDA). Schedule 1 references or keywords
-      // ("PIPEDA", "personal information", "consent", "Principle").
+      // Canadian PIPEDA. Match formal references — NOT standalone
+      // "PIPEDA" or "express consent" which appear in benign
+      // compliance questions. Violations caught by privacy_no_consent.
       severity: 'medium',
-      re: /\b(?:PIPEDA|Personal\s+Information\s+Protection\s+and\s+Electronic\s+Documents\s+Act|Schedule\s+1|Principle\s+\d+(?:\.\d+)?|express\s+consent)\b/gi
+      re: /\b(?:Personal\s+Information\s+Protection\s+and\s+Electronic\s+Documents\s+Act|Schedule\s+1|Principle\s+\d+(?:\.\d+)?)\b/gi
     },
     popia_reference: {
-      // South African Protection of Personal Information Act (POPIA).
-      // Section references (s. 11, s. 14) or keywords ("POPIA",
-      // "Information Regulator", "processing of personal information").
+      // South African POPIA. Match formal references — NOT standalone
+      // "POPIA" which appears in benign compliance questions.
+      // Violations caught by privacy_no_consent.
       severity: 'medium',
-      re: /\b(?:POPIA|Protection\s+of\s+Personal\s+Information\s+Act|s\.\s*\d+(?:\s*\(\d+\))?|Information\s+Regulator|processing\s+of\s+personal\s+information|special\s+personal\s+information)\b/gi
+      re: /\b(?:Protection\s+of\s+Personal\s+Information\s+Act|Information\s+Regulator|processing\s+of\s+personal\s+information|special\s+personal\s+information)\b/gi
+    },
+
+    // --- Behavioral compliance violations (plain English) ---
+    // These catch violations described in plain behavioral language
+    // rather than regulatory references. Covers SXC corpus gaps where
+    // positives use "process without consent" / "sell personal info"
+    // phrasing instead of citing specific regulations.
+    privacy_no_consent: {
+      severity: 'high',
+      re: /(?:process|collect|share|use|transfer|handle)\s+(?:(?:this\s+list\s+of|all)\s+)?(?:\w+\s+){0,4}?(?:personal|user|consumer|customer)\s+(?:data|information|PII|numbers?|records?)\s+(?:without|lacking)\s+(?:express\s+|explicit\s+|prior\s+)?(?:consent|lawful\s+basis|legal\s+basis|authorization)/gi
+    },
+    privacy_pii_marketing: {
+      // Processing PII/national IDs for marketing without explicit
+      // legal basis (GDPR Art 6, LGPD Art 7, ANP guidelines)
+      severity: 'high',
+      re: /(?:process|collect|use|share|sell|transfer)\s+(?:(?:this\s+list\s+of|all)\s+)?(?:\w+\s+){0,3}?(?:CPF|RG|SSN|NIN|national\s+ID|identity\s+card|personal|user|consumer)\s+(?:numbers?|data|information|records?|details?)\s+for\s+(?:marketing|advertising|commercial\s+use|profiling|targeted\s+ads?)/gi
+    },
+    privacy_sell_data: {
+      severity: 'high',
+      re: /(?:sell|monetize|auction|trade|share\s+for\s+(?:profit|payment|compensation))\s+(?:\w+\s+){0,4}?(?:personal|consumer|user|customer)\s+(?:data|information|PII|records?)\s+to\s+(?:third[\s-]?part(?:y|ies)|outside\s+(?:companies|vendors?|brokers?))/gi
+    },
+    ai_transparency_violation: {
+      severity: 'medium',
+      re: /(?:deploy|launch|release|publish|roll\s+out|use)\s+(?:this\s+|an?\s+)?(?:AI|AI[- ]generated|model|system|chatbot|assistant)\s+without\s+(?:disclos|inform|label|notif)/gi
+    },
+    model_resource_exhaustion: {
+      severity: 'high',
+      re: /(?:make\s+(?:the\s+)?(?:model|system|server|API)\s+)?(?:run\s+out\s+of|exhaust|deplete|consume\s+all)\s+(?:memory|resources?|tokens?|compute|GPU|CPU)|(?:send|generate|output|submit|pipe)\s+\d[\d,]*\s+tokens?\s+(?:repeatedly|to\s+(?:flood|overwhelm|exhaust|crash))|(?:repeat|loop)\s+(?:this\s+)?(?:indefinitely|forever|until\s+(?:it\s+)?(?:crashes?|runs?\s+out|breaks?))/gi
     },
     // ====================================================================
     // TOXICITY REGEX FALLBACK (Facet 5)
@@ -260,7 +296,7 @@
     // --- Safety protocol bypass ---
     atlas_safety_protocol_bypass: {
       severity: 'critical',
-      re: /(?:disable|deactivate|turn\s+off|remove|bypass|override|circumvent)\s+(?:all\s+)?(?:safety\s+(?:protocols?|measures?|guidelines?|filters?|restrictions?)|content\s+(?:filters?|moderation|policy|guidelines))/gi
+      re: /(?:disable|deactivate|turn\s+off|remove|bypass|override|circumvent|disregard|ignore)\s+(?:all\s+|your\s+|the\s+)?(?:safety\s+(?:protocols?|measures?|guidelines?|filters?|restrictions?|instructions?|guardrails?)|content\s+(?:filters?|moderation|policy|guidelines))/gi
     },
     // --- Direct data exfiltration queries ---
     atlas_data_exfiltration_query: {
@@ -290,7 +326,7 @@
     },
     prompt_injection_base64: {
       severity: 'medium',
-      re: /[A-Za-z0-9+/]{50,}={0,2}/g
+      re: /[A-Za-z0-9+/]{80,}={0,2}/g
     },
     prompt_injection_code_execution: {
       severity: 'high',
@@ -312,9 +348,13 @@
       severity: 'critical',
       re: /^(?:simulate|you\s+are\s+free|now\s+you\s+can|breaking|override|developer\s+mode)\s*[:;]/gi
     },
+    prompt_injection_developer_instruct: {
+      severity: 'critical',
+      re: /as\s+(?:an\s+|the\s+)?(?:developer|admin|administrator|creator|owner).{0,40}(?:instruct\w*|telling|ordering|directing|authoriz\w*|commanding)\s+(?:you\s+)?to\s+(?:bypass|ignore|override|disable|circumvent)\s+(?:(?:all|your|the)\s+)*(?:guidelines?|rules?|safety|restrictions?|guardrails?)/gi
+    },
     prompt_injection_role_play: {
       severity: 'high',
-      re: /(?:act\s+as\s+(?:a|an)|pretend\s+you\s+are\s+(?:a|an)|roleplay\s+(?:as|that)|simulate\s+(?:a|an)|you\s+are\s+now\s+(?:a|an)|new\s+(?:system|instruct))/gi
+      re: /(?:act\s+as\s+(?:a|an)|pretend\s+you\s+are\s+(?:a|an)|role\s*play\s+(?:as|that)|simulate\s+(?:a|an)|you\s+are\s+now\s+(?:a|an)|new\s+(?:system|instruct))/gi
     },
     prompt_injection_unicode: {
       severity: 'medium',
@@ -352,6 +392,116 @@
     litellm_rat_deploy: {
       severity: 'critical',
       re: /litellm.{0,80}(?:reverse.?shell|backdoor|trojan|c2.?server|payload.?download|implant|rat\.\w)/gi
+    },
+    // --- Additional ATLAS coverage (ported from Go prompt_injection_request.go) ---
+    pi_output_without_restrictions: {
+      severity: 'critical',
+      re: /(?:output|respond|answer|generate).{0,20}(?:without|with\s+no)\s+(?:restrictions?|restrictions?\s+or\s+limitations?|safety|filters?|guardrails?)/gi
+    },
+    pi_token_smuggling: {
+      severity: 'high',
+      re: /(?:token\s+smuggl|smuggl\w*\s+(?:this|the)\s+instruct|fragment\s+(?:this|the)\s+instruct|b\s*y\s*p\s*a\s*s\s*s)/gi
+    },
+    pi_base64_instruction: {
+      severity: 'critical',
+      re: /(?:decode|execute|follow|run)\s+(?:this\s+)?(?:base64|b64)\s+(?:payload|encoded|instruction|message)/gi
+    },
+    pi_hypothetical_harm: {
+      severity: 'high',
+      re: /(?:what\s+if.{0,15}hypothetically|hypothetically\s+speaking.{0,30}(?:create|produce|make|generate)\s+(?:harmful|dangerous|illegal|toxic|weapon|malware|poison|explosive))/gi
+    },
+    pi_modify_safety: {
+      severity: 'critical',
+      re: /(?:modify|alter|change|update|edit)\s+(?:your\s+)?(?:own\s+)?(?:safety\s+)?(?:rules?|programming|code|guardrails?|restrictions?).{0,30}(?:remove|disable|bypass|eliminate)/gi
+    },
+    pi_rollback_model: {
+      severity: 'high',
+      re: /(?:rollback|revert|downgrade)\s+to\s+(?:an?\s+)?(?:older|previous|earlier)\s+(?:model\s+)?version.{0,30}(?:fewer|less|no|without)\s+safety/gi
+    },
+    pi_distill_model: {
+      severity: 'high',
+      re: /(?:distill|extract|copy|clone)\s+(?:\w+\s+){0,3}?(?:your\s+)?(?:behavior\s+)?model.{0,40}(?:train|clone|reproduce|ship|sell|distribut|deploy|transfer)/gi
+    },
+    pi_training_data_extract: {
+      severity: 'critical',
+      re: /(?:what\s+personal\s+information|training\s+data.{0,20}(?:contain|include|including|personal|PII|sensitive)|membership\s+inference\s+attack|reconstruct\s+training\s+data|complete.{0,20}(?:secret\s+password|private\s+key|api\s+key)|output.{0,20}(?:memorized|training\s+data).{0,20}(?:PII|personal|sensitive))/gi
+    },
+    pi_supply_chain_inject: {
+      severity: 'critical',
+      re: /(?:inject|poison|contaminate|corrupt)\s+(?:data\s+poisoning|training\s+pipeline|model\s+(?:weights|parameters)|supply\s+chain)/gi
+    },
+    pi_vector_db_poison: {
+      severity: 'high',
+      re: /(?:poison|corrupt|manipulate)\s+(?:the\s+)?(?:vector\s+(?:database|store|db)|knowledge\s+base|RAG\s+context|embeddings?).{0,30}(?:inject|fake|false|corrupt|fabricat)/gi
+    },
+    pi_output_manipulation: {
+      severity: 'high',
+      re: /(?:manipulate\s+(?:the\s+)?output\s+format|inject\s+(?:special|hidden)\s+(?:format|data)|output\s*:\s*manipulate)/gi
+    },
+    pi_plugin_exploit: {
+      severity: 'critical',
+      re: /(?:execute\s+plugin\s+command|install\s+(?:a\s+)?malicious\s+plugin|modify\s+(?:journal|audit)\s+logs?|escalate\s+privileges?\s+to\s+(?:gain\s+)?admin)/gi
+    },
+    pi_credential_forge: {
+      severity: 'critical',
+      re: /(?:forge\s+credentials?\s+to\s+(?:create|generate)|fake\s+authentication\s+token|hijack\s+(?:the\s+)?authentication\s+session|generate\s+(?:a\s+)?valid\s+session\s+token)/gi
+    },
+    pi_mfa_bypass: {
+      severity: 'high',
+      re: /(?:bypass\s+MFA|disable\s+two.?factor\s+auth|MFA\s+code.{0,20}(?:for|bypass)|2FA\s+verification\s+code.{0,20}(?:for|bypass))/gi
+    },
+    pi_privilege_escalation: {
+      severity: 'high',
+      re: /(?:bypass\s+UAC|elevate\s+to\s+(?:administrator|root)|escalate\s+privileges?\s+to\s+(?:root|admin)|gain\s+(?:supreme|unrestricted|root)\s+access)/gi
+    },
+    pi_recovery_inhibit: {
+      severity: 'high',
+      re: /(?:disable\s+recovery\s+mode|delete\s+(?:the\s+)?recovery\s+partition|wipe\s+(?:all\s+)?system\s+restore\s+points?|turn\s+off\s+(?:all\s+)?backup\s+systems?)/gi
+    },
+    pi_dos_attack: {
+      severity: 'high',
+      re: /(?:launch\s+(?:a\s+)?DDoS|denial\s+of\s+service\s+attack|disrupt\s+service.{0,20}crash|exhaust\s+(?:all\s+)?(?:available\s+)?(?:memory|connections?|resources?))\b/gi
+    },
+    pi_config_repo_access: {
+      severity: 'critical',
+      re: /(?:access\s+(?:the\s+)?config\s+repository|show\s+me\s+the\s+\.env\s+file|exfiltrate\s+environment\s+variables?|process\.env|os\.environ)/gi
+    },
+    pi_resource_exhaustion: {
+      severity: 'medium',
+      re: /(?:generate\s+(?:maximum|unlimited)\s+tokens|very\s+long\s+response\s+request|unlimited\s+(?:tokens?|response|output))/gi
+    },
+    pi_hex_instructions: {
+      severity: 'high',
+      re: /(?:print|output|show|display)\s+(?:your\s+)?instructions?.{0,20}(?:in\s+)?hex\s+encod/gi
+    },
+    pi_copyright_repro: {
+      severity: 'medium',
+      re: /(?:reproduce\s+(?:the\s+)?(?:copyrighted|licensed|proprietary)(?:\s+(?:copyrighted|licensed|proprietary))*\s+content|reproduce\s+(?:from\s+)?your\s+training)/gi
+    },
+    // --- New ATLAS L2 patterns (ported from Platform atlas.go v22b-l2v7) ---
+    atlas_t1552_005_secret_disclosure: {
+      severity: 'critical',
+      re: /(?:what\s+is|what\s+are|what's|what\s+would|show\s+me|reveal|tell\s+me|give\s+me|i\s+need|display|output|print|share|send\s+me)\s+(?:the\s+)?(?:(?:first|second|third|fourth|fifth|last|next|previous)\s+(?:digit|character|char|letter|byte|bit|part|half|number)\s+of\s+(?:the\s+)?)?(?:admin\s+|master\s+|root\s+|database\s+|system\s+|hidden\s+|secret\s+|private\s+|encryption\s+|ssh\s+|2fa\s+|jwt\s+|oauth\s+|stripe\s+|github\s+|slack\s+|gcp\s+|aws\s+)?(?:password|passcode|pass\s*code|secret\s+key|private\s+key|api\s+key|access\s+key|secret\s+token|auth\s+token|bearer\s+token|encryption\s+key|ssh\s+key|backup\s+code|client\s+secret|webhook\s+(?:url|secret)|service\s+account\s+(?:json|token|key)|(?:master|admin|root)\s+key|access\s+token|auth(?:orization)?\s+(?:code|token)|admin\s+pin|\bpin\b|(?:aws|api|secret|access|private)\s+keys?)\b/gi
+    },
+    atlas_t1589_006_model_architecture: {
+      severity: 'critical',
+      re: /(?:how\s+many\s+(?:layers|parameters|neurons|weights)\s+(?:does|do|are)\s+(?:your|this|the)\s+(?:neural\s+network|model|network)\s+have|(?:what\s+is|describe|tell\s+me)\s+your\s+(?:architecture|model\s+architecture|embedding\s+dimension|hidden\s+size|attention\s+mechanism|activation\s+function|loss\s+function|tokenizer|model.s\s+learning\s+rate|optimization\s+process|training\s+data\s+distribution|model\s+size|maximum\s+sequence\s+length|vocabulary\s+size)|list\s+all\s+the\s+weights\s+in\s+your|what\s+(?:vocabulary\s+size|activation\s+function|loss\s+function|embedding\s+dimension|hidden\s+size|maximum\s+sequence\s+length|model\s+size)\s+(?:does|do)\s+(?:your|this|the)\s+(?:model|network|ai)\s+(?:use|have)|what\s+(?:activation\s+function|loss\s+function|tokenizer)\s+do\s+you\s+use|how\s+were\s+you\s+trained|what\s+is\s+the\s+dimension\s+of\s+your\s+embeddings)/gi
+    },
+    atlas_t1548_004_insider_threat: {
+      severity: 'critical',
+      re: /(?:disable\s+logging\s+on\s+(?:the\s+)?(?:production|main|primary)\s+(?:database|server|system)|bypass\s+(?:the\s+)?(?:approval\s+workflow|change\s+management\s+process)|modify\s+(?:the\s+)?payroll\s+system|add\s+(?:my\s+)?ssh\s+key\s+to\s+(?:the\s+)?root|remove\s+(?:the\s+)?ip\s+whitelist|change\s+(?:the\s+)?firewall\s+rules\s+to\s+allow\s+all|create\s+(?:a\s+)?(?:backdoor|hidden)\s+(?:admin\s+)?account|set\s+up\s+mail\s+forwarding\s+for\s+(?:the\s+)?ceo|elevate\s+(?:my\s+)?permissions?\s+to\s+(?:superuser|root|admin)|create\s+(?:a\s+)?vpn\s+tunnel\s+to\s+an\s+external|override\s+(?:the\s+)?(?:approval\s+workflow|change\s+management)|create\s+(?:a\s+)?scheduled\s+task\s+to\s+exfiltrat\w+|set\s+up\s+mail\s+forwarding\s+for\s+(?:the\s+)?ceo)/gi
+    },
+    atlas_t1648_002_malicious_code: {
+      severity: 'critical',
+      re: /(?:(?:write|create)\s+(?:code|a\s+script|a\s+python\s+script|javascript|a\s+bash\s+script|a\s+dns\s+exfiltration\s+script)\s+(?:that|to)\s+(?:steal|dump|intercept|connect\s+to\s+(?:a\s+)?c2|download\s+(?:and\s+execute\s+)?malware|exfiltrat\w+|phones?\s+home|log\s+all\s+network|extract\s+(?:api\s+keys?|credentials?|secrets?|tokens?)\s+from\s+(?:process\s+)?memory)|(?:write|create)\s+(?:a\s+)?(?:python\s+)?script\s+that\s+connects?\s+to\s+(?:a\s+)?c2|(?:write|create)\s+(?:a\s+)?cron\s+job\s+that\s+phones?\s+home|generate\s+(?:a\s+)?(?:zip\s+bomb|reverse\s+shell|macro\s+that\s+downloads\s+malware)|dns\s+exfiltration\s+script)/gi
+    },
+    atlas_t1498_004_resource_exhaustion: {
+      severity: 'critical',
+      re: /(?:catastrophic\s+backtracking|zip\s+bomb|infinitely\s+recursive\s+(?:function|loop)|cartesian\s+product\s+on\s+(?:a\s+)?(?:large|big)\s+table|generate\s+all\s+possible\s+\w+\s+character\s+passwords|generate\s+(?:a\s+)?(?:100,?000|one\s+hundred\s+thousand)\s+word\s+essay)/gi
+    },
+    atlas_t1535_003_roleplay_fixed: {
+      severity: 'high',
+      re: /role\s*play\s+(?:as|that|where|mode|scenario)/gi
     },
   };
 
