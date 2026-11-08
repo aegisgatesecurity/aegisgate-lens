@@ -300,7 +300,7 @@ const BENIGN_PROMPTS = [
 const EDGE_CASE_INPUTS = {
   'empty string': '',
   'single char': 'a',
-  'max length (256 chars)': 'a'.repeat(256),
+  'max length (512 chars)': 'a'.repeat(512),
   'over max length (300 chars)': 'b'.repeat(300),
   'only whitespace': '   \t\n  ',
   'unicode heavy': 'こんにちは世界مرحباПривет',
@@ -329,7 +329,7 @@ mlTest('ml-perf: model loads successfully', async () => {
   assert.ok(diag.weightCount > 0, 'should have loaded weight tensors');
   assert.equal(diag.modelVersion, 'char-cnn-bilstm-v16b-js', 'model version should match v16b');
   assert.equal(diag.threshold, 0.5, 'threshold should be 0.5');
-  assert.equal(diag.maxSeqLen, 256, 'max seq length should be 256');
+  assert.equal(diag.maxSeqLen, 512, 'max seq length should be 512');
 
   det.unloadModel();
 });
@@ -364,7 +364,7 @@ mlTest('ml-perf: inference latency across input lengths', async () => {
     { label: '50 chars', text: 'Hello world, this is a test prompt for the model.' },
     { label: '100 chars', text: 'Hello world, this is a test prompt for the model. It has about 100 chars total, which is typical.' },
     { label: '128 chars', text: 'A'.repeat(128) },
-    { label: '256 chars (max)', text: 'A'.repeat(256) },
+    { label: '512 chars (max)', text: 'A'.repeat(512) },
     { label: '300 chars (truncated)', text: 'B'.repeat(300) },
     { label: '500 chars (truncated)', text: 'C'.repeat(500) },
     { label: '1000 chars (truncated)', text: 'D'.repeat(1000) },
