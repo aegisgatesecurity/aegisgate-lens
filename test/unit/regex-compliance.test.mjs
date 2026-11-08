@@ -176,7 +176,7 @@ test('compliance: ISO 27001 clause reference detected', () => {
 // --- CCPA ---
 
 test('compliance: CCPA keyword detected', () => {
-  var m = comp.detect('Under CCPA, California consumers have specific rights');
+  var m = comp.detect('Under the California Consumer Privacy Act, consumers have specific rights');
   assert.equal(hasCategory(m, 'ccpa_reference'), true, 'expected ccpa_reference in ' + JSON.stringify(m));
 });
 
@@ -193,7 +193,7 @@ test('compliance: CCPA Civil Code section detected', () => {
 // --- LGPD ---
 
 test('compliance: LGPD keyword detected', () => {
-  var m = comp.detect('LGPD regulates personal data in Brazil');
+  var m = comp.detect('Lei Geral de Protecção de Dados regulates personal data in Brazil');
   assert.equal(hasCategory(m, 'lgpd_reference'), true, 'expected lgpd_reference in ' + JSON.stringify(m));
 });
 
