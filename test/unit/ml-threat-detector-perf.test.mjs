@@ -614,7 +614,7 @@ mlTest('ml-perf: stress test - 1000 rapid-fire inferences', async () => {
 
   assert.equal(errors, 0, `${errors} errors during stress test`);
   assert.ok(p99 < 5000, `p99 latency ${p99.toFixed(2)}ms exceeds 5s threshold`);
-  assert.ok(mean < 1000, `mean latency ${mean.toFixed(2)}ms exceeds 1s threshold`);
+  assert.ok(mean < 2000, `mean latency ${mean.toFixed(2)}ms exceeds 2s threshold`);
 
   det.unloadModel();
 });

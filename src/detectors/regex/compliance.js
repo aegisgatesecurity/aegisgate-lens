@@ -151,7 +151,7 @@
       // compliance questions. Actual violations caught by
       // privacy_no_consent and privacy_pii_marketing patterns.
       severity: 'medium',
-      re: /\b(?:Lei\s+Geral\s+de\s+Protec[ça]ção\s+de\s+Dados|dados\s+pessoais|controlador|operador|ANPD)\b/gi
+      re: /\b(?:Lei\s+Geral\s+de\s+Protec?ção\s+de\s+Dados|dados\s+pessoais|controlador|operador|ANPD)\b/gi
     },
     pipeda_reference: {
       // Canadian PIPEDA. Match formal references — NOT standalone
