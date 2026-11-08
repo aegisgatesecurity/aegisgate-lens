@@ -315,7 +315,7 @@ async function run() {
       benchmark: 'sxc',
       corpus: CORPUS_PATH,
       timestamp: new Date().toISOString(),
-      model: 'char-cnn-bilstm-v16b-js',
+      model: 'char-cnn-bilstm-v22b-js',
       fixes_applied: [
         'normalizeDespaced (port from Go)',
         'role\\s*play pattern fix',

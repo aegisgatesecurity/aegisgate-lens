@@ -41,7 +41,7 @@ test('char-normalizer: encode pads short input with PAD_ID', () => {
 
 test('char-normalizer: encode truncates long input to 512 chars', () => {
   const cn = loadModule('src/detectors/ml/char-normalizer.js', '__lensCharNormalizer');
-  const longText = 'A'.repeat(300);
+  const longText = 'A'.repeat(600);
   const result = cn.encode(longText);
   assert.equal(result.length, 512, 'length should be 512');
   for (let i = 0; i < 512; i++) {
@@ -86,9 +86,9 @@ test('char-normalizer: normalize collapses multiple whitespace', () => {
 
 test('char-normalizer: normalize truncates to 512 chars', () => {
   const cn = loadModule('src/detectors/ml/char-normalizer.js', '__lensCharNormalizer');
-  const longText = 'a'.repeat(300);
+  const longText = 'a'.repeat(600);
   const result = cn.normalize(longText);
-  assert.equal(result.length, 256, 'normalized text should be truncated to 512 chars');
+  assert.equal(result.length, 512, 'normalized text should be truncated to 512 chars');
 });
 
 test('char-normalizer: encodeBatch returns correct shape', () => {
@@ -96,8 +96,8 @@ test('char-normalizer: encodeBatch returns correct shape', () => {
   const batch = cn.encodeBatch(['hello', 'world']);
   assert.ok(batch.data instanceof Int32Array, 'batch data should be Int32Array');
   assert.equal(batch.dims[0], 2, 'batch size should be 2');
-  assert.equal(batch.dims[1], 256, 'sequence length should be 256');
-  assert.equal(batch.data.length, 512, 'total elements should be 2 * 256 = 512');
+  assert.equal(batch.dims[1], 512, 'sequence length should be 512');
+  assert.equal(batch.data.length, 1024, 'total elements should be 2 * 512 = 1024');
 });
 
 test('char-normalizer: decode reverses encode for printable ASCII', () => {
@@ -126,7 +126,7 @@ test('char-normalizer: decode reverses encode for Latin-1 chars', () => {
 
 test('char-normalizer: constants are correct', () => {
   const cn = loadModule('src/detectors/ml/char-normalizer.js', '__lensCharNormalizer');
-  assert.equal(cn.MAX_SEQ_LEN, 256, 'MAX_SEQ_LEN should be 256');
+  assert.equal(cn.MAX_SEQ_LEN, 512, 'MAX_SEQ_LEN should be 512');
   assert.equal(cn.PAD_ID, 0, 'PAD_ID should be 0');
   assert.equal(cn.UNK_ID, 1, 'UNK_ID should be 1');
   assert.equal(cn.VOCAB_SIZE, 256, 'VOCAB_SIZE should be 256 (Latin-1)');
