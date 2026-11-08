@@ -401,8 +401,9 @@ mlTest('ml-perf: inference latency across input lengths', async () => {
     // All inference calls should complete under 5 seconds
     assert.ok(max < 5000, `${label}: max latency ${max.toFixed(2)}ms exceeds 5s threshold`);
 
-    // p99 should be under 2 seconds (Node.js is slower than Chrome V8 JIT)
-    assert.ok(p99 < 2000, `${label}: p99 latency ${p99.toFixed(2)}ms exceeds 2s threshold`);
+    // p99 should be under 3 seconds (Node.js is slower than Chrome V8 JIT,
+    // and first inference includes JIT warmup overhead with MAX_SEQ_LEN=512)
+    assert.ok(p99 < 3000, `${label}: p99 latency ${p99.toFixed(2)}ms exceeds 3s threshold`);
   }
 
   console.log('  └──────────────────────┴─────────┴─────────┴─────────┴─────────┴─────────┘');
