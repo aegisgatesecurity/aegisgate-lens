@@ -1,4 +1,24 @@
-## [0.5.3] — 2026-10-22 - ARTEX / LiteLLM Compliance Detection Patterns
+## [0.6.0] — 2026-11-07 — Model v22b JS Weights, NFKC, MapRegionalIndicators, ATLAS L2, MaxSeqLen 512
+
+> **v0.6.0** synchronizes Lens with Platform v5.1.0: ML model v22b (float16 JS weights), NFKC Unicode normalization with regional indicator mapping (handling surrogate pairs), 6 new ATLAS L2 compliance patterns, and MAX_SEQ_LEN 256→512.
+
+### ML Model v22b (Pure JS)
+- MODEL_VERSION updated to char-cnn-bilstm-v22b-js
+- EXPECTED_MODEL_HASH updated to 3f57223e...
+- Weights exported via export_onnx_to_lens.py (3.8MB float16)
+
+### NFKC + MapRegionalIndicators (JS)
+- `mapRegionalIndicators()` handles surrogate pairs (D83C DDE6-DDFF → A-Z)
+- Called in `normalize()` after NFKC, before lowercasing
+
+### 6 New ATLAS L2 Patterns
+- atlas_t1552_005_secret_disclosure, atlas_t1589_006_model_architecture
+- atlas_t1548_004_insider_threat, atlas_t1648_002_malicious_code
+- atlas_t1498_004_resource_exhaustion, atlas_t1535_003_roleplay_fixed
+
+### MAX_SEQ_LEN
+- Updated 256→512 to match model training parameter
+
 
 > **v0.5.3** adds 8 new compliance-category regex detection patterns for the ARTEX autonomous pentesting framework and LiteLLM supply chain compromise, based on Black October 2026 threat intelligence. Subset parity with Platform v4.8.0 / Rampart v0.9.2 (54 → 62 compliance patterns).
 
@@ -17,6 +37,8 @@
 - Detection parity check: PASS
 
 ---
+
+## [0.5.3] — 2026-10-22 - ARTEX / LiteLLM Compliance Detection Patterns
 
 ## [0.5.2] — 2026-10-21 - ML Model v15b Update
 
