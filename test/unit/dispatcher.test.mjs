@@ -56,10 +56,10 @@ test('dispatcher: loads with all 5 regex facets', () => {
     'expected all 4 facets, got ' + JSON.stringify(facets));
 });
 
-test('dispatcher: expected facets list contains all 5', () => {
+test('dispatcher: expected facets list contains all 6', () => {
   loadAll();
   const d = globalThis.__lensDispatcher;
-  assert.deepEqual(d.EXPECTED_FACETS.sort(), ['compliance', 'ot_protocols', 'pii', 'secrets', 'xss']);
+  assert.deepEqual(d.EXPECTED_FACETS.sort(), ['attack_patterns', 'compliance', 'ot_protocols', 'pii', 'secrets', 'xss']);
 });
 
 // --- Empty / benign ---
