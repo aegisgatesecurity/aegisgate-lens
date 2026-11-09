@@ -196,3 +196,4 @@ src/detectors/ml/threat-detector-js.js
 # Model card (contains architecture details)
 docs/MODEL-CARD.md
 tools/export_v16b_to_lens.py
+test/corpus_10k_test.js
