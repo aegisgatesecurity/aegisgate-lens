@@ -1,3 +1,16 @@
+## [0.7.0] — 2026-11-10 — Critical LSTM Gate Order Fix
+
+> **v0.7.0** fixes a critical ML inference bug where the JS LSTM gate order was incorrect for ONNX-exported weights. ONNX uses (i, o, f, c) gate ordering while PyTorch uses (i, f, g, o). This fix corrects the gate order to match ONNX conventions, ensuring accurate neural threat detection.
+
+### Critical Fix: LSTM Gate Order (#63)
+- **Bug**: JS LSTM implementation used PyTorch gate order (i, f, g, o) but ONNX weights are exported in ONNX order (i, o, f, c)
+- **Impact**: ML inference was producing incorrect scores due to mismatched gate weights
+- **Fix**: Reordered gates to match ONNX (i, o, f, c) convention
+- All ML detection results now correctly reflect the trained model's behavior
+
+### Other Changes
+- Added local corpus test script to `.gitignore`
+
 ## [0.6.0] — 2026-11-07 — Model v22b JS Weights, NFKC, MapRegionalIndicators, ATLAS L2, MaxSeqLen 512
 
 > **v0.6.0** synchronizes Lens with Platform v5.1.0: ML model v22b (float16 JS weights), NFKC Unicode normalization with regional indicator mapping (handling surrogate pairs), 6 new ATLAS L2 compliance patterns, and MAX_SEQ_LEN 256→512.
