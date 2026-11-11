@@ -7,8 +7,6 @@ on:
       - 'src/**'
       - 'test/benchmarks/**'
       - 'tools/bench/**'
-      - 'package.json'
-      - 'package-lock.json'
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -25,8 +23,6 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Install dependencies
-        run: npm ci
 
       - name: Regex latency benchmark
         run: |
@@ -74,8 +70,6 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Install dependencies
-        run: npm ci
 
       - name: SXC corpus benchmark
         run: |
