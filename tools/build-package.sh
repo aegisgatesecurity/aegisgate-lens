@@ -45,6 +45,7 @@ trap 'rm -rf "$STAGING"' EXIT
 
 # Copy files to staging (these will be at the ZIP root)
 cp manifest.json "$STAGING/"
+cp managed_schema.json "$STAGING/" 2>/dev/null || echo "WARNING: managed_schema.json not found — Chrome will reject for missing storage schema" >&2
 cp -r src/ "$STAGING/src/"
 cp -r icons/ "$STAGING/icons/"
 
