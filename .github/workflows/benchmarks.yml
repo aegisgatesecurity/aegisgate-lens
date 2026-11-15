@@ -31,6 +31,7 @@ jobs:
 
       - name: Check for regressions
         run: |
+          set +e
           echo "## Regex Benchmark Regression Check" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           FAIL=0
@@ -83,6 +84,7 @@ jobs:
 
       - name: Check detection metrics
         run: |
+          set +e
           echo "## SXC Benchmark Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           FAIL=0
