@@ -7,6 +7,7 @@ on:
       - 'src/**'
       - 'test/benchmarks/**'
       - 'tools/bench/**'
+      - '.github/workflows/benchmarks.yml'
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -33,15 +34,20 @@ jobs:
           echo "## Regex Benchmark Regression Check" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           FAIL=0
+          CURRENT_SIZE=""
           # Check p99 latency thresholds per input size (in ms)
-          # p99 must be under these thresholds (2x+ of observed baselines)
+          # p99 must be under 15ms (2x+ of observed baselines)
           while IFS= read -r line; do
+            # Track current size from header lines (e.g. "100 chars (short)...")
+            if echo "$line" | grep -qE 'chars'; then
+              CURRENT_SIZE=$(echo "$line" | grep -oP '\d+ chars' || true)
+            fi
             if echo "$line" | grep -qE 'p99.*ms'; then
-              P99=$(echo "$line" | grep -oP '[\d.]+' | head -1)
-              SIZE=$(echo "$line" | grep -oP '\d+ chars')
+              P99=$(echo "$line" | grep -oP '[\d.]+' | head -1 || true)
+              SIZE="$CURRENT_SIZE"
               echo "- ${SIZE}: p99=${P99}ms" >> $GITHUB_STEP_SUMMARY
-              # Flag if p99 > 5ms for any size (baseline max was ~6.6ms for 100 chars)
-              if (( $(echo "$P99 > 15.0" | bc -l) )); then
+              # Flag if p99 > 15ms for any size (baseline max was ~6.6ms for 100 chars)
+              if [ "$(echo "$P99 > 15.0" | bc -l)" = "1" ]; then
                 FAIL=1
                 echo "❌ ${SIZE}: p99=${P99}ms exceeds 15ms threshold" >> $GITHUB_STEP_SUMMARY
               fi
@@ -80,21 +86,21 @@ jobs:
           echo "## SXC Benchmark Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           FAIL=0
-          # Extract key metrics from output
-          LOOSE_RECALL=$(grep 'Loose Recall' benchmark-sxc.txt | grep -oP '[\d.]+%' | head -1 | tr -d '%')
-          FPR=$(grep 'FPR' benchmark-sxc.txt | grep -oP '[\d.]+%' | head -1 | tr -d '%')
+          # Extract key metrics from output (|| true prevents set -e exit on no match)
+          LOOSE_RECALL=$(grep 'Loose Recall' benchmark-sxc.txt | grep -oP '[\d.]+%' | head -1 | tr -d '%' || true)
+          FPR=$(grep 'FPR' benchmark-sxc.txt | grep -oP '[\d.]+%' | head -1 | tr -d '%' || true)
 
-          echo "- Loose Recall: ${LOOSE_RECALL}%" >> $GITHUB_STEP_SUMMARY
-          echo "- FPR: ${FPR}%" >> $GITHUB_STEP_SUMMARY
+          echo "- Loose Recall: ${LOOSE_RECALL:-N/A}%" >> $GITHUB_STEP_SUMMARY
+          echo "- FPR: ${FPR:-N/A}%" >> $GITHUB_STEP_SUMMARY
 
           # Loose recall must be >= 90%
-          if (( $(echo "${LOOSE_RECALL:-0} < 90.0" | bc -l) )); then
+          if [ "$(echo "${LOOSE_RECALL:-0} < 90.0" | bc -l)" = "1" ]; then
             FAIL=1
             echo "❌ Loose Recall ${LOOSE_RECALL}% below 90% threshold" >> $GITHUB_STEP_SUMMARY
           fi
 
           # FPR must be <= 10%
-          if (( $(echo "${FPR:-100} > 10.0" | bc -l) )); then
+          if [ "$(echo "${FPR:-100} > 10.0" | bc -l)" = "1" ]; then
             FAIL=1
             echo "❌ FPR ${FPR}% above 10% threshold" >> $GITHUB_STEP_SUMMARY
           fi
