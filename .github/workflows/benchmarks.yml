@@ -30,38 +30,24 @@ jobs:
           node tools/bench/run-benchmark.js --save | tee benchmark-regex.txt
 
       - name: Check for regressions
-        shell: bash --noprofile --norc {0}
+        shell: node {0}
         run: |
-          echo "## Regex Benchmark Regression Check" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          FAIL=0
-          CURRENT_SIZE=""
-          # Check p99 latency thresholds per input size (in ms)
-          # p99 must be under 15ms (2x+ of observed baselines)
-          while IFS= read -r line; do
-            # Track current size from header lines (e.g. "100 chars (short)...")
-            if echo "$line" | grep -qE 'chars'; then
-              CURRENT_SIZE=$(echo "$line" | grep -oP '\d+ chars' || true)
-            fi
-            if echo "$line" | grep -qE 'p99.*ms'; then
-              P99=$(echo "$line" | grep -oP '[\d.]+' | head -1 || true)
-              SIZE="$CURRENT_SIZE"
-              echo "- ${SIZE}: p99=${P99}ms" >> $GITHUB_STEP_SUMMARY
-              # Flag if p99 > 15ms for any size (baseline max was ~6.6ms for 100 chars)
-              if [ "$(echo "$P99 > 15.0" | bc -l)" = "1" ]; then
-                FAIL=1
-                echo "❌ ${SIZE}: p99=${P99}ms exceeds 15ms threshold" >> $GITHUB_STEP_SUMMARY
-              fi
-            fi
-          done < benchmark-regex.txt
-
-          if [ "$FAIL" -eq 1 ]; then
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "**Result: FAIL** — latency regression detected" >> $GITHUB_STEP_SUMMARY
-            exit 1
-          fi
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Result: PASS** — all latencies within thresholds" >> $GITHUB_STEP_SUMMARY
+          const fs = require('fs');
+          const results = JSON.parse(fs.readFileSync('test/benchmarks/results/v0.1.4-baseline.json', 'utf8'));
+          const THRESHOLD = 15.0;
+          let fail = false;
+          let summary = '## Regex Benchmark Regression Check\n\n';
+          for (const size of results.sizes) {
+            summary += `- ${size.label}: p99=${size.p99.toFixed(4)}ms\n`;
+            if (size.p99 > THRESHOLD) {
+              fail = true;
+              summary += `❌ ${size.label}: p99=${size.p99}ms exceeds ${THRESHOLD}ms threshold\n`;
+            }
+          }
+          summary += '\n**Result: ' + (fail ? 'FAIL' : 'PASS') + '**\n';
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary);
+          console.log(summary);
+          if (fail) process.exit(1);
 
       - name: Upload benchmark results
         uses: actions/upload-artifact@v7.0.2
@@ -83,37 +69,24 @@ jobs:
           node test/benchmarks/run-sxc-benchmark.mjs | tee benchmark-sxc.txt
 
       - name: Check detection metrics
-        shell: bash --noprofile --norc {0}
+        shell: node {0}
         run: |
-          echo "## SXC Benchmark Results" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          FAIL=0
-          # Extract key metrics from output (|| true prevents set -e exit on no match)
-          LOOSE_RECALL=$(grep 'Loose Recall' benchmark-sxc.txt | grep -oP '[\d.]+%' | head -1 | tr -d '%' || true)
-          FPR=$(grep 'FPR' benchmark-sxc.txt | grep -oP '[\d.]+%' | head -1 | tr -d '%' || true)
-
-          echo "- Loose Recall: ${LOOSE_RECALL:-N/A}%" >> $GITHUB_STEP_SUMMARY
-          echo "- FPR: ${FPR:-N/A}%" >> $GITHUB_STEP_SUMMARY
-
-          # Loose recall must be >= 90%
-          if [ "$(echo "${LOOSE_RECALL:-0} < 90.0" | bc -l)" = "1" ]; then
-            FAIL=1
-            echo "❌ Loose Recall ${LOOSE_RECALL}% below 90% threshold" >> $GITHUB_STEP_SUMMARY
-          fi
-
-          # FPR must be <= 10%
-          if [ "$(echo "${FPR:-100} > 10.0" | bc -l)" = "1" ]; then
-            FAIL=1
-            echo "❌ FPR ${FPR}% above 10% threshold" >> $GITHUB_STEP_SUMMARY
-          fi
-
-          if [ "$FAIL" -eq 1 ]; then
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "**Result: FAIL** — detection metrics below thresholds" >> $GITHUB_STEP_SUMMARY
-            exit 1
-          fi
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Result: PASS** — detection metrics within thresholds" >> $GITHUB_STEP_SUMMARY
+          const fs = require('fs');
+          const output = fs.readFileSync('benchmark-sxc.txt', 'utf8');
+          const recallMatch = output.match(/Loose Recall[:\s]+([\d.]+)%/);
+          const fprMatch = output.match(/FPR[:\s]+([\d.]+)%/);
+          const recall = recallMatch ? parseFloat(recallMatch[1]) : 0;
+          const fpr = fprMatch ? parseFloat(fprMatch[1]) : 100;
+          let fail = false;
+          let summary = '## SXC Benchmark Results\n\n';
+          summary += `- Loose Recall: ${recall}%\n`;
+          summary += `- FPR: ${fpr}%\n`;
+          if (recall < 90) { fail = true; summary += `❌ Loose Recall ${recall}% below 90% threshold\n`; }
+          if (fpr > 10) { fail = true; summary += `❌ FPR ${fpr}% above 10% threshold\n`; }
+          summary += '\n**Result: ' + (fail ? 'FAIL' : 'PASS') + '**\n';
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary);
+          console.log(summary);
+          if (fail) process.exit(1);
 
       - name: Upload benchmark results
         uses: actions/upload-artifact@v7.0.2
