@@ -118,11 +118,10 @@
       '</div>';
 
     // AegisGate Platform CTA (Lens is free forever; this drives TOFU traffic
-    // to the paid Platform: server-side enforcement, automated redaction,
-    // enterprise SSO, compliance modules. Per the pricing doctrine in
-    // AEGISGATE-LENS-PIVOT-2026-06-18.md.)
+    // to the Platform: server-side enforcement, automated redaction,
+    // enterprise SSO, compliance modules.)
     var platformUrl = opts.platformUrl ||
-      ((constants && constants.URLS && constants.URLS.PLATFORM_CTA) || 'https://aegisgatesecurity.io/platform/pricing');
+      ((constants && constants.URLS && constants.URLS.PLATFORM_CTA) || 'https://aegisgatesecurity.io/platform/');
     var platformHtml =
       '<a class="lens-platform-cta" href="' + formatters.escapeHtml(platformUrl) + '" target="_blank" rel="noopener noreferrer">' +
         'When your team needs server-side enforcement, custom patterns, audit logs, or SSO, upgrade to <strong>AegisGate Platform</strong> →' +

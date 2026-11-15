@@ -160,7 +160,7 @@
   // links rendered in the banner / popup / welcome page.
   var URLS = Object.freeze({
     LEARN_MORE:    'https://github.com/aegisgatesecurity/aegisgate-lens#readme',
-    PLATFORM_CTA:  'https://aegisgatesecurity.io/platform/pricing',
+    PLATFORM_CTA:  'https://aegisgatesecurity.io/platform/',
     PRIVACY:       'https://aegisgatesecurity.io/lens/privacy',
     SUPPORT:       'https://github.com/aegisgatesecurity/aegisgate-lens/issues',
     HOMEPAGE:      'https://github.com/aegisgatesecurity/aegisgate-lens'
