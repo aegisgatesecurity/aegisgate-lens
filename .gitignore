@@ -46,7 +46,7 @@ venv/
 *.tflite
 models/*
 # REMOVED: !models/threat_cnn_bilstm_weights.bin.json
-# Model weights are proprietary IP — must never be tracked.
+# Model weights are Apache 2.0 (current model tracked, old versions local)
 # The dist/ bundles for Chrome extension are built locally and uploaded
 # to the Chrome Web Store, not tracked in git.
 lens_ml_build/
@@ -189,9 +189,9 @@ test/headless-smoke/mini-smoke-bin
 .lighthouseci-fake-*/
 
 # === PROTECTED IP — DO NOT COMMIT ===
-# ML model weights (proprietary, trained by AegisGate Security, LLC)
+# ML model weights (Apache 2.0)
 models/threat_cnn_bilstm_weights.bin.json
-# ML inference code (proprietary architecture)
+# ML inference code (Apache 2.0)
 src/detectors/ml/threat-detector-js.js
 # Model card (contains architecture details)
 docs/MODEL-CARD.md

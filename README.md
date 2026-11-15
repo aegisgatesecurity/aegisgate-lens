@@ -352,7 +352,7 @@ AegisGate Lens is the consumer-facing layer. The same team builds [AegisGate Pla
 
 ## License
 
-Apache 2.0 for source code — see [LICENSE](./LICENSE) for the full text. The trained ML model weights are separately licensed under the [AegisGate Model Weight License](WEIGHTS-LICENSE.md). Non-commercial use is permitted; commercial use is permitted under Apache 2.0 for the source code.
+Apache 2.0 for source code — see [LICENSE](./LICENSE) for the full text. The trained ML model weights are licensed under the Apache License 2.0, same as the source code.
 
 ## Contributing
 
@@ -364,7 +364,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ## IP Notice
 
-AegisGate's core technologies are patent pending with the USPTO (Provisional App. Nos. 64/153,573–64/153,577, filed September 12, 2026; 64/174,824, filed October 12, 2026; and 64/180,722, filed October 20, 2026; and 64/184,057, filed October 26, 2026). Source code is © 2024-2026 AegisGate Security, LLC. Licensed under Apache 2.0. Trained ML model weights are separately licensed under the [AegisGate Model Weight License](WEIGHTS-LICENSE.md).
+AegisGate's core technologies are patent pending with the USPTO (Provisional App. Nos. 64/153,573–64/153,577, filed September 12, 2026; 64/174,824, filed October 12, 2026; and 64/180,722, filed October 20, 2026; and 64/184,057, filed October 26, 2026). Source code is © 2024-2026 AegisGate Security, LLC. Licensed under Apache 2.0. Trained ML model weights are licensed under the Apache License 2.0.
 
 ---
 

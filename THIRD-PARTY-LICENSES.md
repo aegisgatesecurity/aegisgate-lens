@@ -23,8 +23,8 @@ These are platform APIs, not third-party libraries, and do not require license a
 
 ## Model Weights
 
-The trained ML model weights (`models/threat_cnn_bilstm_weights.bin.json`) are licensed under the [AegisGate Model Weight License v1.0](./WEIGHTS-LICENSE.md), separate from the Apache 2.0 code license.
+The trained ML model weights (`models/threat_cnn_bilstm_weights.bin.json`) are licensed under the Apache License 2.0, same as the source code.
 
 ---
 
-*Copyright © 2026 AegisGate Security, LLC. All rights reserved.*
+*Copyright © 2024-2026 AegisGate Security, LLC. Licensed under Apache 2.0.*
