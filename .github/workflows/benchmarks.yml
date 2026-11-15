@@ -30,8 +30,8 @@ jobs:
           node tools/bench/run-benchmark.js --save | tee benchmark-regex.txt
 
       - name: Check for regressions
+        shell: bash --noprofile --norc {0}
         run: |
-          set +e
           echo "## Regex Benchmark Regression Check" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           FAIL=0
@@ -83,8 +83,8 @@ jobs:
           node test/benchmarks/run-sxc-benchmark.mjs | tee benchmark-sxc.txt
 
       - name: Check detection metrics
+        shell: bash --noprofile --norc {0}
         run: |
-          set +e
           echo "## SXC Benchmark Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           FAIL=0
