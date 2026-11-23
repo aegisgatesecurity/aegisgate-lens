@@ -23,7 +23,7 @@ These are platform APIs, not third-party libraries, and do not require license a
 
 ## Model Weights
 
-The trained ML model weights (`models/threat_cnn_bilstm_weights.bin.json`) are licensed under the Apache License 2.0, same as the source code.
+The trained ML model weights previously distributed here (`models/threat_cnn_bilstm_weights.bin.json`) were withdrawn on 2026-11-23 (training-label audit failure) and are no longer distributed.
 
 ---
 

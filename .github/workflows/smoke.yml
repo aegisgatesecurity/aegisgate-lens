@@ -61,14 +61,10 @@ jobs:
         with:
           go-version: '1.27.3'
 
-      - name: Download ML model weights from release
+      - name: ML model weights withdrawn (2026-11-23)
         run: |
-          mkdir -p models
-          gh release download v0.5.2 --pattern "threat_cnn_bilstm_weights.bin.json" --dir models/ || {
-            echo "WARNING: Could not download model weights, ML tests will use fallback"
-          }
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          echo "ML weights were withdrawn 2026-11-23 (training-label audit failure)."
+          echo "ML tests will run in fallback/withdrawn mode. See docs/ML-WITHDRAWN.md."
 
       - name: Install Chromium dependencies
         run: |
@@ -209,14 +205,10 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Download ML model weights from release
+      - name: ML model weights withdrawn (2026-11-23)
         run: |
-          mkdir -p models
-          gh release download v0.5.2 --pattern "threat_cnn_bilstm_weights.bin.json" --dir models/ || {
-            echo "WARNING: Could not download model weights, ML tests will use fallback"
-          }
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          echo "ML weights were withdrawn 2026-11-23 (training-label audit failure)."
+          echo "ML tests will run in fallback/withdrawn mode. See docs/ML-WITHDRAWN.md."
 
       - name: Run evasion suite (CI mode)
         run: |
@@ -256,14 +248,10 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Download ML model weights from release
+      - name: ML model weights withdrawn (2026-11-23)
         run: |
-          mkdir -p models
-          gh release download v0.5.2 --pattern "threat_cnn_bilstm_weights.bin.json" --dir models/ || {
-            echo "WARNING: Could not download model weights, ML tests will use fallback"
-          }
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          echo "ML weights were withdrawn 2026-11-23 (training-label audit failure)."
+          echo "ML tests will run in fallback/withdrawn mode. See docs/ML-WITHDRAWN.md."
 
       - name: Run evasion suite (FULL — 4,050 tests)
         run: |
@@ -305,14 +293,10 @@ jobs:
         with:
           go-version: '1.27.3'
 
-      - name: Download ML model weights from release
+      - name: ML model weights withdrawn (2026-11-23)
         run: |
-          mkdir -p models
-          gh release download v0.5.2 --pattern "threat_cnn_bilstm_weights.bin.json" --dir models/ || {
-            echo "WARNING: Could not download model weights, ML tests will use fallback"
-          }
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          echo "ML weights were withdrawn 2026-11-23 (training-label audit failure)."
+          echo "ML tests will run in fallback/withdrawn mode. See docs/ML-WITHDRAWN.md."
 
       - name: Install Chromium dependencies
         run: |

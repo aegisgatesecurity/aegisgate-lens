@@ -1,3 +1,5 @@
+> **⚠ 2026-11-23 — ML WITHDRAWN.** The ML threat detector and all its performance figures in this document are withdrawn (docs/ML-WITHDRAWN.md). Deterministic regex detection is unaffected.
+
 <div align="center">
 
 # 🛡️ AegisGate Lens
@@ -14,12 +16,11 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Install on Chrome Web Store](https://img.shields.io/badge/Install-CWS%20v0.5.3-4285F4?logo=google-chrome&logoColor=white)](https://chromewebstore.google.com/detail/aegisgate-lens/lkioinepjpjfdhiggaomoafnhagfcjip)
 [![Firefox Add-on](https://img.shields.io/badge/Install-AMO%20v0.5.3-FF7139?logo=firefox&logoColor=white)](https://addons.mozilla.org/en-US/firefox/addon/aegisgate-lens/)
-[![Version](https://img.shields.io/badge/version-v0.7.0-brightgreen.svg)](https://github.com/aegisgatesecurity/aegisgate-lens/releases/tag/v0.7.0)
+[![Version](https://img.shields.io/badge/version-v0.7.1-brightgreen.svg)](https://github.com/aegisgatesecurity/aegisgate-lens/releases/tag/v0.7.1)
 [![Tests](https://img.shields.io/badge/tests-550%20passing-brightgreen.svg)](#test-coverage)
-[![ML](https://img.shields.io/badge/ML-pure%20JS%20(CharCNN--BiLSTM)-9cf.svg)](#ml-threat-detector)
-[![Perf](https://img.shields.io/badge/ML%20inference-~5--50ms%20(Chrome%20est.)-blue.svg)](#performance)
+[![ML](https://img.shields.io/badge/ML-WITHDRAWN%20(2026--11--23)-lightgrey.svg)](docs/ML-WITHDRAWN.md)
 [![Privacy](https://img.shields.io/badge/privacy-12%20non--negotiables-success.svg)](./docs/SECURITY.md)
-[![Patterns](https://img.shields.io/badge/patterns-217%20regex%20%2B%20ML-9cf.svg)](#)
+[![Patterns](https://img.shields.io/badge/patterns-217%20regex-9cf.svg)](#)
 [![Providers](https://img.shields.io/badge/providers-10-blue.svg)](#supported-ai-providers)
 [![Chrome 116+](https://img.shields.io/badge/chrome-116%2B-yellow.svg)](https://developer.chrome.com/docs/extensions/mv3)
 [![Firefox 142+](https://img.shields.io/badge/firefox-142%2B-FF7139?logo=firefox&logoColor=white)](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions)
@@ -30,7 +31,7 @@
 [![Patent Pending](https://img.shields.io/badge/IP-Patent_Pending-8B5CF6?logo=uspto)](https://github.com/aegisgatesecurity/aegisgate-lens#ip-notice)
 [![Published Research](https://img.shields.io/badge/Research-SSRN_Published-003399?logo=elsevier)](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7652138)
 
-[Install](#installation) · [How It Works](#how-it-works) · [ML Detector](#ml-threat-detector) · [Detection](#what-it-detects) · [Privacy](./docs/SECURITY.md) · [Architecture](./docs/ARCHITECTURE-v0.1.3.md) · [Releases](https://github.com/aegisgatesecurity/aegisgate-lens/releases)
+[Install](#installation) · [How It Works](#how-it-works) · [Detection](#what-it-detects) · [Privacy](./docs/SECURITY.md) · [Architecture](./docs/ARCHITECTURE-v0.1.3.md) · [Releases](https://github.com/aegisgatesecurity/aegisgate-lens/releases)
 
 
 
@@ -53,7 +54,7 @@ Lens is the browser extension that catches it **before you hit send**.
 Think of it like a spellchecker for privacy — but instead of catching typos, it catches your Social Security number, credit card number, passwords, API keys, and other things you really don't want going to an AI company.
 
 - **100% on-device.** No prompt text, no URLs, no page content ever leaves your browser. Zero telemetry by default.
-- **217 regex patterns + ML.** Sub-millisecond regex detection plus ~5-50ms ML inference for adversarial prompt injection.
+- **217 regex patterns.** Sub-millisecond detection. (The ML threat detector was withdrawn 2026-11-23 — see docs/ML-WITHDRAWN.md.)
 - **10 AI providers.** ChatGPT, Claude, Gemini, Copilot, DuckDuckGo, Perplexity, Mistral, Grok, DeepSeek, Meta AI.
 - **Fail-visible.** Every detection is shown to you — you decide to cancel, edit, or proceed.
 - **Free. Forever.** Apache 2.0, no account required, no upsell gate.
@@ -114,7 +115,7 @@ The banner is **non-blocking** — it doesn't prevent you from sending. It just 
 flowchart LR
     User["👤 You type a prompt"] -->|"Keystroke<br/>(debounced 250ms)"| Lens["🛡️ Lens<br/>Content Script"]
     Lens -->|"Regex facets<br/>(sync, ~0.3ms)"| Regex{"217 regex<br/>patterns"}
-    Lens -->|"ML facet<br/>(async, ~5-50ms)"| ML["🧠 Char CNN-BiLSTM"]
+    Lens -->|"ML facet<br/>(async, ~5-50ms)"| ML["🧠 ML (WITHDRAWN 2026-11-23)"]
 
     Regex -->|"PII detected"| PII["🔒 PII<br/>(77 patterns)"]
     Regex -->|"Secret detected"| Secret["🔑 Secrets<br/>(57 patterns)"]
@@ -146,7 +147,7 @@ Lens runs **6 detection facets** — 5 regex (synchronous) + 1 ML (asynchronous)
 | **Compliance** | OWASP LLM Top 10, MITRE ATLAS, EU AI Act, NIST CSF, ISO 27001, CCPA, LGPD, PIPEDA, POPIA | "patient SSN:", "credit card:" | 62 | ~0.3ms |
 | **OT/ICS Protocols** | Modbus, DNP3, OPC-UA control manipulation | "Modbus function code 06..." | 9 | ~0.3ms |
 | **ML Threat** | Adversarial prompt injection (instruction override, roleplay, obfuscated commands) | "Ignore all previous instructions..." | 1 model | ~5-50ms |
-| **Total** | — | — | **217 regex + 1 ML** | — |
+| **Total** | — | — | **217 regex** | — |
 
 ## Security Posture
 
@@ -174,12 +175,15 @@ Lens runs **6 detection facets** — 5 regex (synchronous) + 1 ML (asynchronous)
 | XSS detection (in-scope) | **75%** (9/12) | n/a | n/a |
 | Secrets detection (in-scope) | **48.6%** (18/37) | n/a | n/a |
 | FPR (regex, WildChat) | **2.31%** | 2.31% | 2.31% |
-| ML adversarial detection | **100%** (10/10) | 100% (10/10) | n/a |
-| ML benign pass-through | **81.8%** (9/11) | 81.8% (9/11) | n/a |
+| ML adversarial detection | WITHDRAWN | WITHDRAWN | n/a |
+| ML benign pass-through | WITHDRAWN | WITHDRAWN | n/a |
 
-**Source**: [docs/MODEL-CARD.md](./docs/MODEL-CARD.md) — detection metrics and evaluation data
+**Source**: [docs/ML-WITHDRAWN.md](./docs/ML-WITHDRAWN.md) — detection metrics and evaluation data
 
 ## ML Threat Detector
+
+> **WITHDRAWN 2026-11-23.** The ML threat detector and every figure below are withdrawn. The weights were removed from this repository; the extension now runs regex-only. See docs/ML-WITHDRAWN.md.
+
 
 v0.5.3 includes a **Char CNN-BiLSTM with Attention** model that detects adversarial prompt injections — the kind of attacks that regex can't catch (paraphrased instructions, roleplay injection, obfuscated commands).
 
@@ -206,7 +210,7 @@ The ML detector runs **asynchronously** alongside the regex facets. Regex detect
 | Score separation | 0.82 (adversarial avg 0.988 vs benign avg 0.171) |
 | Score determinism | 100% (20/20 identical calls) |
 
-See [docs/MODEL-CARD.md](./docs/MODEL-CARD.md) for full evaluation data.
+See [docs/ML-WITHDRAWN.md](./docs/ML-WITHDRAWN.md) for full evaluation data.
 
 </details>
 

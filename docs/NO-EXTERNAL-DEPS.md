@@ -1,3 +1,5 @@
+> **⚠ WITHDRAWN 2026-11-23.** Claims in this document relating to the ML threat detector are void. See docs/ML-WITHDRAWN.md.
+
 # No External Dependencies
 
 **This repository has zero third-party dependencies.** This is a hard constraint, not a guideline. Any PR that adds a third-party dependency will be rejected. See [`CONTRIBUTING.md`](../CONTRIBUTING.md) for the rule and the rationale.

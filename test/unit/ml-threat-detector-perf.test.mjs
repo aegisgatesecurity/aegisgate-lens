@@ -38,8 +38,12 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // The ML inference code (src/detectors/ml/threat-detector-js.js) is
 // proprietary and .gitignored. In CI (fresh checkout), the file is absent.
 // Skip all ML tests when the file is not available.
+// NOTE (2026-11-23): the neural model was WITHDRAWN. The weights file no
+// longer ships, so these tests self-skip. Restore by re-adding a retrained
+// weights file and removing this guard.
 const ML_FILE = join(LENS_ROOT, 'src/detectors/ml/threat-detector-js.js');
-const ML_AVAILABLE = existsSync(ML_FILE);
+const WEIGHTS_FILE = join(LENS_ROOT, 'models/threat_cnn_bilstm_weights.bin.json');
+const ML_AVAILABLE = existsSync(ML_FILE) && existsSync(WEIGHTS_FILE);
 
 // Wrapper: skip test when ML file is not available (CI regex-only mode)
 const mlTest = ML_AVAILABLE ? test : test.skip;

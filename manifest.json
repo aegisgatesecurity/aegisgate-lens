@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "AegisGate Lens",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "Privacy-first prompt safety for AI tools. Detects PII, secrets, XSS, compliance, and adversarial prompts on-device. Apache 2.0.",
   "author": "AegisGate Security, LLC",
   "homepage_url": "https://aegisgatesecurity.io/lens",
@@ -106,8 +106,7 @@
         "src/icons/banner-3x.png",
         "icons/banner-1x.png",
         "icons/banner-2x.png",
-        "icons/banner-3x.png",
-        "models/threat_cnn_bilstm_weights.bin.json"
+        "icons/banner-3x.png"
       ],
       "matches": [
         "https://chat.openai.com/*",

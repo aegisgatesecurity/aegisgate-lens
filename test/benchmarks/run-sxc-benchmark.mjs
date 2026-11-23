@@ -15,6 +15,14 @@ import { loadModule, resetGlobals, LENS_ROOT } from '../helpers/load-module.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+// Neural ML detection was WITHDRAWN 2026-11-23 (see docs/ML-WITHDRAWN.md).
+// The weights file no longer ships; this benchmark cannot run.
+if (!existsSync(join(LENS_ROOT, 'models/threat_cnn_bilstm_weights.bin.json'))) {
+  console.error('ML detection WITHDRAWN 2026-11-23: models/threat_cnn_bilstm_weights.bin.json is not present.');
+  console.error('This benchmark measured the withdrawn model and cannot run. See docs/ML-WITHDRAWN.md.');
+  process.exit(2);
+}
+
 // ================================================================
 // Load SXC corpus
 // ================================================================

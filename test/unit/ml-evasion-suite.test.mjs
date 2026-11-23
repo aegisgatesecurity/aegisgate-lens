@@ -25,8 +25,12 @@ import { loadModule, resetGlobals, LENS_ROOT } from '../helpers/load-module.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+// NOTE (2026-11-23): the neural model was WITHDRAWN. The weights file no
+// longer ships, so these tests self-skip. Restore by re-adding a retrained
+// weights file and removing the WEIGHTS_FILE clause.
 const ML_FILE = join(LENS_ROOT, 'src/detectors/ml/threat-detector-js.js');
-const ML_AVAILABLE = existsSync(ML_FILE);
+const WEIGHTS_FILE = join(LENS_ROOT, 'models/threat_cnn_bilstm_weights.bin.json');
+const ML_AVAILABLE = existsSync(ML_FILE) && existsSync(WEIGHTS_FILE);
 const mlTest = ML_AVAILABLE ? test : test.skip;
 
 // ================================================================

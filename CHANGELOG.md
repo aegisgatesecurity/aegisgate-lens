@@ -1,3 +1,7 @@
+## [0.7.1] - 2026-11-23 — ML Withdrawn
+
+- `models/threat_cnn_bilstm_weights.bin.json` removed; ML threat detector replaced with a no-op stub; `manifest.json` no longer exposes the weights; all ML detection-rate claims void. Deterministic regex detection unaffected. See docs/ML-WITHDRAWN.md.
+
 ## [0.7.0] — 2026-11-10 — Critical LSTM Gate Order Fix
 
 > **v0.7.0** fixes a critical ML inference bug where the JS LSTM gate order was incorrect for ONNX-exported weights. ONNX uses (i, o, f, c) gate ordering while PyTorch uses (i, f, g, o). This fix corrects the gate order to match ONNX conventions, ensuring accurate neural threat detection.
