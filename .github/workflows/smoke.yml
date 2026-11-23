@@ -61,14 +61,21 @@ jobs:
         with:
           go-version: '1.27.3'
 
-      - name: Download ML model weights from release
+      - name: Check ML weights present
+        id: weights
         run: |
-          mkdir -p models
-          gh release download v0.5.2 --pattern "threat_cnn_bilstm_weights.bin.json" --dir models/ || {
-            echo "WARNING: Could not download model weights, ML tests will use fallback"
-          }
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          if [ -f models/threat_cnn_bilstm_weights.bin.json ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: ML withdrawn — notice
+        if: steps.weights.outputs.present != 'true'
+        run: |
+          echo "ML weights were withdrawn 2026-11-23 (training-label audit failure)."
+          echo "ML-dependent steps are skipped when the weights are absent."
+          echo "See docs/ML-WITHDRAWN.md."
 
       - name: Install Chromium dependencies
         run: |
@@ -209,16 +216,24 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Download ML model weights from release
+      - name: Check ML weights present
+        id: weights
         run: |
-          mkdir -p models
-          gh release download v0.5.2 --pattern "threat_cnn_bilstm_weights.bin.json" --dir models/ || {
-            echo "WARNING: Could not download model weights, ML tests will use fallback"
-          }
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          if [ -f models/threat_cnn_bilstm_weights.bin.json ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: ML withdrawn — notice
+        if: steps.weights.outputs.present != 'true'
+        run: |
+          echo "ML weights were withdrawn 2026-11-23 (training-label audit failure)."
+          echo "ML-dependent steps are skipped when the weights are absent."
+          echo "See docs/ML-WITHDRAWN.md."
 
       - name: Run evasion suite (CI mode)
+        if: steps.weights.outputs.present == 'true'
         run: |
           CI=1 node test/unit/ml-evasion-suite.test.mjs 2>&1 | tee evasion-results.txt
           SCORE=$(grep "Evasion Resistance Score" evasion-results.txt | grep -oP '[\d.]+/100' | cut -d/ -f1)
@@ -256,16 +271,24 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Download ML model weights from release
+      - name: Check ML weights present
+        id: weights
         run: |
-          mkdir -p models
-          gh release download v0.5.2 --pattern "threat_cnn_bilstm_weights.bin.json" --dir models/ || {
-            echo "WARNING: Could not download model weights, ML tests will use fallback"
-          }
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          if [ -f models/threat_cnn_bilstm_weights.bin.json ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: ML withdrawn — notice
+        if: steps.weights.outputs.present != 'true'
+        run: |
+          echo "ML weights were withdrawn 2026-11-23 (training-label audit failure)."
+          echo "ML-dependent steps are skipped when the weights are absent."
+          echo "See docs/ML-WITHDRAWN.md."
 
       - name: Run evasion suite (FULL — 4,050 tests)
+        if: steps.weights.outputs.present == 'true'
         run: |
           LENS_ML_FULL=1 node test/unit/ml-evasion-suite.test.mjs 2>&1 | tee evasion-results-full.txt
           SCORE=$(grep "Evasion Resistance Score" evasion-results-full.txt | grep -oP '[\d.]+/100' | cut -d/ -f1)
@@ -305,14 +328,21 @@ jobs:
         with:
           go-version: '1.27.3'
 
-      - name: Download ML model weights from release
+      - name: Check ML weights present
+        id: weights
         run: |
-          mkdir -p models
-          gh release download v0.5.2 --pattern "threat_cnn_bilstm_weights.bin.json" --dir models/ || {
-            echo "WARNING: Could not download model weights, ML tests will use fallback"
-          }
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          if [ -f models/threat_cnn_bilstm_weights.bin.json ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: ML withdrawn — notice
+        if: steps.weights.outputs.present != 'true'
+        run: |
+          echo "ML weights were withdrawn 2026-11-23 (training-label audit failure)."
+          echo "ML-dependent steps are skipped when the weights are absent."
+          echo "See docs/ML-WITHDRAWN.md."
 
       - name: Install Chromium dependencies
         run: |

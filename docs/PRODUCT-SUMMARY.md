@@ -1,3 +1,5 @@
+> **⚠ WITHDRAWN 2026-11-23.** Claims in this document relating to the ML threat detector are void. See docs/ML-WITHDRAWN.md.
+
 # AegisGate Lens — Product Summary
 
 **Version**: v0.3.2
@@ -102,10 +104,7 @@ manifest):
 
 ## What's new in v0.3.0
 
-- **ML threat detector** — Char CNN-BiLSTM with Attention, pure JS
-  inference, detects adversarial prompt injections (instruction
-  override, roleplay injection, obfuscated commands). 100%
-  adversarial detection rate on v0.3.0 test set.
+- **ML threat detector** — WITHDRAWN 2026-11-23. The Char CNN-BiLSTM weights were removed after the training corpus failed label audit; all detection claims are void. See docs/ML-WITHDRAWN.md.
 - **DeepSeek + Meta AI** — two new AI provider integrations (10 total).
 - **6× smaller extension** — reduced from 25MB (WASM) to 4.2MB (pure JS).
 - **Stricter CSP** — `script-src 'self'` only, no `wasm-unsafe-eval`.

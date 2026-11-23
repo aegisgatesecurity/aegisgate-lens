@@ -75,13 +75,13 @@ You may not:
 ## 4. Privacy and data collection
 
 **AegisGate Lens does not collect any user data by
-default.** The Lens is 100% on-device. Both the regex
-detection (151 patterns) and the ML detection (Char
-CNN-BiLSTM model) run entirely in your browser. The ML
-model weights are bundled in the extension package; no
-model is downloaded at runtime. No prompt content, no
-detection results, and no ML inference scores leave your
-device unless you explicitly opt in.
+default.** The Lens is 100% on-device. The regex
+detection (262 patterns) runs entirely in your browser.
+NO neural ML detection is present: the ML model was
+withdrawn and removed on 2026-11-23 after a training-corpus
+label audit failure (see docs/ML-WITHDRAWN.md). No prompt
+content or detection result leaves your device unless you
+explicitly opt in.
 
 **Opt-in telemetry.** The Lens includes an opt-in path
 for sending anonymous, metadata-only false-positive
@@ -189,13 +189,11 @@ user from sending the prompt. The user can always press
 provider. The Lens does NOT guarantee detection of all
 PII, all secrets, all XSS, all compliance-relevant
 language, or all adversarial prompt injections. The regex
-detection rate is approximately 98.99% on the in-target
-held-out set; the ML adversarial detection rate is 100%
-on the v0.3.0 test set (10/10 prompt injections caught);
-the false positive rate for regex is approximately 2.31%
-on 6,500 WildChat prompts; the ML benign pass-through
-rate is 81.8% (9/11, with 2 false positives on creative
-writing prompts). The adversarial robustness (paraphrasing,
+false positive rate for regex is approximately 2.31%
+on 6,500 WildChat prompts. NOTE (2026-11-23): all
+ML-derived figures have been withdrawn — the ML model
+was removed after its training corpus failed label audit.
+See docs/ML-WITHDRAWN.md. The adversarial robustness (paraphrasing,
 base64, OCR, etc.) is partial and is documented in
 `docs/THREAT-MODEL.md` F-15 and F-20.
 

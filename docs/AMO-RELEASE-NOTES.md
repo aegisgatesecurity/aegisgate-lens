@@ -1,3 +1,5 @@
+> **⚠ WITHDRAWN 2026-11-23.** Claims in this document relating to the ML threat detector are void. See docs/ML-WITHDRAWN.md.
+
 # AegisGate Lens — AMO Release Notes (v0.3.2)
 
 **Extension ID:** `lens@aegisgate.security`

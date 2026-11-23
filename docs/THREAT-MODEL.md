@@ -1,3 +1,5 @@
+> **⚠ WITHDRAWN 2026-11-23.** Claims in this document relating to the ML threat detector are void. See docs/ML-WITHDRAWN.md.
+
 # AegisGate Lens v0.3.2 — Threat Model
 
 **Status:** v0.3.2 (all findings triaged against the shipped product; 11 resolved, 1 residual, 1 accepted, 1 partial)

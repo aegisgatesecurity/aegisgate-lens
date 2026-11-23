@@ -1,3 +1,5 @@
+> **⚠ WITHDRAWN 2026-11-23.** Claims in this document relating to the ML threat detector are void. See docs/ML-WITHDRAWN.md.
+
 # AegisGate Lens — Security Policy
 
 **Version**: v0.3.2

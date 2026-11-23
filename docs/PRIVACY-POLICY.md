@@ -1,3 +1,5 @@
+> **⚠ WITHDRAWN 2026-11-23.** Claims in this document relating to the ML threat detector are void. See docs/ML-WITHDRAWN.md.
+
 # Privacy Policy
 
 The published Privacy Policy for AegisGate Lens is hosted at:

@@ -293,9 +293,9 @@
 <body>
   <div class="container">
     <div class="header">
-      <span class="tag" id="lens-version-tag">v0.7.0</span>
+      <span class="tag" id="lens-version-tag">v0.7.1</span>
       <h1>AegisGate Lens</h1>
-      <p class="subtitle">Privacy-first prompt safety. 262 regex patterns + on-device ML detection. Zero data leaves your browser.</p>
+      <p class="subtitle">Privacy-first prompt safety. 262 regex patterns. Zero data leaves your browser.</p>
     </div>
 
     <section>
@@ -327,9 +327,9 @@
           <p>Modbus function codes, DNP3 control operations, OPC-UA method calls — critical infrastructure protection.</p>
         </div>
         <div class="feature-item">
-          <div class="count">1 <span class="ml-badge">ML</span></div>
-          <h3>Adversarial Detection</h3>
-          <p>On-device Char CNN-BiLSTM model adds a supplementary layer of adversarial prompt detection — runs 100% in-browser, zero data sent to any server.</p>
+          <div class="count">ML</div>
+          <h3>ML Detection Withdrawn</h3>
+          <p>The on-device neural ML layer was withdrawn and disabled on 2026-11-23 pending retraining after a corpus audit failure. Regex detection remains fully active. See docs/ML-WITHDRAWN.md.</p>
         </div>
       </div>
     </section>
@@ -337,18 +337,15 @@
     <div class="card warning">
       <h2>🛡️ Privacy promise</h2>
       <p><strong>No prompt content ever leaves your browser.</strong> Not for debugging. Not for support. Not ever.</p>
-      <p>Both regex and ML detection run 100% on-device. The ML model weights are bundled in the extension — no downloads, no remote inference, no telemetry by default. You must explicitly opt in to share anonymized threat-intel signals.</p>
+      <p>Regex detection runs 100% on-device — no downloads, no remote inference, no telemetry by default. The neural ML layer was withdrawn and disabled on 2026-11-23; its weights are no longer bundled. You must explicitly opt in to share anonymized threat-intel signals.</p>
     </div>
 
     <div class="card">
-      <h2>What's new in v0.7.0</h2>
+      <h2>What's new in v0.7.1</h2>
       <ul>
-        <li><strong>45 new PII patterns</strong> — international IDs (Brazil CPF, India Aadhaar, UK NHS, Canada SIN), crypto wallets (BTC, ETH, BNB, LTC, SOL), digital payment IDs (PayPal, Stripe, Venmo, Cash App), medical billing codes (CPT, HCPCS, ICD-10, NPI, MRN), SWIFT/BIC banking codes</li>
-        <li><strong>16 new secrets patterns</strong> — GitLab, Bitbucket, Linode, DigitalOcean, Salesforce, Shopify, npm, PyPI, Supabase, and more</li>
-        <li><strong>OT/ICS protocol detection</strong> — 9 patterns for Modbus, DNP3, OPC-UA (critical infrastructure protection)</li>
-        <li><strong>10 AI providers supported</strong> — ChatGPT, Claude, Gemini, DeepSeek, Meta AI, Perplexity, Grok, Copilot, Mistral, HuggingChat</li>
-        <li><strong>6× smaller</strong> — extension reduced from 25MB to 4.2MB (pure JS, no WASM)</li>
-        <li><strong>Lazy ML model loading</strong> — 3.7MB model weights load on first detection, not on page load</li>
+        <li><strong>ML detection withdrawn</strong> — the Char CNN-BiLSTM model failed a corpus label audit and has been removed from the extension and hard-disabled. All neural-ML detection-rate claims are void. Deterministic regex detection is unaffected. See docs/ML-WITHDRAWN.md</li>
+        <li><strong>Regex detection unchanged</strong> — PII, secrets, XSS, compliance, and OT/ICS pattern sets continue to run 100% on-device</li>
+        <li><strong>No model weights bundled</strong> — extension size reduced; no ML inference occurs at runtime</li>
       </ul>
     </div>
 
@@ -371,7 +368,7 @@
       <p>If you opt in, the Lens sends a small, anonymous "I detected X category Y" signal back to AegisGate. This helps the AegisGate Gateway become smarter over time. The signal contains:</p>
       <ul>
         <li>A <strong>hashed</strong> version of the page domain (e.g. <code>a3f1c8d2b9e07456</code>) — not the URL, not the path, not any page content</li>
-        <li>The <strong>category</strong> that was detected (e.g. <code>pii_email</code> or <code>ml_adversarial_prompt</code>) — not the value</li>
+        <li>The <strong>category</strong> that was detected (e.g. <code>pii_email</code> or <code>secrets_github_token</code>) — not the value</li>
         <li>The <strong>severity</strong> and your <strong>action</strong> (send, redact, cancel)</li>
       </ul>
       <p class="small">See <code>docs/PRIVACY-POLICY.md</code> for the full policy.</p>

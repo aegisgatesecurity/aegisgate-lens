@@ -64,11 +64,29 @@ jobs:
           node-version: '22'
 
 
+      - name: Check ML weights present
+        id: weights
+        run: |
+          if [ -f models/threat_cnn_bilstm_weights.bin.json ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: SXC benchmark skipped — ML withdrawn
+        if: steps.weights.outputs.present != 'true'
+        run: |
+          echo "ML weights were withdrawn 2026-11-23 (training-label audit failure)."
+          echo "The SXC benchmark measures the withdrawn model; skipping."
+          echo "See docs/ML-WITHDRAWN.md."
+
       - name: SXC corpus benchmark
+        if: steps.weights.outputs.present == 'true'
         run: |
           node test/benchmarks/run-sxc-benchmark.mjs | tee benchmark-sxc.txt
 
       - name: Check detection metrics
+        if: steps.weights.outputs.present == 'true'
         shell: node {0}
         run: |
           const fs = require('fs');
