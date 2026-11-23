@@ -57,7 +57,7 @@ jobs:
           node-version: '22'
 
       - name: Setup Go (for the smoke binary)
-        uses: actions/setup-go@v7.0.0
+        uses: actions/setup-go@v7.1.0
         with:
           go-version: '1.27.3'
 
@@ -324,7 +324,7 @@ jobs:
           node-version: '22'
 
       - name: Setup Go
-        uses: actions/setup-go@v7.0.0
+        uses: actions/setup-go@v7.1.0
         with:
           go-version: '1.27.3'
 
