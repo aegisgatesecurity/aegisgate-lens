@@ -25,11 +25,19 @@ The Privacy Policy commits to 12 non-negotiables. These are the design constrain
 11. The Lens's backend is TLS-only. HTTP is rejected. HSTS is enabled.
 12. The Lens's threat model is updated whenever the architecture changes.
 
-## ML detection disclosure (v0.3.0)
+## ML detection disclosure (v0.3.0) — WITHDRAWN 2026-11-23
 
-Starting in v0.3.0, the Lens includes an on-device ML threat detector
+**As of v0.7.1 (2026-11-23), the on-device ML threat detector described in
+this section is withdrawn and is NOT present in this version.** The model
+weights were removed from the extension and the detection code is a no-op
+stub; no ML model runs, no prompt is processed by any ML model, and no ML
+scores are produced. See `docs/ML-WITHDRAWN.md`. The disclosure below is
+retained for historical accuracy only and does not describe current
+behavior:
+
+Starting in v0.3.0, the Lens included an on-device ML threat detector
 (Char CNN-BiLSTM with Attention, 1.58M parameters). This section
-discloses how the ML model handles user data:
+disclosed how the ML model handled user data:
 
 - **The ML model runs entirely on-device.** No prompt content, no
   ML inference scores, and no model outputs are sent to any server.
@@ -58,6 +66,12 @@ discloses how the ML model handles user data:
   pre-trained model. There is no feedback loop, no reinforcement
   learning, no online training, no data collection for training
   purposes.
+
+As of v0.7.1 (2026-11-23) none of the above describes a shipped
+component: the weights are removed, the detector is disabled, and no
+inference of any kind occurs. This subsection is retained for the
+historical record. Flag any external publication of this section for
+legal review.
 
 ## Reporting privacy concerns
 

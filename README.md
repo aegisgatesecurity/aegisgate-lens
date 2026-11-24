@@ -137,7 +137,7 @@ flowchart LR
 
 ## What It Detects
 
-Lens runs **6 detection facets** — 5 regex (synchronous) + 1 ML (asynchronous) — on every keystroke (debounced 250ms).
+Lens runs **5 regex detection facets** (synchronous) on every keystroke (debounced 250ms). The ML facet was withdrawn on 2026-11-23 and is not present — see docs/ML-WITHDRAWN.md.
 
 | Facet | What it catches | Example | Patterns | Latency |
 |-------|----------------|---------|----------|----------|
@@ -146,7 +146,7 @@ Lens runs **6 detection facets** — 5 regex (synchronous) + 1 ML (asynchronous)
 | **XSS** | Cross-site scripting payloads | `<script>alert(1)</script>` | 12 | ~0.3ms |
 | **Compliance** | OWASP LLM Top 10, MITRE ATLAS, EU AI Act, NIST CSF, ISO 27001, CCPA, LGPD, PIPEDA, POPIA | "patient SSN:", "credit card:" | 62 | ~0.3ms |
 | **OT/ICS Protocols** | Modbus, DNP3, OPC-UA control manipulation | "Modbus function code 06..." | 9 | ~0.3ms |
-| **ML Threat** | Adversarial prompt injection (instruction override, roleplay, obfuscated commands) | "Ignore all previous instructions..." | 1 model | ~5-50ms |
+| **ML Threat** | WITHDRAWN 2026-11-23 — not present in this version. See docs/ML-WITHDRAWN.md | — | — | — |
 | **Total** | — | — | **217 regex** | — |
 
 ## Security Posture
@@ -166,9 +166,9 @@ Lens runs **6 detection facets** — 5 regex (synchronous) + 1 ML (asynchronous)
 | Metric | v0.5.3 | v0.3.0 | v0.2.0 |
 |--------|--------|--------|--------|
 | Regex detection (p99) | **<1ms** | <1ms | <1ms |
-| ML inference (p50, Chrome est.) | **~5-50ms** | ~5-50ms | n/a |
-| ML inference (p50, Node.js) | **~420ms** | ~420ms | n/a |
-| Model load time | **~120ms** | ~120ms | n/a |
+| ML inference (p50, Chrome est.) | WITHDRAWN | WITHDRAWN | n/a |
+| ML inference (p50, Node.js) | WITHDRAWN | WITHDRAWN | n/a |
+| Model load time | WITHDRAWN | WITHDRAWN | n/a |
 | Extension size | **4.2MB** | 4.2MB | ~2MB |
 | Regex patterns | **217** | 151 | 86 |
 | PII detection (in-scope) | **100%** (30/30) | n/a | n/a |
@@ -180,12 +180,13 @@ Lens runs **6 detection facets** — 5 regex (synchronous) + 1 ML (asynchronous)
 
 **Source**: [docs/ML-WITHDRAWN.md](./docs/ML-WITHDRAWN.md) — detection metrics and evaluation data
 
-## ML Threat Detector
+## ML Threat Detector (WITHDRAWN 2026-11-23)
 
 > **WITHDRAWN 2026-11-23.** The ML threat detector and every figure below are withdrawn. The weights were removed from this repository; the extension now runs regex-only. See docs/ML-WITHDRAWN.md.
 
+The section below is retained as a historical record of the v0.5.3-era design. **None of it describes the current product.** As of v0.7.1 (2026-11-23), no ML model is bundled, loaded, or executed; `src/detectors/ml/threat-detector-js.js` is a no-op stub.
 
-v0.5.3 includes a **Char CNN-BiLSTM with Attention** model that detects adversarial prompt injections — the kind of attacks that regex can't catch (paraphrased instructions, roleplay injection, obfuscated commands).
+v0.5.3 included a **Char CNN-BiLSTM with Attention** model that detected adversarial prompt injections — the kind of attacks that regex can't catch (paraphrased instructions, roleplay injection, obfuscated commands).
 
 | Property | Value |
 |----------|-------|
@@ -198,10 +199,12 @@ v0.5.3 includes a **Char CNN-BiLSTM with Attention** model that detects adversar
 | Inference | Pure JavaScript (no WASM, no ONNX) |
 | CSP requirement | `script-src 'self'` only |
 
-The ML detector runs **asynchronously** alongside the regex facets. Regex detections appear immediately (~0.3ms); ML detections update the banner when ready (~5-50ms in Chrome). This gives defense-in-depth: regex catches known patterns, ML catches paraphrased and obfuscated variants.
+~~The ML detector ran **asynchronously** alongside the regex facets.~~ (Withdrawn 2026-11-23; regex-only since v0.7.1.)
 
 <details>
-<summary><strong>🧠 ML Evaluation Results</strong></summary>
+<summary><strong>🧠 ML Evaluation Results</strong> (WITHDRAWN 2026-11-23 — figures void)</summary>
+
+> **Void as of 2026-11-23.** The corpus that produced these figures failed label audit (~71% attack-side flip rate). These are retained solely as a historical record of the v0.3.0-era design and must not be read as describing the current product. See [docs/ML-WITHDRAWN.md](./docs/ML-WITHDRAWN.md).
 
 | Metric | Value |
 |--------|-------|
@@ -222,7 +225,7 @@ See [docs/ML-WITHDRAWN.md](./docs/ML-WITHDRAWN.md) for full evaluation data.
 | Secret detection (57 patterns) | ✅ | ❌ | ✅ |
 | XSS detection (12 patterns) | ✅ | ❌ | ⚠️ Web-only |
 | Compliance risk flagging (62 patterns) | ✅ | ❌ | ⚠️ Limited |
-| ML adversarial detection | ✅ | ❌ | ⚠️ Rare |
+| ML adversarial detection | WITHDRAWN | ❌ | ⚠️ Rare |
 | Works on 10 AI providers | ✅ | ❌ | ⚠️ Requires proxy |
 | 100% on-device, zero telemetry | ✅ | ✅ | ❌ Cloud-based |
 | Zero dependencies, no WASM | ✅ | ✅ | ❌ Requires agent |
@@ -249,7 +252,7 @@ See [docs/ML-WITHDRAWN.md](./docs/ML-WITHDRAWN.md) for full evaluation data.
 1. **Content script** is injected into each supported AI provider page (per the MV3 manifest)
 2. **On every keystroke** (debounced 250ms), the prompt value is read from the textarea
 3. **5 regex facets** run synchronously: PII (77), Secrets (57), XSS (12), Compliance (62), OT/ICS (9) = 217 patterns
-4. **1 ML facet** runs asynchronously: Char CNN-BiLSTM detects adversarial prompt injection
+4. ~~**1 ML facet**~~ **ML facet withdrawn 2026-11-23** — the Char CNN-BiLSTM detector was removed and hard-disabled; the extension runs regex-only
 5. **PostProcess** filters false positives: Luhn validation for credit cards, 4-4-4 CC pattern rejection, ID-label context check
 6. **Banner shows** with severity color (critical = red, high = orange, medium = yellow, low = blue)
 7. **User chooses**: Cancel / Edit & Resend / Send Anyway / Dismiss for 24h
@@ -261,7 +264,7 @@ See [docs/ML-WITHDRAWN.md](./docs/ML-WITHDRAWN.md) for full evaluation data.
 |-------|-------|--------|
 | Node unit tests (`node:test`) | 505 | ✅ all pass |
 | E2e manifest validation | 25 | ✅ all pass |
-| ML perf/stress tests | 12 | ✅ all pass |
+| ML perf/stress tests | 12 | ⏭️ skipped (ML withdrawn 2026-11-23) |
 | Go unit tests (`go test`) | 3 | ✅ all pass |
 | Headless smoke in real Chrome (via CDP) | 16 | ✅ all pass |
 | Platform FPR test (6,500 WildChat prompts) | 1 | ✅ 2.31% FPR |
@@ -290,9 +293,9 @@ See [docs/SECURITY.md](./docs/SECURITY.md) for the full privacy policy and secur
 
 ## Security
 
-- **Apache 2.0** license (inference code; model weights included but not open source)
+- **Apache 2.0** license (source code; the ML model weights were withdrawn 2026-11-23 and are no longer distributed)
 - **Zero external dependencies** (no npm, no node_modules, no bundled libraries)
-- **Zero WASM** (removed in v0.3.0; pure JS inference)
+- **Zero WASM** (removed in v0.3.0; the ML detector that briefly used pure-JS inference was itself withdrawn 2026-11-23)
 - **MV3 strict CSP** (`script-src 'self'`; no inline scripts, no remote code, no eval, no wasm-unsafe-eval)
 - **Ed25519 commit signing** on all commits
 - **RFC 9116** vulnerability disclosure (contact `security@aegisgatesecurity.io`)
@@ -316,18 +319,18 @@ See [docs/SECURITY.md](./docs/SECURITY.md) for the full security model and [docs
 - **🔒 23 New SOC Detection Patterns** — SWIFT/BIC banking codes (3), CPT/HCPCS medical billing codes (11), and OT/ICS protocol patterns (9: Modbus, DNP3, OPC-UA). Parity with Platform v4.1.0 and Rampart v0.6.1.
 - **🦊 Firefox MV3 Support** — Firefox 142+ via Manifest V3 with `browser_specific_settings.gecko`.
 - **🔧 Dynamic injection fix** — Background.js content script file list corrected to match manifest.
-- **✅ 530 tests** — 518 passing + 12 skipped (ML perf tests). All green.
+- **✅ 530 tests** — 518 passing + 12 skipped (ML perf tests, withdrawn 2026-11-23). All green.
 
 </details>
 
 <details>
 <summary><strong>📦 What's New in v0.3.0</strong></summary>
 
-- **🧠 ML Threat Detector** — Char CNN-BiLSTM with Attention, running in pure JavaScript. No WASM, no ONNX Runtime, no external dependencies. Detects adversarial prompt injections (instruction override, roleplay injection, obfuscated commands) in ~5-50ms.
+- **🧠 ML Threat Detector** — Char CNN-BiLSTM with Attention, running in pure JavaScript. No WASM, no ONNX Runtime, no external dependencies. Detected adversarial prompt injections (instruction override, roleplay injection, obfuscated commands). **Withdrawn 2026-11-23 — see docs/ML-WITHDRAWN.md.**
 - **🔍 DeepSeek + Meta AI** — Two new AI providers with live-verified DOM selectors (10 providers total).
 - **📦 6x smaller** — Extension reduced from 25MB (WASM) to 4.2MB (pure JS).
 - **🔒 Stricter CSP** — `script-src 'self'` only. No `wasm-unsafe-eval`, no `eval()`, no `Function()`.
-- **✅ 504 tests** — 492 unit + 12 ML perf/stress tests. All passing.
+- **✅ 504 tests** — 492 unit + 12 ML perf/stress tests. All passing. *(v0.3.0 historical; the 12 ML perf/stress tests are skipped as of 2026-11-23 — see docs/ML-WITHDRAWN.md.)*
 
 </details>
 
@@ -356,7 +359,7 @@ AegisGate Lens is the consumer-facing layer. The same team builds [AegisGate Pla
 
 ## License
 
-Apache 2.0 for source code — see [LICENSE](./LICENSE) for the full text. The trained ML model weights are licensed under the Apache License 2.0, same as the source code.
+Apache 2.0 for source code — see [LICENSE](./LICENSE) for the full text. The trained ML model weights were withdrawn on 2026-11-23 and are no longer distributed with AegisGate Lens (see docs/ML-WITHDRAWN.md).
 
 ## Contributing
 
@@ -368,7 +371,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ## IP Notice
 
-AegisGate's core technologies are patent pending with the USPTO (Provisional App. Nos. 64/153,573–64/153,577, filed September 12, 2026; 64/174,824, filed October 12, 2026; and 64/180,722, filed October 20, 2026; and 64/184,057, filed October 26, 2026). Source code is © 2024-2026 AegisGate Security, LLC. Licensed under Apache 2.0. Trained ML model weights are licensed under the Apache License 2.0.
+AegisGate's core technologies are patent pending with the USPTO (Provisional App. Nos. 64/153,573–64/153,577, filed September 12, 2026; 64/174,824, filed October 12, 2026; and 64/180,722, filed October 20, 2026; and 64/184,057, filed October 26, 2026). Source code is © 2024-2026 AegisGate Security, LLC. Licensed under Apache 2.0. Trained ML model weights were withdrawn on 2026-11-23 and are no longer distributed (see docs/ML-WITHDRAWN.md).
 
 ---
 

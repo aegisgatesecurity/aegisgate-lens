@@ -198,8 +198,7 @@ documented in the finding).
 - **Status:** **RESIDUAL**
 - **Description:** All known attack classes are caught.
   Defense-in-depth remains: the regex tier catches the
-  obvious patterns; the architecture is open to adding an ML
-  tier (v0.2.0) for the long tail.
+  obvious patterns; the architecture once contemplated an ML tier, which was withdrawn 2026-11-23 (see docs/ML-WITHDRAWN.md).
 - **Why residual:** there is no detection system with 0%
   false negatives on adversarial inputs. A sufficiently
   sophisticated attacker who knows our patterns can craft a
@@ -217,15 +216,21 @@ documented in the finding).
   achieves ~40% attack success rate (ASR) against the regex
   tier; BERTAttack-style semantic corruption achieves ~100% ASR
   (any prompt can be made to look like another by paraphrasing).
-  The regex tier cannot catch paraphrased PII. v0.2.0 introduces
-  a TinyML tier (DistilBERT-tiny, INT8-quantized, ~5MB) that
-  brings the expected ASR down to ~5-10% on the same corpora.
+  The regex tier cannot catch paraphrased PII. A TinyML tier
+  (DistilBERT-tiny, INT8-quantized, ~5MB) was once proposed to
+  bring the expected ASR down to ~5-10% — that plan is void: the
+  neural ML effort was withdrawn 2026-11-23 (see
+  docs/ML-WITHDRAWN.md). No ML tier exists in v0.7.1.
 - **Why partial:** the v0.1.0-beta ships regex-only. The
   document-vs-reality gap is acknowledged in the README
   ("best-in-class" claim was removed; we claim 95% in-target
   recall on a 60K-prompt held-out set, not 100% adversarial
   robustness).
-- **Mitigation plan:** v0.2.0 (Q3 2026).
+- **Mitigation plan:** none active. The previously planned TinyML
+  mitigation is void (ML withdrawn 2026-11-23, see
+  docs/ML-WITHDRAWN.md). Residual risk is accepted and documented
+  here; reinstatement requires corpus re-audit and re-publication
+  of evaluation data.
 
 ## Threat surfaces we are NOT exposed to (and why)
 

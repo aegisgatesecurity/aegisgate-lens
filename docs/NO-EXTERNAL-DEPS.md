@@ -4,17 +4,19 @@
 
 **This repository has zero third-party dependencies.** This is a hard constraint, not a guideline. Any PR that adds a third-party dependency will be rejected. See [`CONTRIBUTING.md`](../CONTRIBUTING.md) for the rule and the rationale.
 
-## Pure JS ML Inference (v0.3.0)
+## Pure JS ML Inference (v0.3.0) — WITHDRAWN 2026-11-23
 
-Starting in v0.3.0, the Lens includes an **on-device ML threat detector** that runs entirely in pure JavaScript — no WASM, no onnxruntime, no external runtime. The Char CNN-BiLSTM model weights are stored as float16 in a gzip-compressed, base64-encoded JSON file and decompressed at load time using the browser's built-in `DecompressionStream`.
+> **Status as of v0.7.1 (2026-11-23): withdrawn.** The ML threat detector is no longer shipped or loaded. The weights file (`models/threat_cnn_bilstm_weights.bin.json`) has been removed from the repository, `src/detectors/ml/threat-detector-js.js` is a no-op stub (`classify()` returns `{isAdversarial: false, score: 0}`), and no ML inference occurs at runtime. `src/detectors/ml/char-normalizer.js` remains in the tree but is inert. See [ML-WITHDRAWN.md](./ML-WITHDRAWN.md). The section below is retained as a historical record of the v0.3.0 design; "the Lens includes an on-device ML threat detector" no longer describes the product.
+
+Starting in v0.3.0, the Lens included an **on-device ML threat detector** that ran entirely in pure JavaScript — no WASM, no onnxruntime, no external runtime. The Char CNN-BiLSTM model weights were stored as float16 in a gzip-compressed, base64-encoded JSON file and decompressed at load time using the browser's built-in `DecompressionStream`.
 
 | Asset | Path | Size | Purpose |
 |-------|------|------|---------|
-| `threat-detector-js.js` | `src/detectors/ml/` | ~14KB | Pure JS forward pass (embedding → conv → BiLSTM → attention → dense) |
-| `char-normalizer.js` | `src/detectors/ml/` | ~3KB | Character-level encoder (text → Int32Array) |
-| `threat_cnn_bilstm_weights.bin.json` | `models/` | ~3.7MB | Float16 weights, gzip+base64 encoded |
+| `threat-detector-js.js` | `src/detectors/ml/` | ~2KB (was ~14KB) | **No-op stub since 2026-11-23** — `classify()` returns `{isAdversarial: false, score: 0}`; the forward pass was removed |
+| `char-normalizer.js` | `src/detectors/ml/` | ~3KB | Character-level encoder — retained but inert (nothing loads it for inference) |
+| `threat_cnn_bilstm_weights.bin.json` | `models/` | — | **REMOVED 2026-11-23.** No longer shipped, loaded, or referenced at runtime |
 
-**Why this is acceptable:**
+**Why this was acceptable (historical, v0.3.0):**
 
 1. **Not an npm dependency.** The inference engine is hand-written vanilla JS — no imports, no bundler, no transpiler. The weights are a static JSON file loaded via `fetch(chrome.runtime.getURL())`.
 2. **No WASM, no eval.** The CSP is `script-src 'self'; object-src 'self'` — no `wasm-unsafe-eval`, no `eval()`, no `Function()`. This is a hard requirement per the security model.
@@ -33,7 +35,7 @@ The first implementation used ONNX Runtime Web (WASM). This was replaced with pu
 | `ort-wasm.wasm` | 8.8MB | WASM fallback (replaced by pure JS) |
 | `threat_cnn_bilstm.onnx` | 6.1MB | Float32 ONNX model (replaced by float16 JSON) |
 
-**Performance:**
+**Performance (historical, v0.3.0 — withdrawn 2026-11-23):**
 
 | Metric | Node.js (test) | Chrome V8 (estimated) |
 |--------|-----------------|----------------------|
@@ -55,8 +57,8 @@ Chrome V8's TurboFan/Maglev JIT is expected to be ~10x faster than Node.js for t
 | Third-party JS libraries (npm install) | ❌ No | No `transformers.js`, `react`, `lodash`, `axios`, etc. |
 | Vendored WASM binaries | ❌ No | Removed in v0.3.0. Pure JS inference instead. |
 | Vendored ONNX Runtime | ❌ No | Removed in v0.3.0. Pure JS inference instead. |
-| Pure JS inference (hand-written) | ✅ Yes | `threat-detector-js.js`, `char-normalizer.js` |
-| Model weights (float16 JSON) | ✅ Yes | `threat_cnn_bilstm_weights.bin.json` |
+| Pure JS ML inference code (now a no-op stub) | ✅ Yes (inert) | `threat-detector-js.js`, `char-normalizer.js` |
+| Model weights (float16 JSON) | ❌ No | `threat_cnn_bilstm_weights.bin.json` removed 2026-11-23; not shipped |
 | Bundlers (`esbuild`, `webpack`, `rollup`, etc.) | ❌ No | The build is a Go program in the Platform monorepo. |
 | Transpilers (`tsc`, `babel`, `swc`) | ❌ No | The code is hand-written ES2020. No transpilation. |
 | Test frameworks (Jest, Mocha, Vitest, etc.) | ❌ No | `node:test` only. |

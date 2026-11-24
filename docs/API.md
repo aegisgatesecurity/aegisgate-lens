@@ -236,7 +236,7 @@ should not be relied on:
 
 | Name | Status | Replacement |
 |---|---|---|
-| `__lensMl` | Reserved for v0.2.0 TinyML | (future) |
+| `__lensMl` | Reserved for v0.2.0 TinyML — never shipped; ML withdrawn 2026-11-23 (docs/ML-WITHDRAWN.md). Do not rely on it. | (none) |
 | `__lensToxicity` | Reserved for v0.2.0 | (future) |
 | `__lensPromptInjection` | Reserved (the facet name in schema.js) | Use `__lensDispatcher.detect()` and filter on `facet: 'compliance'` |
 

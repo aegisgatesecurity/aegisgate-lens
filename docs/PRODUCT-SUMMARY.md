@@ -11,8 +11,11 @@ what AegisGate Lens is and isn't.
 
 AegisGate Lens is a **free, privacy-first Chrome extension** that
 detects sensitive content — PII, credentials, XSS payloads,
-compliance-relevant language, and adversarial prompt injections —
-in real time as you type into consumer AI chat tools. When a match
+compliance-relevant language, and (prior to 2026-11-23) adversarial
+prompt injections — in real time as you type into consumer AI chat
+tools. As of v0.7.1 (2026-11-23) the neural ML detection layer is
+**withdrawn and not present**; detection is regex-only. See
+[ML-WITHDRAWN.md](./ML-WITHDRAWN.md). When a match
 fires, a banner appears at the top of the page with the category,
 severity, and your options (Cancel / Edit & Redact / Send Anyway /
 False Positive).
@@ -24,8 +27,9 @@ default.
 
 ## What it catches
 
-Lens scans your prompt across five detection facets — four regex
-(synchronous, ~0.3ms) and one ML (asynchronous, ~5-50ms in Chrome):
+Lens scans your prompt across four regex detection facets
+(synchronous, ~0.3ms). The fifth, ML-based facet was withdrawn on
+2026-11-23 and is not present in this version:
 
 1. **Personal data** (69 patterns) — government-issued IDs, contact
    information, financial account numbers, and biometric identifiers.
@@ -44,24 +48,19 @@ Lens scans your prompt across five detection facets — four regex
    review: the OWASP LLM Top 10 risk categories, MITRE ATLAS
    adversary techniques, articles of the EU AI Act, and parallel
    frameworks for Brazil, the UK, and other jurisdictions.
-5. **ML adversarial detection** (1 model) — a Char CNN-BiLSTM with
-   Attention (1.58M parameters) that detects prompt injection
-   attacks including instruction override, roleplay injection, and
-   obfuscated commands. Pure JavaScript inference, no WASM, no
-   remote server. Runs asynchronously ~5-50ms after the regex
-   detection, providing defense-in-depth.
+5. **ML adversarial detection** (1 model) — **WITHDRAWN 2026-11-23.** The Char CNN-BiLSTM with Attention (1.58M parameters) was removed after its training corpus failed label audit; not present in this version. See [ML-WITHDRAWN.md](./ML-WITHDRAWN.md).
 
-**Total: 155 regex patterns + 1 ML model.**
+**Total: 155 regex patterns. The ML model was withdrawn 2026-11-23 and is no longer counted or shipped.**
 
 ## How it works
 
 1. You type into a supported AI chat tool.
 2. After a 250 ms debounce, the content script runs the four-facet
    regex detector (synchronous, ~0.3ms).
-3. Simultaneously, the ML detector runs asynchronously (~5-50ms).
+3. ~~Simultaneously, the ML detector runs asynchronously (~5-50ms).~~ The ML detector was withdrawn 2026-11-23 and no longer runs.
 4. If a match fires, a brand-matched banner appears at the top of
    the page showing the category, severity, and a masked value
-   (e.g., "SSN: 123-…6789" or "ML: adversarial prompt detected").
+   (e.g., "SSN: 123-…6789"; the former "ML: adversarial prompt detected" banner no longer occurs — the ML facet was withdrawn 2026-11-23).
 5. You choose: Cancel send / Edit & Redact / Send Anyway / This is
    a false positive.
 6. Nothing leaves your browser.
@@ -86,10 +85,11 @@ manifest):
 
 - **No prompt text on wire.** Architectural: there is no `fetch()`
   call to any origin in the content script.
-- **No server round-trip** for detection. Both regex and ML run
-  in-browser.
-- **No ML inference on a remote server.** The model weights are
-  bundled in the extension package; inference runs in JavaScript.
+- **No server round-trip** for detection. Detection is regex-only and runs
+  in-browser; the ML facet was withdrawn 2026-11-23.
+- **No ML inference on a remote server — or locally.** The model weights
+  were removed from the extension package on 2026-11-23; no ML model is
+  bundled or executed in this version.
 - **No prompt content logged anywhere.** The schema forbids it
   in the service worker payload.
 - **No URLs or page content sent.** The opt-in FP report is
@@ -100,17 +100,16 @@ manifest):
 - **No A/B testing, no crash reporting, no remote config.**
 - **No npm dependencies.** Zero third-party runtime code. The
   build tool is a Go program in a separate monorepo.
-- **No WASM binaries.** Removed in v0.3.0. Pure JS inference.
+- **No WASM binaries.** Removed in v0.3.0. No WASM, and no ML inference of any kind, remains (ML withdrawn 2026-11-23).
 
 ## What's new in v0.3.0
 
 - **ML threat detector** — WITHDRAWN 2026-11-23. The Char CNN-BiLSTM weights were removed after the training corpus failed label audit; all detection claims are void. See docs/ML-WITHDRAWN.md.
+- **Lazy model loading** — (historical, v0.3.0) 3.7MB model weights were loaded on first `classify()` call. Moot since 2026-11-23: the weights and the ML facet were removed.
 - **DeepSeek + Meta AI** — two new AI provider integrations (10 total).
 - **6× smaller extension** — reduced from 25MB (WASM) to 4.2MB (pure JS).
 - **Stricter CSP** — `script-src 'self'` only, no `wasm-unsafe-eval`.
-- **504 tests** — 492 unit + 12 ML perf/stress.
-- **Lazy model loading** — 3.7MB model weights loaded on first
-  `classify()` call, not on page load.
+- **504 tests** — 492 unit + 12 ML perf/stress (ML perf/stress tests are skipped as of 2026-11-23; ML withdrawn).
 
 ## For enterprise teams
 
@@ -134,7 +133,7 @@ Act Compliance Module, and SIEM export.
 - **Source code**: <https://github.com/aegisgatesecurity/aegisgate-lens>
 - **Privacy policy**: `docs/PRIVACY-POLICY.md`
 - **Security model**: `docs/THREAT-MODEL.md`
-- **ML model card**: `docs/MODEL-CARD.md`
+- **ML withdrawal notice**: `docs/ML-WITHDRAWN.md` (the former ML model card was removed with the model itself)
 - **Architecture**: `docs/ARCHITECTURE-v0.1.3.md`
 - **Bundle API**: `docs/API.md`
 - **A11Y audit**: `docs/A11Y-AUDIT-v0.1.3.md`

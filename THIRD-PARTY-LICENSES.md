@@ -10,13 +10,13 @@ This file lists all third-party dependencies used by AegisGate Lens.
 
 AegisGate Lens is a browser extension with **zero external dependencies**. It does not use npm, does not bundle any third-party JavaScript, and does not load any external resources at runtime.
 
-All code is written in vanilla JavaScript and runs entirely on-device. The ML threat detector implements the Char CNN-BiLSTM forward pass in pure JavaScript — no ONNX Runtime, no WASM, no external inference library.
+All code is written in vanilla JavaScript and runs entirely on-device. The ML threat detector previously implemented the Char CNN-BiLSTM forward pass in pure JavaScript — no ONNX Runtime, no WASM, no external inference library. As of 2026-11-23 the ML detector is withdrawn: the weights were removed and `src/detectors/ml/threat-detector-js.js` is a no-op stub. See `docs/ML-WITHDRAWN.md`.
 
 ## Browser APIs
 
 The extension uses standard browser extension APIs:
 - `chrome.*` / `browser.*` (Manifest V3 APIs)
-- `DecompressionStream` (built-in browser API for gzip decompression)
+- `DecompressionStream` (built-in browser API for gzip decompression; previously used to decompress the ML weights — now unused since the weights were withdrawn 2026-11-23)
 - `TextEncoder` / `TextDecoder` (built-in browser APIs)
 
 These are platform APIs, not third-party libraries, and do not require license attribution.

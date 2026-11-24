@@ -43,8 +43,9 @@ We will work with you on coordinated disclosure.
 See `docs/THREAT-MODEL.md` for the formal STRIDE-based threat model.
 Summary:
 
-- **In scope**: prompt content, banner UX, opt-in telemetry,
-  ML inference pipeline
+- **In scope**: prompt content, banner UX, opt-in telemetry
+  (the ML inference pipeline was withdrawn 2026-11-23 and is no
+  longer part of the product — see docs/ML-WITHDRAWN.md)
 - **Out of scope**: the AI provider websites themselves
   (Lens is a passive observer, not a Man-in-the-Middle)
 - **Threat actors**: malicious AI providers (e.g., a compromised
@@ -57,25 +58,36 @@ Summary:
 
 - **Manifest V3** with strict CSP (`script-src 'self'; object-src 'self'`)
 - **Zero npm dependencies** (per `CONTRIBUTING.md` rule)
-- **Zero WASM binaries** (removed in v0.3.0; pure JS inference)
+- **Zero WASM binaries** (removed in v0.3.0)
 - **No `eval()`, no `Function()`, no `wasm-unsafe-eval`, no inline event handlers**
-- **ML inference is pure JavaScript** — no onnxruntime, no WASM,
-  no external runtime. Model weights are float16 JSON loaded via
-  `fetch(chrome.runtime.getURL())` and decompressed with the
-  browser's built-in `DecompressionStream`.
+- **No ML inference at all (as of v0.7.1, 2026-11-23)** — the ML
+  threat detector was withdrawn: the weights were removed, and
+  `src/detectors/ml/threat-detector-js.js` is a no-op stub. No
+  model is bundled, loaded, or executed. Previously (v0.3.0–v0.7.0)
+  ML inference was pure JavaScript (no onnxruntime, no WASM) with
+  float16 JSON weights loaded via `fetch(chrome.runtime.getURL())`.
 - **Sender-id validation** in the service worker (F-01)
 - **Domain hashing** (F-12) for opt-in telemetry
 - **Schema-validated** service worker payloads
 - **SLSA L2** build provenance (build is in the Platform
   build pipeline, signed with Ed25519)
 - **No remote code** of any kind
-- **Lazy model loading** — 3.7MB model weights are not fetched
-  until the first `classify()` call; no network request on page load
+- ~~**Lazy model loading** — 3.7MB model weights are not fetched
+  until the first `classify()` call; no network request on page load~~
+  (Withdrawn 2026-11-23: no model exists to load; this control no
+  longer applies.)
 
-## ML security considerations
+## ML security considerations — WITHDRAWN 2026-11-23
 
-The ML threat detector (Char CNN-BiLSTM with Attention) introduces
-new attack surfaces that did not exist in the regex-only v0.2.0:
+The ML threat detector was withdrawn on 2026-11-23 (training-corpus
+label audit failure; see docs/ML-WITHDRAWN.md). The weights were
+removed from the repository, the detector is a no-op stub, and no ML
+inference occurs. The attack surface described below no longer exists
+in this version; it is retained as a historical record of the
+v0.3.0–v0.7.0 design:
+
+The ML threat detector (Char CNN-BiLSTM with Attention) introduced
+attack surfaces that did not exist in the regex-only v0.2.0:
 
 1. **Model extraction**: The model weights are bundled in the
    extension package. A sophisticated attacker could extract the
@@ -114,6 +126,10 @@ clickjacking-style attacks via the banner UI).
 
 ## Security history
 
+- **2026-11-23**: v0.7.1 — ML threat detector withdrawn and
+  hard-disabled (training-corpus label audit failure). Weights
+  removed; detector is a no-op stub; all ML detection-rate claims
+  void. See `docs/ML-WITHDRAWN.md`.
 - **2026-08-05**: v0.3.0 — ML threat detector added (pure JS,
   no WASM). DeepSeek and Meta AI providers added. WASM/ONNX
   removed. CSP simplified to `script-src 'self'` only.
@@ -136,8 +152,7 @@ reproduction test case as a regression guard.
 - `docs/THREAT-MODEL.md` — the formal STRIDE threat model
 - `docs/A11Y-AUDIT-v0.1.3.md` — accessibility audit
   (includes focus management, the prime clickjacking vector)
-- `docs/MODEL-CARD.md` — ML model card (architecture, evaluation,
-  limitations, ethical considerations)
+- `docs/ML-WITHDRAWN.md` — ML withdrawal notice (the ML model card was removed with the model; the file never existed in this tree)
 - `docs/NO-EXTERNAL-DEPS.md` — the zero-dependency policy
 - `CONTRIBUTING.md` — the no-npm rule (privacy guarantee)
 - `aegisgatesecurity.io/.well-known/security.txt` — RFC 9116

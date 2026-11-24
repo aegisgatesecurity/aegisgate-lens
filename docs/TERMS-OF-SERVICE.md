@@ -2,6 +2,7 @@
 
 **Last updated:** 2026-08-05
 **Effective for:** AegisGate Lens v0.3.2
+**As of v0.7.1 (2026-11-23):** neural ML detection was withdrawn and is not present in this version. See `docs/ML-WITHDRAWN.md`. No other terms are changed by this notice.
 **Licensor:** AegisGate Security, LLC ("AegisGate", "we", "us")
 **Licensee:** End user of the AegisGate Lens Chrome extension ("you", "your")
 
@@ -77,7 +78,8 @@ You may not:
 **AegisGate Lens does not collect any user data by
 default.** The Lens is 100% on-device. The regex
 detection (262 patterns) runs entirely in your browser.
-NO neural ML detection is present: the ML model was
+NO neural ML detection is present (as of v0.7.1,
+2026-11-23): the ML model was
 withdrawn and removed on 2026-11-23 after a training-corpus
 label audit failure (see docs/ML-WITHDRAWN.md). No prompt
 content or detection result leaves your device unless you
@@ -94,8 +96,9 @@ When enabled, the only data sent is:
   with a salt that is NOT in the extension bundle; the
   AegisGate backend cannot recover the original domain
   without brute-forcing the hash.
-- **Category** (e.g., `pii_ssn`, `secret_aws_key`,
-  `ml_adversarial_prompt`).
+- **Category** (e.g., `pii_ssn`, `secret_aws_key`; the former
+  `ml_adversarial_prompt` category can no longer be generated, as no
+  ML detection exists as of v0.7.1, 2026-11-23).
   Not the value; only the category.
 - **Severity** (e.g., `critical`, `high`, `medium`).
 - **Action** (e.g., `cancel`, `redact`, `send`,
@@ -139,10 +142,11 @@ under Section 7:
 The Lens is open-source software licensed under Apache
 2.0. The inference code (`threat-detector-js.js`,
 `char-normalizer.js`) and all regex detection patterns are
-Apache 2.0. The ML model weights
-(`threat_cnn_bilstm_weights.bin.json`) are included in the
-extension package for on-device inference but are NOT
-open source.
+Apache 2.0. As of v0.7.1 (2026-11-23), the ML model weights
+(`threat_cnn_bilstm_weights.bin.json`) are no longer included in
+the extension package — they were withdrawn and removed on
+2026-11-23 (see docs/ML-WITHDRAWN.md). When they were distributed,
+they were not open source.
 
 The Lens name, the AegisGate name, the AegisGate logo,
 the AegisGate Lens shield icon, and the AegisGate brand
@@ -197,14 +201,16 @@ See docs/ML-WITHDRAWN.md. The adversarial robustness (paraphrasing,
 base64, OCR, etc.) is partial and is documented in
 `docs/THREAT-MODEL.md` F-15 and F-20.
 
-**The ML model runs on-device and does not send data to
-any server.** The model is a Char CNN-BiLSTM with Attention
-(1.58M parameters, float16 weights, pure JavaScript
-inference, no WASM, no onnxruntime). It processes at most
-128 characters of the prompt and outputs a single threat
-score between 0 and 1. The model does not learn from user
-input. It does not improve over time. It does not send
-inference data anywhere.
+**No neural ML model runs in this version (as of v0.7.1,
+2026-11-23).** The on-device Char CNN-BiLSTM with Attention
+(1.58M parameters) was withdrawn and removed on 2026-11-23 after
+its training corpus failed label audit; the detector is a no-op
+stub and no model weights are bundled or loaded. No ML inference
+occurs, and no inference data is sent anywhere, because no
+inference exists. Prior to withdrawal, the model ran on-device,
+processed at most 128 characters of the prompt, and output a
+single threat score between 0 and 1 without learning from user
+input. See docs/ML-WITHDRAWN.md.
 
 **The Lens does NOT provide legal, compliance, or
 security guarantees.** The Lens is a tool that helps
@@ -315,5 +321,6 @@ If you have questions about these ToS, contact:
 **Signed-off-by:** AegisGate Security <legal@aegisgatesecurity.io>
 **Last updated:** 2026-08-05
 **Effective for:** AegisGate Lens v0.3.2
+**As of v0.7.1 (2026-11-23):** neural ML detection was withdrawn and is not present in this version. See `docs/ML-WITHDRAWN.md`.
 **License of this document:** CC-BY-4.0 (you may copy, modify,
 and redistribute)

@@ -3,9 +3,9 @@
 # ML Detection Architecture: Lens vs Platform
 
 **Date**: 2026-11-05
-**Status**: ACTIVE
+**Status**: WITHDRAWN 2026-11-23 — historical design document. The ML threat detector was withdrawn and hard-disabled on 2026-11-23 (training-corpus label audit failure); Lens ships regex-only and Platform/Rampart ML behavior is out of scope here. See [ML-WITHDRAWN.md](./ML-WITHDRAWN.md). Nothing in this document describes shipping functionality.
 **Scope**: Documents the fundamental difference in how the ML threat
-detection model is used across AegisGate products.
+detection model was used across AegisGate products (historical).
 
 ---
 
@@ -107,6 +107,7 @@ FP reduction.
 **Date**: 2026-11-05
 **Decision**: Lens uses ML as independent detector (threshold 0.5).
 Platform/Rampart use ML as gatekeeper (threshold 0.05 suppression).
+**Status (2026-11-23)**: VOID for Lens — the Lens ML detector was withdrawn and hard-disabled on 2026-11-23 after the training corpus failed label audit (~71% attack-side flip rate). See [ML-WITHDRAWN.md](./ML-WITHDRAWN.md). Do not treat the metrics or the decision above as applicable to any shipping AegisGate Lens release.
 **Rationale**: Different threat models require different architectures.
 Enterprise = precision-first. Consumer = defense-in-depth.
 **Approved by**: Josh Colvin, AegisGate Security LLC
