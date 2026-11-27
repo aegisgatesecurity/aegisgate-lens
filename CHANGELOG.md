@@ -1,3 +1,16 @@
+## [0.8.0] - 2026-11-27 — Platform Correlation, Business Tier, Audit Export
+
+> **v0.8.0** aligns Lens with AegisGate Platform v6.0.0: browser-side telemetry correlation (Phase 4a), the Lens Business entitlement/policy tier, and the exportable local audit ring.
+
+### Added
+- **Platform telemetry correlation** — browser-side security signals forwarded to the Platform correlation API (opt-in via the existing telemetry gate; no-op by default, air-gap safe).
+- **Lens Business tier** — entitlement verification, enterprise policy engine (custom block/allow patterns, category policies via managed storage), and per-client policy application.
+- **Local audit ring** — bounded in-memory audit event ring with entitlement-gated export (no telemetry; export is operator-initiated).
+- **IOC pull** integrated with the entitlement gate; integration-test hang root-caused and fixed (full-mesh readiness).
+
+### Notes
+- All ML detection-rate claims remain void (ML withdrawn 2026-11-23, v0.7.1). Deterministic regex detection is unaffected and is the only detection layer in this release.
+
 ## [0.7.1] - 2026-11-23 — ML Withdrawn
 
 - `models/threat_cnn_bilstm_weights.bin.json` removed; ML threat detector replaced with a no-op stub; `manifest.json` no longer exposes the weights; all ML detection-rate claims void. Deterministic regex detection unaffected. See docs/ML-WITHDRAWN.md.
