@@ -33,6 +33,8 @@
     FP_REPORTS: 'FP_REPORTS',               // user opted in to send FP report(s)
     GET_OPT_IN_STATE: 'GET_OPT_IN_STATE',   // popup asks for opt-in state
     OPEN_LENS_POPUP: 'OPEN_LENS_POPUP',     // content script → SW: open the extension popup (Bug #4)
+    EXPORT_AUDIT: 'EXPORT_AUDIT',             // popup → SW: export the business audit ring (Lens Business)
+    BUSINESS_STATE: 'BUSINESS_STATE',           // popup → SW: ask Lens Business unlock state
 
     // From SW
     PONG: 'PONG',

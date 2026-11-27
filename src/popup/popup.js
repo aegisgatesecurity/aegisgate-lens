@@ -435,6 +435,52 @@
   // v0.1.4: bind the pause buttons. Reads the current state, sets
   // the status line, and wires the 1h / 1d buttons to write a
   // future timestamp. Defensive against test mocks that return
+  // Lens Business (Phase 4a): show the audit-export button only when
+  // the business entitlement includes audit_export; clicking downloads
+  // the audit ring as JSON.
+  try {
+    var bizSection = document.getElementById('business');
+    var exportBtn = document.getElementById('export-audit');
+    if (bizSection && exportBtn && typeof chrome !== 'undefined' &&
+        chrome.runtime && typeof chrome.runtime.sendMessage === 'function') {
+      chrome.runtime.sendMessage(
+        { type: 'BUSINESS_STATE', version: '0.3.0', payload: {} },
+        function (resp) {
+          if (chrome.runtime.lastError || !resp || !resp.payload) return;
+          var feats = resp.payload.features || [];
+          if (resp.payload.unlocked &&
+              (feats.indexOf('audit_export') !== -1 || feats.length === 0)) {
+            bizSection.hidden = false;
+          }
+        }
+      );
+      exportBtn.addEventListener('click', function () {
+        chrome.runtime.sendMessage(
+          { type: 'EXPORT_AUDIT', version: '0.3.0', payload: {} },
+          function (resp) {
+            if (chrome.runtime.lastError || !resp || !resp.payload || !resp.payload.ok) {
+              window.alert(resp && resp.payload ? resp.payload.error : 'export failed');
+              return;
+            }
+            var blob = new Blob([resp.payload.json || '[]'],
+                                { type: 'application/json' });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = 'aegisgate-lens-audit-' +
+              new Date().toISOString().replace(/[:.]/g, '-') + '.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+          }
+        );
+      });
+    }
+  } catch (e) {
+    // Business UI must never break the popup.
+  }
+
   // elements without addEventListener (same pattern as G1).
   function bindPauseButtons() {
     var btn1h = document.getElementById('pause-1h');

@@ -36,8 +36,9 @@
   if (typeof importScripts === 'function' &&
       typeof self.__aegisgateIOCPull === 'undefined') {
     try {
-      importScripts('src/ioc-pull.js', 'src/rampart-bridge.js');
-      log.info('IOC Pull and Rampart Bridge loaded via importScripts');
+      importScripts('src/ioc-pull.js', 'src/rampart-bridge.js',
+                    'src/entitlement.js', 'src/policy.js');
+      log.info('IOC Pull, Rampart Bridge, Entitlement + Policy loaded via importScripts');
     } catch (e) {
       log.warn('importScripts failed (modules may already be loaded): ' + e);
     }
@@ -45,6 +46,7 @@
 
   var IOC_PULL = (typeof self !== 'undefined' && self.__aegisgateIOCPull) || null;
   var RAMPART_BRIDGE = (typeof self !== 'undefined' && self.__aegisgateRampartBridge) || null;
+  var ENTITLEMENT = (typeof self !== 'undefined' && self.__aegisgateEntitlement) || null;
 
   // Constants from src/util/constants.js (loaded via globalThis)
   var C = (typeof self !== 'undefined' && self.__lensConstants) ||
@@ -439,7 +441,69 @@
       count = (count || 0) + 1;
       return storageSet('aegisgate_lens_detection_count', count);
     });
+
+    // Lens Business (Phase 4a): audit ring — structured detection events,
+    // capped at MAX_EVENTS_RING, exported via the popup (audit_export
+    // entitlement only). Consumers never write here (no entitlement).
+    if (ENTITLEMENT && ENTITLEMENT.hasFeature('audit_export')) {
+      storageGet('aegisgate_lens_audit_ring').then(function (ring) {
+        ring = ring || [];
+        ring.push({
+          timestamp: new Date().toISOString(),
+          facet: msg.payload.facet,
+          category: msg.payload.category,
+          severity: msg.payload.severity,
+          count: msg.payload.count || 1
+        });
+        var cap = (C && C.MAX_EVENTS_RING) || 1000;
+        if (ring.length > cap) ring = ring.slice(-cap);
+        return storageSet('aegisgate_lens_audit_ring', ring);
+      }).catch(function () { /* audit must never break detection */ });
+    }
+
     sendResponse({ type: M.TYPE.ACK, version: msg.version, payload: { ok: true } });
+  }
+
+  // EXPORT_AUDIT (Lens Business): return the audit ring as a JSON
+  // string for download. Gated on the audit_export entitlement.
+  function handleExportAudit(msg, sender, sendResponse) {
+    if (!M.isValidEnvelope(msg)) {
+      sendResponse({ type: M.TYPE.ERROR, version: msg.version,
+                     payload: { error: 'invalid export_audit message' } });
+      return;
+    }
+    if (!ENTITLEMENT || !ENTITLEMENT.hasFeature('audit_export')) {
+      sendResponse({ type: M.TYPE.ERROR, version: msg.version,
+                     payload: { error: 'audit export requires a Lens Business entitlement' } });
+      return;
+    }
+    storageGet('aegisgate_lens_audit_ring').then(function (ring) {
+      ring = ring || [];
+      sendResponse({
+        type: M.TYPE.ACK,
+        version: msg.version,
+        payload: { ok: true, count: ring.length, json: JSON.stringify(ring, null, 2) }
+      });
+    }).catch(function (err) {
+      sendResponse({ type: M.TYPE.ERROR, version: msg.version,
+                     payload: { error: 'audit read failed' } });
+    });
+  }
+
+  // BUSINESS_STATE: popup asks whether Lens Business features are
+  // unlocked (drives the export button visibility).
+  function handleBusinessState(msg, sender, sendResponse) {
+    var unlocked = !!(ENTITLEMENT && ENTITLEMENT.isUnlocked());
+    var features = [];
+    if (unlocked && ENTITLEMENT && ENTITLEMENT._getState) {
+      var att = ENTITLEMENT._getState().attestation;
+      features = (att && att.features) || [];
+    }
+    sendResponse({
+      type: M.TYPE.ACK,
+      version: msg.version,
+      payload: { ok: true, unlocked: unlocked, features: features }
+    });
   }
 
   // USER_ACTION: log what the user did (send/cancel/dismiss).
@@ -579,6 +643,8 @@
         case M.TYPE.FP_REPORTS:      handleFPReports(msg, sender, sendResponse); return true;  // async
         case M.TYPE.GET_OPT_IN_STATE: handleGetOptInState(msg, sender, sendResponse); return true;  // async
         case M.TYPE.OPEN_LENS_POPUP:  handleOpenLensPopup(msg, sender, sendResponse); return false;  // sync (popup is side-effect)
+        case M.TYPE.EXPORT_AUDIT:     handleExportAudit(msg, sender, sendResponse); return false;
+        case M.TYPE.BUSINESS_STATE:   handleBusinessState(msg, sender, sendResponse); return false;
         default:
           log.warn('unknown message type: ' + msg.type);
           sendResponse({ type: M.TYPE.ERROR, payload: { error: 'unknown type' } });
@@ -647,18 +713,75 @@
             RAMPART_BRIDGE.setBaseUrl(rampartUrl);
           }
 
-          // Initialize IOC Pull
-          if (IOC_PULL) {
-            getBackend().then(function (backendUrl) {
-              getBearerToken().then(function (apiKey) {
-                IOC_PULL.init({
-                  enabled: iocEnabled,
-                  platformUrl: backendUrl,
-                  apiKey: apiKey
-                });
-                log.info('IOC Pull initialized (enabled=' + iocEnabled + ', managed=' + (managed.iocPullEnabled !== undefined) + ')');
-              });
+          // Lens Business (Phase 4a): entitlement bootstrap — restore the
+          // cached attestation and ingest the MDM licenseKey (a static
+          // attestation JSON exported from GET /api/v1/entitlement).
+          // Pull-borne attestations arrive via onEntitlement below.
+          var entitlementReady = Promise.resolve(false);
+          if (ENTITLEMENT) {
+            entitlementReady = ENTITLEMENT.init(managed);
+          }
+
+          // optInRequired stub (managed): when the org requires explicit
+          // user opt-in, sensor modules stay OFF until the user opts in,
+          // even if managed policy enables them.
+          var optInGate = Promise.resolve(true);
+          if (managed.optInRequired === true) {
+            optInGate = getOptIn().then(function (o) {
+              return !!(o && o.enabled);
             });
+          }
+
+          // Set Rampart base URL if managed
+          if (rampartUrl && RAMPART_BRIDGE) {
+            RAMPART_BRIDGE.setBaseUrl(rampartUrl);
+          }
+
+          Promise.all([entitlementReady, optInGate]).then(function (gates) {
+            var unlocked = gates[0];
+            var optInOk = gates[1];
+            if (managed.optInRequired === true && !optInOk) {
+              iocEnabled = false;
+              rampartEnabled = false;
+              log.info('optInRequired: sensors OFF until user opt-in');
+            }
+
+            // Publish the business policy snapshot for content scripts
+            // (active ONLY with a valid policy_enforcement entitlement).
+            if (ENTITLEMENT && unlocked && ENTITLEMENT.hasFeature('policy_enforcement')) {
+              storageSet('aegisgate_lens_policy', {
+                active: true,
+                facetsEnabled: managed.facetsEnabled || null,
+                blockedCategories: managed.blockedCategories || [],
+                allowedCategories: managed.allowedCategories || [],
+                customBlockPatterns: managed.customBlockPatterns || [],
+                customAllowPatterns: managed.customAllowPatterns || []
+              });
+              log.info('Lens Business policy enforcement ACTIVE');
+            } else {
+              storageSet('aegisgate_lens_policy', { active: false });
+            }
+
+            // Initialize IOC Pull
+            if (IOC_PULL) {
+              getBackend().then(function (backendUrl) {
+                getBearerToken().then(function (apiKey) {
+                  IOC_PULL.init({
+                    enabled: iocEnabled,
+                    platformUrl: backendUrl,
+                    apiKey: apiKey,
+                    pullInterval: managed.iocPullInterval, // stub wired (MDM override)
+                    onEntitlement: function (att) {
+                      if (ENTITLEMENT) {
+                        ENTITLEMENT.ingest(att, 'pull').then(function (on) {
+                          if (on) log.info('Lens Business entitlement refreshed (pull)');
+                        });
+                      }
+                    }
+                  });
+                  log.info('IOC Pull initialized (enabled=' + iocEnabled + ', managed=' + (managed.iocPullEnabled !== undefined) + ')');
+                });
+              });
           } else {
             log.warn('IOC Pull module not available');
           }
@@ -675,6 +798,7 @@
           } else {
             log.warn('Rampart Bridge module not available');
           }
+          }); // Promise.all([entitlementReady, optInGate]).then
         });
       });
     });
@@ -795,6 +919,7 @@
               'src/util/banner-ui-html.js',
               'src/util/banner-ui-lifecycle.js',
               'src/util/banner-ui.js',
+              'src/policy.js',
               'src/content.js'
             ]
           }).then(function () {

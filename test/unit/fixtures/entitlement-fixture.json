@@ -1,0 +1,27 @@
+{
+  "attestation": {
+    "v": 1,
+    "serial": "fixture-serial-0001",
+    "tenantId": "acme-corp",
+    "seatId": "fleet",
+    "tier": "business",
+    "features": [
+      "mdm",
+      "audit_export",
+      "policy_enforcement"
+    ],
+    "issuedAt": "2026-11-26T12:00:00Z",
+    "expiresAt": "2026-12-03T12:00:00Z",
+    "publicKey": {
+      "algorithm": "ecdsa-p256",
+      "keyId": "k-986a1341ce861e61",
+      "value": "BMxO4mp3AdRLx07mfnRt4Q7PaaLb8Vcrb4r5cMoolYSjeFJYHsrtqIGlR+uyjAdB4O/S6NRIF8+tSKGlVTidttE="
+    },
+    "signature": {
+      "algorithm": "ecdsa-p256",
+      "keyId": "k-986a1341ce861e61",
+      "value": "MEQCIHCtNaptoL6zL4Uyw/Ab8soAif9ikzGg5vWQ3oNItkEhAiByYR0zeDqxbxmHuhzYyasJmjym9Imz7U9gPW5wNOqN1A=="
+    }
+  },
+  "payload": "{\"v\":1,\"serial\":\"fixture-serial-0001\",\"tenantId\":\"acme-corp\",\"seatId\":\"fleet\",\"tier\":\"business\",\"features\":[\"mdm\",\"audit_export\",\"policy_enforcement\"],\"issuedAt\":\"2026-11-26T12:00:00Z\",\"expiresAt\":\"2026-12-03T12:00:00Z\",\"publicKey\":{\"algorithm\":\"ecdsa-p256\",\"keyId\":\"k-986a1341ce861e61\",\"value\":\"BMxO4mp3AdRLx07mfnRt4Q7PaaLb8Vcrb4r5cMoolYSjeFJYHsrtqIGlR+uyjAdB4O/S6NRIF8+tSKGlVTidttE=\"},\"signature\":{\"algorithm\":\"\",\"keyId\":\"\",\"value\":\"\"}}"
+}

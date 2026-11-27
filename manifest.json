@@ -25,6 +25,8 @@
     "scripts": [
       "src/ioc-pull.js",
       "src/rampart-bridge.js",
+      "src/entitlement.js",
+      "src/policy.js",
       "src/background.js"
     ]
   },
@@ -79,6 +81,7 @@
         "src/util/banner-ui-html.js",
         "src/util/banner-ui-lifecycle.js",
         "src/util/banner-ui.js",
+        "src/policy.js",
         "src/content.js"
       ],
       "run_at": "document_idle",
@@ -136,7 +139,9 @@
       "id": "lens@aegisgate.security",
       "strict_min_version": "142.0",
       "data_collection_permissions": {
-        "required": ["none"],
+        "required": [
+          "none"
+        ],
         "optional": []
       }
     }

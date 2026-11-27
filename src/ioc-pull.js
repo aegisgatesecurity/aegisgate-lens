@@ -57,11 +57,17 @@
     init: function (options) {
       options = options || {};
       this.enabled = options.enabled || false;
+      if (options.pullInterval && options.pullInterval >= 60000) {
+        this.pullInterval = options.pullInterval; // managed-config override (MDM)
+      }
       if (options.platformUrl) {
         this.platformEndpoint = options.platformUrl.replace(/\/$/, '') + '/api/v1/ioc/latest';
       }
       if (options.apiKey) {
         this._apiKey = options.apiKey;
+      }
+      if (typeof options.onEntitlement === 'function') {
+        this._onEntitlement = options.onEntitlement;
       }
 
       // Load cached IOCs from storage
@@ -118,6 +124,10 @@
           })
           .then(function (data) {
             if (!data) return;
+            if (data.entitlement && self._onEntitlement) {
+              // Phase 4a: Platform-signed entitlement rides the pull.
+              try { self._onEntitlement(data.entitlement); } catch (e) { /* never block the pull */ }
+            }
             if (data.iocs && Array.isArray(data.iocs)) {
               self._mergeIOCs(data.iocs);
               self.lastUpdated = data.updated_at || new Date().toISOString();

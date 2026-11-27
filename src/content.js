@@ -44,6 +44,9 @@
                   (typeof globalThis !== 'undefined' && globalThis.__lensSelectors) ||
                   null;
 
+  var POLICY = (typeof self !== 'undefined' && self.__lensPolicy) ||
+               (typeof globalThis !== 'undefined' && globalThis.__lensPolicy) || null;
+
   var dispatcher = (typeof self !== 'undefined' && self.__lensDispatcher) ||
                    (typeof globalThis !== 'undefined' && globalThis.__lensDispatcher) ||
                    null;
@@ -86,6 +89,20 @@
   // L-5 fix: Made async to properly await dismiss checks before showing banner.
   async function onDetect(events, text) {
     try {
+      // Lens Business policy enforcement (Phase 4a): admin-defined
+      // pre-scan blocks and post-scan filters. No-op for consumers
+      // (no active policy is ever written without an entitlement).
+      if (POLICY && POLICY.isActive()) {
+        var synth = POLICY.preScan(text);
+        if (synth) {
+          events = (events || []).concat([synth]);
+        }
+        events = POLICY.filterEvents(events, text);
+        if (!events.length) {
+          if (bannerUI) bannerUI.hide();
+          return;
+        }
+      }
       // L-1 fix: Don't expose raw prompt text on window.__lens_cs.
       // Store only the masked detections and metadata for diagnostics.
       // The full text is kept in a module-level closure, not a global.

@@ -40,11 +40,58 @@
       "type": "object",
       "description": "Per-facet enable/disable. Omitted facets use built-in defaults (all enabled).",
       "properties": {
-        "pii": { "type": "boolean", "default": true },
-        "secrets": { "type": "boolean", "default": true },
-        "xss": { "type": "boolean", "default": true },
-        "compliance": { "type": "boolean", "default": true },
-        "ot": { "type": "boolean", "default": true }
+        "pii": {
+          "type": "boolean",
+          "default": true
+        },
+        "secrets": {
+          "type": "boolean",
+          "default": true
+        },
+        "xss": {
+          "type": "boolean",
+          "default": true
+        },
+        "compliance": {
+          "type": "boolean",
+          "default": true
+        },
+        "ot": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    },
+    "licenseKey": {
+      "type": "string",
+      "description": "Lens Business bootstrap entitlement: the attestation JSON exported from the Platform's GET /api/v1/entitlement, pasted by the admin. Validated locally (offline). Refreshed automatically by the IOC pull when connected to the entitled Platform."
+    },
+    "customBlockPatterns": {
+      "type": "array",
+      "description": "Lens Business (policy_enforcement): custom text patterns that always produce a detection (e.g. internal project codenames). [{name, regex, severity?}]",
+      "items": {
+        "type": "object"
+      }
+    },
+    "customAllowPatterns": {
+      "type": "array",
+      "description": "Lens Business (policy_enforcement): regex patterns whose matched values are suppressed (e.g. test-environment tokens).",
+      "items": {
+        "type": "string"
+      }
+    },
+    "blockedCategories": {
+      "type": "array",
+      "description": "Lens Business (policy_enforcement): categories that are always kept/enforced even if their facet is disabled.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "allowedCategories": {
+      "type": "array",
+      "description": "Lens Business (policy_enforcement): categories whose detections are suppressed.",
+      "items": {
+        "type": "string"
       }
     }
   }

@@ -48,6 +48,7 @@
     { name: '__lensBannerIcons', file: 'util/banner-icons.js',      dependsOn: [],                  summary: 'Inline SVG icon strings (shield, close, help, chevronDown)' },
     { name: '__lensDismiss',     file: 'util/dismiss.js',           dependsOn: ['__lensConstants', '__lensSchema'], summary: 'Per-session FP dismissal state (24h TTL, opt-in FP reports)' },
     { name: '__lensBannerUI',    file: 'util/banner-ui.js',         dependsOn: ['__lensConstants', '__lensBannerIcons', '__lensLogger'], summary: 'Banner render, DOM injection, action delegation, dismiss handling' },
+    { name: '__lensPolicy',     file: 'policy.js',                 dependsOn: [],                  summary: 'Lens Business policy enforcement: admin custom block/allow patterns, category + facet gating (inactive without an entitlement)' },
     { name: '__lensContent',     file: 'content.js',                dependsOn: ['__lensLogger', '__lensPromptDetect', '__lensBannerUI', '__lensSelectors', '__lensDismiss'], summary: 'Top-level content script: identifies provider, attaches to input, wires banner actions' }
   ];
 
