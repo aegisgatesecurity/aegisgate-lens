@@ -69,11 +69,16 @@
       if (typeof options.onEntitlement === 'function') {
         this._onEntitlement = options.onEntitlement;
       }
+      // autoStart controls whether init() automatically starts the pull
+      // loop once cached IOCs load. Default true (production behavior).
+      // Tests set false so the loop's initial pull doesn't double-fire
+      // alongside their explicit pull() calls (request-count assertions).
+      this._autoStart = options.autoStart !== false;
 
       // Load cached IOCs from storage
       var self = this;
       this._loadFromStorage(function () {
-        if (self.enabled) {
+        if (self.enabled && self._autoStart) {
           self.startPullLoop();
         }
       });

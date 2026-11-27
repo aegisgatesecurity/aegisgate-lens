@@ -128,6 +128,12 @@ async function loadIOCPull() {
   return globalThis.__aegisgateIOCPull;
 }
 
+// NOTE: every init() passes autoStart:false so the pull loop's
+// initial pull does not double-fire alongside explicit pull() calls —
+// the old sync stopPullLoop() raced the async storage callback, leaking
+// the loop's setInterval and hanging node after the tests passed (the
+// pre-existing "ioc-pull.test.mjs hang", root-caused 2026-11-27).
+
 // ============================================================
 // Tests
 // ============================================================
@@ -146,14 +152,14 @@ test('IOCPull: module loads and exports __aegisgateIOCPull', async () => {
 
 test('IOCPull: init() with enabled=false does not start pull loop', async () => {
   const mod = await loadIOCPull();
-  mod.init({ enabled: false });
+  mod.init({ autoStart: false, enabled: false });
   assert.equal(mod.enabled, false);
   assert.equal(mod.pullTimer, null, 'pull loop not started when disabled');
 });
 
 test('IOCPull: pull() returns false when disabled', async () => {
   const mod = await loadIOCPull();
-  mod.init({ enabled: false });
+  mod.init({ autoStart: false, enabled: false });
   const result = await new Promise((resolve) => {
     mod.pull(function (success, count) {
       resolve({ success, count });
@@ -168,7 +174,7 @@ test('IOCPull: pull() fetches IOCs from mock Platform', async (t) => {
   t.after(() => mock.close());
 
   const mod = await loadIOCPull();
-  mod.init({
+  mod.init({ autoStart: false,
     enabled: true,
     platformUrl: mock.url,
     apiKey: 'test-key-123',
@@ -193,7 +199,7 @@ test('IOCPull: pull() sends Bearer auth when API key configured', async (t) => {
   t.after(() => mock.close());
 
   const mod = await loadIOCPull();
-  mod.init({
+  mod.init({ autoStart: false,
     enabled: true,
     platformUrl: mock.url,
     apiKey: 'secret-bearer-token',
@@ -219,7 +225,7 @@ test('IOCPull: pull() handles 304 Not Modified', async (t) => {
   t.after(() => mock.close());
 
   const mod = await loadIOCPull();
-  mod.init({ enabled: true, platformUrl: mock.url });
+  mod.init({ autoStart: false, enabled: true, platformUrl: mock.url });
   mod.stopPullLoop();
 
   // First pull — gets IOCs
@@ -256,7 +262,7 @@ test('IOCPull: pull() handles 401 auth failure', async (t) => {
   t.after(() => mock.close());
 
   const mod = await loadIOCPull();
-  mod.init({ enabled: true, platformUrl: mock.url, apiKey: 'wrong-key' });
+  mod.init({ autoStart: false, enabled: true, platformUrl: mock.url, apiKey: 'wrong-key' });
   mod.stopPullLoop();
 
   const result = await new Promise((resolve) => {
@@ -273,7 +279,7 @@ test('IOCPull: pull() handles 401 auth failure', async (t) => {
 test('IOCPull: pull() handles network errors gracefully', async () => {
   const mod = await loadIOCPull();
   // Point at an unreachable port
-  mod.init({ enabled: true, platformUrl: 'http://127.0.0.1:1' });
+  mod.init({ autoStart: false, enabled: true, platformUrl: 'http://127.0.0.1:1' });
   mod.stopPullLoop();
 
   const result = await new Promise((resolve) => {
@@ -292,7 +298,7 @@ test('IOCPull: checkFingerprint() finds matching IOC', async (t) => {
   t.after(() => mock.close());
 
   const mod = await loadIOCPull();
-  mod.init({ enabled: true, platformUrl: mock.url });
+  mod.init({ autoStart: false, enabled: true, platformUrl: mock.url });
   mod.stopPullLoop();
 
   await new Promise((resolve) => {
@@ -315,7 +321,7 @@ test('IOCPull: checkRuleDomain() finds matching IOC', async (t) => {
   t.after(() => mock.close());
 
   const mod = await loadIOCPull();
-  mod.init({ enabled: true, platformUrl: mock.url });
+  mod.init({ autoStart: false, enabled: true, platformUrl: mock.url });
   mod.stopPullLoop();
 
   await new Promise((resolve) => {
@@ -342,7 +348,7 @@ test('IOCPull: IOCs are persisted in chrome.storage.local', async (t) => {
 
   installMockChrome();
   const mod = await loadIOCPull();
-  mod.init({ enabled: true, platformUrl: mock.url });
+  mod.init({ autoStart: false, enabled: true, platformUrl: mock.url });
   mod.stopPullLoop();
 
   await new Promise((resolve) => {
@@ -365,7 +371,7 @@ test('IOCPull: privacy — IOC data contains only hashes, no PII values', async 
   t.after(() => mock.close());
 
   const mod = await loadIOCPull();
-  mod.init({ enabled: true, platformUrl: mock.url });
+  mod.init({ autoStart: false, enabled: true, platformUrl: mock.url });
   mod.stopPullLoop();
 
   await new Promise((resolve) => {
@@ -414,7 +420,7 @@ test('IOCPull: stats are tracked correctly', async (t) => {
   t.after(() => mock.close());
 
   const mod = await loadIOCPull();
-  mod.init({ enabled: true, platformUrl: mock.url });
+  mod.init({ autoStart: false, enabled: true, platformUrl: mock.url });
   mod.stopPullLoop();
   mod.resetStats();
 
@@ -435,7 +441,7 @@ test('IOCPull: setPullInterval() and pull loop control', async (t) => {
   t.after(() => mock.close());
 
   const mod = await loadIOCPull();
-  mod.init({ enabled: true, platformUrl: mock.url });
+  mod.init({ autoStart: false, enabled: true, platformUrl: mock.url });
   mod.stopPullLoop();
 
   // Verify loop is stopped
@@ -459,7 +465,7 @@ test('IOCPull: clearCache() removes all IOCs', async (t) => {
   t.after(() => mock.close());
 
   const mod = await loadIOCPull();
-  mod.init({ enabled: true, platformUrl: mock.url });
+  mod.init({ autoStart: false, enabled: true, platformUrl: mock.url });
   mod.stopPullLoop();
 
   await new Promise((resolve) => {

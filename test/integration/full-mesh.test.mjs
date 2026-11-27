@@ -204,7 +204,7 @@ test('FullMesh: Lens ← Platform IOC pull works', async (t) => {
 
   installMockChrome();
   const iocPull = await loadIOCPull();
-  iocPull.init({
+  iocPull.init({ autoStart: false,
     enabled: true,
     platformUrl: platform.url,
     apiKey: 'mesh-test-key',
@@ -268,7 +268,7 @@ test('FullMesh: all three Lens connections work simultaneously', async (t) => {
   const bridge = await loadRampartBridge();
 
   // --- Initialize IOC Pull (Lens ← Platform) ---
-  iocPull.init({
+  iocPull.init({ autoStart: false,
     enabled: true,
     platformUrl: platform.url,
     apiKey: 'full-mesh-key',
@@ -354,7 +354,7 @@ test('FullMesh: Lens operates air-gapped (no Platform, no Rampart)', async () =>
   installMockChrome();
 
   const iocPull = await loadIOCPull();
-  iocPull.init({ enabled: false });
+  iocPull.init({ autoStart: false, enabled: false });
   assert.equal(iocPull.enabled, false, 'IOC pull disabled');
   assert.equal(iocPull.pullTimer, null, 'no pull loop running');
 
@@ -390,7 +390,7 @@ test('FullMesh: privacy — no PII values leak across any connection', async (t)
   const iocPull = await loadIOCPull();
   const bridge = await loadRampartBridge();
 
-  iocPull.init({ enabled: true, platformUrl: platform.url });
+  iocPull.init({ autoStart: false, enabled: true, platformUrl: platform.url });
   iocPull.stopPullLoop();
   bridge.setBaseUrl(rampart.url);
 
