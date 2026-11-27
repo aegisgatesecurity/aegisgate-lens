@@ -47,6 +47,11 @@
   var IOC_PULL = (typeof self !== 'undefined' && self.__aegisgateIOCPull) || null;
   var RAMPART_BRIDGE = (typeof self !== 'undefined' && self.__aegisgateRampartBridge) || null;
   var ENTITLEMENT = (typeof self !== 'undefined' && self.__aegisgateEntitlement) || null;
+  // Lens Business / Phase 4a: forward detection signals to the Platform
+  // correlation endpoint (cross-layer correlation with proxy blocks).
+  // Opt-in via managed config platformCorrelationEnabled (set during
+  // initSensorModules).
+  var platformCorrelationEnabled = false;
 
   // Constants from src/util/constants.js (loaded via globalThis)
   var C = (typeof self !== 'undefined' && self.__lensConstants) ||
@@ -428,6 +433,35 @@
 
   // DETECTION: log the detection (local-only for now; future
   // versions may aggregate detection counts for the popup)
+  // forwardLensSignal: POST a LensSignal to the Platform's
+  // /api/v1/lens-signals endpoint (cross-layer correlation). Payload is
+  // metadata-only (no prompt text) — the DETECTION payload is already
+  // privacy-sanitized by the content pipeline (16-hex domain hash).
+  function forwardLensSignal(p) {
+    getBackend().then(function (backend) {
+      getBearerToken().then(function (token) {
+        fetch(backend.replace(/\/$/, '') + '/api/v1/lens-signals', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+          },
+          body: JSON.stringify({
+            hashed_domain: p.domain_hash,
+            category: p.category,
+            severity: p.severity,
+            rule_id: p.category + '_v1',
+            timestamp: new Date(p.timestamp * 1000).toISOString(),
+            direction: 'request',
+            action: 'warned'
+          }),
+          signal: (typeof AbortSignal !== 'undefined' && AbortSignal.timeout)
+            ? AbortSignal.timeout(10000) : undefined
+        }).catch(function () { /* correlation must never break detection */ });
+      });
+    }).catch(function () { /* no backend configured */ });
+  }
+
   function handleDetection(msg, sender, sendResponse) {
     if (!M.isValidDetection(msg)) {
       sendResponse({ type: M.TYPE.ERROR, version: msg.version,
@@ -441,6 +475,12 @@
       count = (count || 0) + 1;
       return storageSet('aegisgate_lens_detection_count', count);
     });
+
+    // Phase 4a: forward the signal to the Platform correlator (opt-in,
+    // managed platformCorrelationEnabled). Fire-and-forget; never blocks.
+    if (platformCorrelationEnabled) {
+      forwardLensSignal(msg.payload);
+    }
 
     // Lens Business (Phase 4a): audit ring — structured detection events,
     // capped at MAX_EVENTS_RING, exported via the popup (audit_export
@@ -761,6 +801,11 @@
             } else {
               storageSet('aegisgate_lens_policy', { active: false });
             }
+
+            // Phase 4a telemetry-correlation tuning: browser-side event
+            // forwarding. When the org enables it, detection signals go
+            // to the Platform's Lens correlation endpoint.
+            platformCorrelationEnabled = managed.platformCorrelationEnabled === true;
 
             // Initialize IOC Pull
             if (IOC_PULL) {

@@ -93,6 +93,11 @@
       "items": {
         "type": "string"
       }
+    },
+    "platformCorrelationEnabled": {
+      "type": "boolean",
+      "description": "Forward detection signals to the Platform's Lens correlation endpoint (/api/v1/lens-signals) for cross-layer correlation with the org's proxy blocks. Requires backendUrl + bearerToken. Default false (air-gap).",
+      "default": false
     }
   }
 }
