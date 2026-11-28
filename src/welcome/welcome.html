@@ -293,7 +293,7 @@
 <body>
   <div class="container">
     <div class="header">
-      <span class="tag" id="lens-version-tag">v0.7.1</span>
+      <span class="tag" id="lens-version-tag">v0.8.0</span>
       <h1>AegisGate Lens</h1>
       <p class="subtitle">Privacy-first prompt safety. 262 regex patterns. Zero data leaves your browser.</p>
     </div>
@@ -341,7 +341,17 @@
     </div>
 
     <div class="card">
-      <h2>What's new in v0.7.1</h2>
+      <h2>What's new in v0.8.0</h2>
+      <ul>
+        <li><strong>Platform telemetry correlation</strong> — browser-side security signals can forward to AegisGate Platform v6.0.0 (opt-in via the telemetry gate; no-op by default)</li>
+        <li><strong>Lens Business tier</strong> — entitlement verification, enterprise policy engine (custom block/allow patterns, category policies via managed storage)</li>
+        <li><strong>Local audit ring</strong> — bounded in-memory audit events with entitlement-gated export; no telemetry</li>
+        <li><strong>ML detection remains withdrawn</strong> (since v0.7.1) — regex detection is the only detection layer</li>
+      </ul>
+    </div>
+
+    <div class="card upgrade" data-historical>
+      <h2>Historical: v0.7.1</h2>
       <ul>
         <li><strong>ML detection withdrawn</strong> — the Char CNN-BiLSTM model failed a corpus label audit and has been removed from the extension and hard-disabled. All neural-ML detection-rate claims are void. Deterministic regex detection is unaffected. See docs/ML-WITHDRAWN.md</li>
         <li><strong>Regex detection unchanged</strong> — PII, secrets, XSS, compliance, and OT/ICS pattern sets continue to run 100% on-device</li>
